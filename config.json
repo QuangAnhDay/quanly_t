@@ -1,0 +1,9 @@
+{
+  "project_dir": "C:\\project\\myProject\\truyen",
+  "server_host": "127.0.0.1",
+  "server_port": 8888,
+  "chrome_profiles": ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"],
+  "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "default_voice": "vi-VN-HoaiMyNeural",
+  "voicestudio_output_dir": "C:\\voicestudio\\outputs"
+}

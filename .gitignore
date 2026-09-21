@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+data/*.db
+data/*.sqlite3
+!data/.gitkeep
+
+# Output folders (ignored so media files are not uploaded to git)
+2_audio_input/*
+!2_audio_input/.gitkeep
+3_video_output/*
+!3_video_output/.gitkeep
+4_thumbnails/*
+!4_thumbnails/.gitkeep
+backgrounds/*
+!backgrounds/.gitkeep
+
+# Virtual environment & IDE
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+*.log

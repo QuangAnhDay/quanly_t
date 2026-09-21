@@ -1,0 +1,6 @@
+Tiêu đề: Truyện Test Repo Ngoài
+Mã kịch bản: KB003
+Ngày tạo: 2026-09-20 03:10:32
+========================================
+
+Nội dung test kịch bản tự tạo voice bằng repo khác.
