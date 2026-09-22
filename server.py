@@ -17,9 +17,14 @@ import database
 import audio_engine
 import video_engine
 import thumbnail_engine
+import capcut_engine
 
 # Đảm bảo các thư mục tồn tại
-for d in ["1_scripts", "2_audio_input", "3_video_output", "4_thumbnails", "backgrounds", "data", "web"]:
+for d in [
+    "1_scripts", "2_audio_input", "3_video_output", "4_thumbnails",
+    "backgrounds", "backgrounds/nau_an", "backgrounds/handmade",
+    "data", "web"
+]:
     os.makedirs(os.path.join(BASE_DIR, d), exist_ok=True)
 
 # Khởi tạo DB
@@ -79,7 +84,7 @@ def auto_sync_disk_files():
                     database.update_project(pid, audio_path=c, status="3_da_co_audio")
                     break
         
-        # Kiểm tra file video
+        # Kiểm tra file video thành phẩm từ CapCut
         if not p.get("video_path") or p["status"] != "5_hoan_thanh":
             v_cand = os.path.join(video_dir, f"{pid}.mp4")
             if os.path.exists(v_cand):
@@ -106,6 +111,9 @@ class ThumbGenPayload(BaseModel):
 class LaunchSelectedProfilesPayload(BaseModel):
     profiles: List[str]
 
+class CapCutDraftPayload(BaseModel):
+    theme: Optional[str] = "nau_an"
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = os.path.join(BASE_DIR, "web", "index.html")
@@ -117,6 +125,11 @@ async def serve_index():
 @app.get("/api/config")
 async def api_get_config():
     return get_config()
+
+@app.get("/api/themes")
+async def api_get_themes():
+    """Lấy danh sách các chủ đề video nền và số lượng clip có trong kho"""
+    return capcut_engine.get_theme_stats()
 
 @app.get("/api/chrome-profiles")
 async def api_get_chrome_profiles():
@@ -140,7 +153,6 @@ async def api_launch_chrome_selected(payload: LaunchSelectedProfilesPayload):
 
 @app.get("/api/projects")
 async def list_projects():
-    # Tự động quét ổ cứng để cập nhật trạng thái nếu bạn vừa tạo file từ repo ngoài
     auto_sync_disk_files()
     return database.get_all_projects()
 
@@ -209,6 +221,48 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
         status="3_da_co_audio"
     )
     return {"success": True, "audio_path": audio_path, "project": updated}
+
+@app.post("/api/projects/{project_id}/create-capcut-draft")
+async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
+    """Tự động bốc ngẫu nhiên video theo chủ đề và tạo thẳng Project trên CapCut PC"""
+    proj = database.get_project(project_id)
+    if not proj or not proj.get("audio_path"):
+        raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
+    
+    audio_path = proj["audio_path"]
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=400, detail=f"Không tìm thấy file audio tại {audio_path}")
+
+    theme = payload.theme or "nau_an"
+    try:
+        draft_res = capcut_engine.create_capcut_draft(
+            project_id=project_id,
+            title=proj["title"],
+            audio_path=audio_path,
+            theme=theme
+        )
+        # Cập nhật trạng thái dự án
+        theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
+        theme_vn = theme_names.get(theme, theme)
+        notes = f"Đã tạo Project CapCut: {draft_res['draft_name']} (Chủ đề: {theme_vn})"
+        updated = database.update_project(project_id, notes=notes, status="4_da_render_video")
+        
+        return {
+            "success": True,
+            "message": f"Đã tạo xong Project CapCut với {draft_res['clips_count']} clip nền!",
+            "draft_info": draft_res,
+            "project": updated
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/open-capcut")
+async def open_capcut_app():
+    """Mở ứng dụng CapCut PC"""
+    opened = capcut_engine.launch_capcut_app()
+    if opened:
+        return {"success": True, "message": "Đã mở CapCut PC"}
+    return {"success": False, "message": "Không tìm thấy CapCut.exe trong máy"}
 
 @app.post("/api/projects/{project_id}/render-video")
 async def render_video_api(project_id: str, payload: RenderVideoPayload):
@@ -287,6 +341,9 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
         "videos": os.path.join(BASE_DIR, "3_video_output"),
         "thumbnails": os.path.join(BASE_DIR, "4_thumbnails"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
+        "bg_nau_an": os.path.join(BASE_DIR, "backgrounds", "nau_an"),
+        "bg_handmade": os.path.join(BASE_DIR, "backgrounds", "handmade"),
+        "capcut_drafts": capcut_engine.CAPCUT_DRAFT_ROOT
     }
     target = valid_folders.get(folder_name, BASE_DIR)
     os.makedirs(target, exist_ok=True)
