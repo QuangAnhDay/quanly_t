@@ -1,6 +1,7 @@
 import os
 import urllib.parse
 import requests
+from typing import Optional
 
 PROJECT_DIR = os.path.dirname(__file__)
 THUMB_DIR = os.path.join(PROJECT_DIR, "4_thumbnails")
