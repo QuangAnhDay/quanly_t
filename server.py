@@ -115,9 +115,23 @@ class ClaudeSkillConfigPayload(BaseModel):
     script_skill_command: str
     title_thumb_skill_command: str
 
+class BatchDeletePayload(BaseModel):
+    project_ids: List[str]
+
+class OpenFilePayload(BaseModel):
+    file_path: str
+
+class ConvertTikTokPayload(BaseModel):
+    style: Optional[str] = "blur"
+
+class SplitPartsPayload(BaseModel):
+    part_duration_sec: Optional[int] = 180
+
 class DispatchClaudePayload(BaseModel):
     project_ids: Optional[List[str]] = None
     profile_count: Optional[int] = 5
+
+
 
 
 @app.get("/", response_class=HTMLResponse)
