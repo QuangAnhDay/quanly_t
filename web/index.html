@@ -3,573 +3,537 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hệ Thống Quản Lý & Sản Xuất Video Đa Kênh - Xưởng Truyện Enterprise</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Xưởng Sản Xuất Video Audio - Quản Lý Kịch Bản</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50: '#f0fdf4', 100: '#dcfce7', 600: '#16a34a', 700: '#15803d' },
-            primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
-          }
-        }
-      }
-    }
-  </script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    .matrix-row:hover { background-color: #f8fafc; }
-    .badge-check { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.2rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; border-width: 1px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen">
 
-  <!-- Top Navigation Header (Enterprise Light Mode) -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-3 shadow-sm">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      
-      <!-- Brand & Title -->
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
-          <i class="fa-solid fa-layer-group text-lg"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-xl shadow-md shadow-indigo-100">
+          <i class="fa-solid fa-clapperboard"></i>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-bold text-base text-slate-900 tracking-tight">XƯỞNG SẢN XUẤT TRUYỆN ĐA KÊNH</h1>
-            <span class="text-[10px] uppercase font-bold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded">Enterprise</span>
-          </div>
-          <p class="text-xs text-slate-500">Mô hình Đóng Gói Trọn Bộ (<span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>) $\rightarrow$ Tự Động 2 Bản CapCut (TikTok & YouTube)</p>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">Xưởng Sản Xuất Video Truyện</h1>
+          <p class="text-xs text-slate-500 flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            Tự Động Tạo 2 Project CapCut (TikTok & YouTube) $\cdot$ Gói outputs/KBxxx
+          </p>
         </div>
       </div>
 
-      <!-- Quick Action Shortcuts -->
-      <div class="flex items-center flex-wrap gap-2">
-        <!-- Explorer Dropdown / Buttons -->
-        <button onclick="openFolder('outputs')" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm flex items-center gap-1.5 transition" title="Mở thư mục outputs trọn gói các kịch bản">
-          <i class="fa-solid fa-box-archive text-amber-500"></i> Thư Mục Outputs
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="launchCapCutApp()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-film"></i>
+          <span>Mở CapCut PC</span>
         </button>
 
-        <button onclick="openFolder('bg_nau_an_doc')" class="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-300 shadow-sm flex items-center gap-1.5 transition" title="Mở kho nền nấu ăn dọc">
-          <i class="fa-brands fa-tiktok text-pink-500"></i> Nền Dọc
+        <button onclick="openChromeModal()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-brands fa-chrome"></i>
+          <span>Quản Lý Profile Claude</span>
         </button>
 
-        <button onclick="openFolder('bg_nau_an_ngang')" class="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-300 shadow-sm flex items-center gap-1.5 transition" title="Mở kho nền nấu ăn ngang">
-          <i class="fa-brands fa-youtube text-red-500"></i> Nền Ngang
-        </button>
+        <!-- Dropdown Thư mục -->
+        <div class="relative group">
+          <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
+            <i class="fa-regular fa-folder-open"></i>
+            <span>Mở Thư Mục</span>
+            <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+          </button>
+          <div class="absolute right-0 mt-1 w-60 bg-white border border-slate-200 rounded-lg shadow-lg py-1 hidden group-hover:block z-40">
+            <button onclick="openFolder('outputs')" class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold"><i class="fa-solid fa-box-archive text-amber-500"></i> Gói Kịch Bản (outputs/)</button>
+            <div class="border-t border-slate-100 my-1"></div>
+            <button onclick="openFolder('bg_nau_an_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-tiktok text-pink-500"></i> Nấu Ăn Dọc (TikTok)</button>
+            <button onclick="openFolder('bg_nau_an_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-youtube text-red-500"></i> Nấu Ăn Ngang (YouTube)</button>
+            <button onclick="openFolder('bg_handmade_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-pink-500"></i> Handmade Dọc (TikTok)</button>
+            <button onclick="openFolder('bg_handmade_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-red-500"></i> Handmade Ngang (YouTube)</button>
+            <div class="border-t border-slate-100 my-1"></div>
+            <button onclick="openFolder('capcut_drafts')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-diagram-project text-cyan-600"></i> Thư Mục CapCut Drafts</button>
+          </div>
+        </div>
 
-        <!-- Mở CapCut PC -->
-        <button onclick="openCapCutApp()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-film"></i> Mở CapCut PC
-        </button>
-
-        <!-- Mở Chrome Profiles -->
-        <button onclick="launch5Chrome()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
-          <i class="fa-brands fa-chrome"></i> Mở 5 Claude
+        <button onclick="openNewScriptModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i>
+          <span>Thêm Kịch Bản</span>
         </button>
       </div>
-
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col gap-5">
-
-    <!-- KPI Summary & Progress Bar -->
-    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
-        
-        <!-- Left: Summary Badges -->
-        <div class="flex items-center flex-wrap gap-4 text-xs font-semibold">
-          <div class="flex items-center gap-1.5">
-            <span class="text-slate-500">Tổng kịch bản:</span>
-            <span id="stat-total" class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded font-mono text-sm">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-amber-600"><i class="fa-solid fa-microphone"></i> Cần Audio:</span>
-            <span id="stat-need-audio" class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded font-mono">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-blue-600"><i class="fa-solid fa-scissors"></i> Cần CapCut:</span>
-            <span id="stat-need-capcut" class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded font-mono">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-rose-600"><i class="fa-brands fa-tiktok"></i> TikTok Xong:</span>
-            <span id="stat-done-tiktok" class="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded font-mono">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-red-600"><i class="fa-brands fa-youtube"></i> YouTube Xong:</span>
-            <span id="stat-done-youtube" class="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-mono">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-emerald-600"><i class="fa-solid fa-image"></i> Có Thumb:</span>
-            <span id="stat-done-thumb" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-mono">0</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-purple-600"><i class="fa-solid fa-check-double"></i> Đã Đăng:</span>
-            <span id="stat-published" class="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded font-mono">0</span>
-          </div>
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Stats Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Tổng kịch bản</p>
+          <p id="stat-total" class="text-xl font-bold text-slate-900 mt-0.5">0</p>
         </div>
-
-        <!-- Right: Theme Background Status -->
-        <div class="flex items-center gap-2 text-xs">
-          <span class="text-slate-500 font-medium">Kho Nền:</span>
-          <span id="bg-stat-badge" class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded border border-slate-200 font-mono text-[11px]">
-            Đang tải...
-          </span>
-          <button onclick="openFolder('backgrounds')" class="text-slate-400 hover:text-slate-700" title="Mở thư mục backgrounds"><i class="fa-solid fa-folder-tree"></i></button>
-        </div>
-
+        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600"><i class="fa-regular fa-folder"></i></div>
       </div>
-
-      <!-- KPI Progress bar -->
-      <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex border border-slate-200">
-        <div id="kpi-progress-bar" class="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 h-2 transition-all duration-500" style="width: 0%"></div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Chờ duyệt / Voice</p>
+          <p id="stat-pending" class="text-xl font-bold text-amber-600 mt-0.5">0</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><i class="fa-solid fa-clock"></i></div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Đã có Audio</p>
+          <p id="stat-audio" class="text-xl font-bold text-emerald-600 mt-0.5">0</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600"><i class="fa-solid fa-waveform-lines"></i></div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Đã tạo CapCut 2 Bản</p>
+          <p id="stat-video" class="text-xl font-bold text-blue-600 mt-0.5">0</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600"><i class="fa-solid fa-video"></i></div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Đã xuất video / Xong</p>
+          <p id="stat-done" class="text-xl font-bold text-violet-600 mt-0.5">0</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600"><i class="fa-solid fa-circle-check"></i></div>
       </div>
     </div>
 
-    <!-- Filters & Action Toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      
-      <!-- Smart Filter Tabs (Light Design) -->
-      <div class="flex items-center flex-wrap gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-xs font-semibold">
-        <button onclick="setFilter('all')" id="tab-all" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white transition shadow-sm">Tất cả (<span id="cnt-all">0</span>)</button>
-        <button onclick="setFilter('need_audio')" id="tab-need_audio" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🔴 Cần Audio (<span id="cnt-need_audio">0</span>)</button>
-        <button onclick="setFilter('need_capcut')" id="tab-need_capcut" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🟡 Cần CapCut (<span id="cnt-need_capcut">0</span>)</button>
-        <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
-        <button onclick="setFilter('need_youtube')" id="tab-need_youtube" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">▶️ Chờ YouTube (<span id="cnt-need_youtube">0</span>)</button>
-        <button onclick="setFilter('need_thumb')" id="tab-need_thumb" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🖼️ Thiếu Thumb (<span id="cnt-need_thumb">0</span>)</button>
-        <button onclick="setFilter('published')" id="tab-published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⭐ Đã Đăng (<span id="cnt-published">0</span>)</button>
+    <!-- Filter & View Controls -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-5">
+      <div class="relative w-full sm:w-80">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" id="search-input" oninput="filterProjects()" placeholder="Tìm kiếm theo mã KB, tiêu đề..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white">
       </div>
 
-      <!-- Right Action Controls -->
-      <div class="flex items-center gap-2">
-        <!-- Search Box -->
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-          <input type="text" id="search-input" oninput="renderTable()" placeholder="Tìm tiêu đề, mã KB..." class="bg-white border border-slate-300 text-xs text-slate-800 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500 shadow-sm w-48 transition">
-        </div>
-
-        <button onclick="fetchProjects()" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm transition flex items-center gap-1.5" title="Tải lại dữ liệu">
-          <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <button onclick="loadProjects()" class="px-3 py-2 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>Làm mới</span>
         </button>
       </div>
-
     </div>
 
-    <!-- HIGH-DENSITY PROGRESS MATRIX TABLE (Light Enterprise Style) -->
-    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex-1 flex flex-col">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[11px] font-bold tracking-wider select-none">
-              <th class="p-3 w-10 text-center">
-                <input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
-              </th>
-              <th class="p-3 w-20">Mã KB</th>
-              <th class="p-3 min-w-[220px]">Tiêu đề Kịch bản</th>
-              <th class="p-3 w-28 text-center">1. Voice Audio</th>
-              <th class="p-3 w-44 text-center">2. CapCut 2 Bản</th>
-              <th class="p-3 w-40 text-center">3. Video Xuất</th>
-              <th class="p-3 w-28 text-center">4. Thumbnail</th>
-              <th class="p-3 w-28 text-center">5. Trạng Thái</th>
-              <th class="p-3 w-36 text-center">Quản Lý Gói KB</th>
-            </tr>
-          </thead>
-          <tbody id="projects-table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
-            <!-- Table rows dynamically populated -->
-            <tr>
-              <td colspan="9" class="p-8 text-center text-slate-400">Đang tải danh sách kịch bản...</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Kanban Board Grid -->
+    <div id="kanban-board" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Col 1: Chờ duyệt / Chờ Voice -->
+      <div class="bg-slate-100/70 p-3 rounded-xl border border-slate-200 flex flex-col max-h-[calc(100vh-250px)]">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-bold text-slate-700">1. Chờ duyệt / Tạo Voice</span>
+          </div>
+          <span id="col-count-1" class="text-[11px] font-semibold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">0</span>
+        </div>
+        <div id="col-items-1" class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1"></div>
+      </div>
+
+      <!-- Col 2: Đã có Audio (Sẵn sàng tạo CapCut Draft) -->
+      <div class="bg-slate-100/70 p-3 rounded-xl border border-slate-200 flex flex-col max-h-[calc(100vh-250px)]">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold text-slate-700">2. Đã có Audio</span>
+          </div>
+          <span id="col-count-2" class="text-[11px] font-semibold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">0</span>
+        </div>
+        <div id="col-items-2" class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1"></div>
+      </div>
+
+      <!-- Col 3: Đã tạo Project CapCut -->
+      <div class="bg-slate-100/70 p-3 rounded-xl border border-slate-200 flex flex-col max-h-[calc(100vh-250px)]">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+            <span class="text-xs font-bold text-slate-700">3. Đã tạo CapCut (TikTok & YT)</span>
+          </div>
+          <span id="col-count-3" class="text-[11px] font-semibold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">0</span>
+        </div>
+        <div id="col-items-3" class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1"></div>
+      </div>
+
+      <!-- Col 4: Hoàn thành / Đã xuất video CapCut -->
+      <div class="bg-slate-100/70 p-3 rounded-xl border border-slate-200 flex flex-col max-h-[calc(100vh-250px)]">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+            <span class="text-xs font-bold text-slate-700">4. Hoàn Thành / Sẵn sàng đăng</span>
+          </div>
+          <span id="col-count-4" class="text-[11px] font-semibold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">0</span>
+        </div>
+        <div id="col-items-4" class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1"></div>
       </div>
     </div>
 
   </main>
 
-  <!-- FLOATING BATCH ACTION TOOLBAR (Light Enterprise Floating Bar) -->
-  <div id="batch-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border-2 border-blue-500 rounded-2xl px-6 py-3 shadow-xl flex items-center gap-4 z-50 transition-all duration-300 transform translate-y-24 opacity-0 pointer-events-none">
-    <div class="flex items-center gap-2 font-bold text-xs text-slate-800">
-      <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs" id="batch-count">0</span>
-      <span>Đã chọn</span>
+  <!-- Modal: Tạo Project CapCut (Chọn Theme) -->
+  <div id="capcut-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-film text-violet-600 text-lg"></i>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Tạo 2 Project CapCut 1-Click</h3>
+            <p id="capcut-modal-subtitle" class="text-[11px] text-slate-500">Tự động tạo cả 2 bản TikTok (Dọc) & YouTube (Ngang)</p>
+          </div>
+        </div>
+        <button onclick="closeModal('capcut-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">Chọn chủ đề video nền:</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="relative flex flex-col p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-violet-500 transition select-none bg-slate-50/50">
+              <input type="radio" name="bg-theme" value="nau_an" checked class="absolute top-3 right-3 text-violet-600 focus:ring-violet-500">
+              <span class="text-xl mb-1">🍲</span>
+              <span class="text-xs font-bold text-slate-800">Nấu ăn</span>
+              <span id="count-nau-an" class="text-[10px] text-slate-500 mt-0.5">Kho Dọc & Ngang</span>
+            </label>
+
+            <label class="relative flex flex-col p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-violet-500 transition select-none bg-slate-50/50">
+              <input type="radio" name="bg-theme" value="handmade" class="absolute top-3 right-3 text-violet-600 focus:ring-violet-500">
+              <span class="text-xl mb-1">✂️</span>
+              <span class="text-xs font-bold text-slate-800">Handmade</span>
+              <span id="count-handmade" class="text-[10px] text-slate-500 mt-0.5">Kho Dọc & Ngang</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="p-3 bg-violet-50 border border-violet-100 rounded-xl text-[11px] text-violet-800 leading-relaxed">
+          <i class="fa-solid fa-bolt text-violet-600 mr-1"></i>
+          Hệ thống sẽ <strong>tạo đồng thời 2 Dự Án CapCut</strong>: 1 bản Dọc (9:16) cho TikTok và 1 bản Ngang (16:9) cho YouTube, khớp khít 100% với file giọng đọc!
+        </div>
+      </div>
+
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+        <button onclick="closeModal('capcut-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Hủy</button>
+        <button id="btn-confirm-capcut" onclick="confirmCreateCapcutDraft()" class="px-4 py-2 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Tạo Cả 2 Project Ngay</span>
+        </button>
+      </div>
     </div>
-
-    <div class="h-5 w-px bg-slate-200"></div>
-
-    <!-- Chủ đề nền -->
-    <div class="flex items-center gap-1.5 text-xs text-slate-700">
-      <span class="text-slate-500 font-medium">Kho nền:</span>
-      <select id="batch-theme-select" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-800 text-xs font-semibold focus:outline-none focus:border-blue-500">
-        <option value="nau_an">🍳 Nấu ăn (Dọc & Ngang)</option>
-        <option value="handmade">✂️ Handmade (Dọc & Ngang)</option>
-      </select>
-    </div>
-
-    <!-- Batch Create CapCut Drafts (Dual) -->
-    <button onclick="batchCreateCapCutDual()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
-      <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo CapCut Cả 2 Bản
-    </button>
-
-    <!-- Batch Delete -->
-    <button onclick="batchDeleteSelected()" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold border border-red-200 transition flex items-center gap-1.5">
-      <i class="fa-solid fa-trash-can"></i> Xóa
-    </button>
-
-    <!-- Close / Deselect -->
-    <button onclick="deselectAll()" class="text-slate-400 hover:text-slate-700 text-xs ml-2">
-      <i class="fa-solid fa-xmark"></i>
-    </button>
   </div>
 
-  <!-- MODAL: XEM / SỬA KỊCH BẢN -->
-  <div id="modal-script" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh]">
-      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
-        <h3 id="modal-title" class="font-bold text-slate-900 text-base">Chi tiết kịch bản</h3>
-        <button onclick="closeModal('modal-script')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+  <!-- Modal: Quản lý & Chọn Profile Chrome -->
+  <div id="chrome-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-brands fa-chrome text-amber-500 text-lg"></i>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Chọn Profile Chrome Để Mở Claude.ai</h3>
+            <p class="text-[11px] text-slate-500">Tích chọn tài khoản bạn muốn làm việc</p>
+          </div>
+        </div>
+        <button onclick="closeModal('chrome-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <textarea id="modal-content" rows="12" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 font-mono focus:outline-none focus:border-blue-500 resize-none"></textarea>
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-        <button onclick="closeModal('modal-script')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Đóng</button>
-        <button onclick="saveModalScript()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow">Lưu thay đổi</button>
+
+      <div class="p-6 overflow-y-auto custom-scroll flex-1 space-y-3">
+        <div class="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
+          <span class="font-semibold text-slate-600">Danh sách tài khoản phát hiện trên máy:</span>
+          <div class="flex gap-2">
+            <button onclick="selectAllProfiles(true)" class="text-violet-600 hover:underline">Chọn tất cả</button>
+            <span class="text-slate-300">|</span>
+            <button onclick="selectAllProfiles(false)" class="text-slate-500 hover:underline">Bỏ chọn</button>
+          </div>
+        </div>
+
+        <div id="chrome-profiles-list" class="space-y-2">
+          <div class="text-center py-6 text-slate-400 text-xs">Đang quét danh sách hồ sơ...</div>
+        </div>
+      </div>
+
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <span id="selected-profile-count" class="text-xs text-slate-500 font-medium">Đã chọn: 0 profile</span>
+        <div class="flex gap-2">
+          <button onclick="closeModal('chrome-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Đóng</button>
+          <button onclick="launchSelectedProfiles()" class="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Mở Các Profile Đã Chọn</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- AUDIO PLAYER EMBED -->
-  <audio id="global-audio-player" class="hidden"></audio>
+  <!-- Modal: Thêm kịch bản mới -->
+  <div id="new-script-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-file-pen text-violet-600"></i> Thêm Kịch Bản Mới
+        </h3>
+        <button onclick="closeModal('new-script-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-6 space-y-4 overflow-y-auto custom-scroll flex-1">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Tiêu đề câu chuyện</label>
+          <input type="text" id="script-title" placeholder="Ví dụ: Bí ẩn ngôi nhà hoang sau làng..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Giọng đọc dự kiến</label>
+          <select id="script-voice" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none bg-white">
+            <option value="vi-VN-HoaiMyNeural">Hoài My (Nữ miền Bắc - Truyền cảm, đọc truyện dài/ngôn tình)</option>
+            <option value="vi-VN-NamMinhNeural">Nam Minh (Nam miền Bắc - Trầm ấm, truyện ma, bí ẩn)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nội dung kịch bản đầy đủ</label>
+          <textarea id="script-content" rows="8" placeholder="Dán toàn bộ kịch bản truyện tại đây..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeModal('new-script-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Hủy</button>
+        <button onclick="submitNewScript()" class="px-4 py-2 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition">Lưu Kịch Bản</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- JAVASCRIPT LOGIC -->
+  <!-- Modal: Xem Chi Tiết / Sửa Kịch Bản -->
+  <div id="view-script-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span id="view-modal-id" class="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-bold text-xs">KB001</span>
+          <h3 id="view-modal-title" class="font-bold text-slate-900 text-sm truncate max-w-md">Tiêu đề</h3>
+        </div>
+        <button onclick="closeModal('view-script-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-6 space-y-4 overflow-y-auto custom-scroll flex-1">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nội dung kịch bản</label>
+          <textarea id="view-modal-content" rows="9" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"></textarea>
+        </div>
+        
+        <!-- Media Players Preview -->
+        <div id="view-modal-audio-section" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+          <div class="flex items-center justify-between text-xs font-semibold text-emerald-800">
+            <span><i class="fa-solid fa-waveform-lines mr-1"></i> Nghe thử Audio:</span>
+            <button onclick="openPackageDirect(currentViewingProject?.id)" class="text-[11px] text-emerald-600 hover:underline">Mở Thư Mục Gói KB</button>
+          </div>
+          <audio id="view-modal-audio-player" controls class="w-full h-8"></audio>
+        </div>
+
+        <div id="view-modal-video-section" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
+          <div class="flex items-center justify-between text-xs font-semibold text-blue-800">
+            <span><i class="fa-solid fa-video mr-1"></i> Xem trước Video:</span>
+            <button onclick="openPackageDirect(currentViewingProject?.id)" class="text-[11px] text-blue-600 hover:underline">Mở Thư Mục Gói KB</button>
+          </div>
+          <video id="view-modal-video-player" controls class="w-full max-h-56 rounded-lg bg-black"></video>
+        </div>
+      </div>
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+        <button onclick="deleteCurrentProject()" class="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium"><i class="fa-solid fa-trash-can mr-1"></i> Xóa kịch bản</button>
+        <div class="flex gap-2">
+          <button onclick="closeModal('view-script-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Đóng</button>
+          <button onclick="saveUpdatedScript()" class="px-4 py-2 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition">Lưu Thay Đổi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast" class="fixed bottom-5 right-5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl text-xs font-medium z-50 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2 flex items-center gap-2">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg">Thông báo</span>
+  </div>
+
   <script>
-    let projectsData = [];
-    let currentFilter = 'all';
-    let selectedIds = new Set();
-    let editingProjectId = null;
+    let allProjects = [];
+    let currentViewingProject = null;
+    let availableProfiles = [];
+    let activeCapcutTargetId = null;
 
-    // 1. Fetch Projects & Themes
-    async function fetchProjects() {
+    async function loadProjects() {
       try {
         const res = await fetch('/api/projects');
-        projectsData = await res.json();
-        updateThemeStats();
-        updateKPICounters();
-        renderTable();
+        allProjects = await res.json();
+        renderKanban(allProjects);
+        updateStats(allProjects);
       } catch (err) {
-        console.error("Lỗi tải danh sách:", err);
+        showToast("Không thể tải danh sách kịch bản", "error");
       }
     }
 
-    async function updateThemeStats() {
-      try {
-        const res = await fetch('/api/themes');
-        const stats = await res.json();
-        const badge = document.getElementById('bg-stat-badge');
-        if (stats.nau_an && stats.handmade) {
-          badge.innerHTML = `🍳 Nấu ăn: <b>${stats.nau_an.doc} dọc / ${stats.nau_an.ngang} ngang</b> | ✂️ Handmade: <b>${stats.handmade.doc} dọc / ${stats.handmade.ngang} ngang</b>`;
-        }
-      } catch (e) {
-        console.error(e);
-      }
+    function updateStats(projects) {
+      document.getElementById('stat-total').innerText = projects.length;
+      document.getElementById('stat-pending').innerText = projects.filter(p => p.status === '1_cho_duyet' || p.status === '2_cho_voice').length;
+      document.getElementById('stat-audio').innerText = projects.filter(p => p.status === '3_da_co_audio').length;
+      document.getElementById('stat-video').innerText = projects.filter(p => p.status === '4_da_render_video').length;
+      document.getElementById('stat-done').innerText = projects.filter(p => p.status === '5_hoan_thanh').length;
     }
 
-    // 2. Update KPI Counters
-    function updateKPICounters() {
-      const total = projectsData.length;
-      const needAudio = projectsData.filter(p => !p.audio_path).length;
-      const needCapCut = projectsData.filter(p => p.audio_path && (!p.capcut_draft_tiktok && !p.notes?.includes('CapCut'))).length;
-      const doneTikTok = projectsData.filter(p => p.video_tiktok_path || (p.video_path && p.video_path.includes('tiktok'))).length;
-      const doneYouTube = projectsData.filter(p => p.video_youtube_path || (p.video_path && p.video_path.includes('youtube'))).length;
-      const doneThumb = projectsData.filter(p => p.has_thumbnail === 1 || p.thumbnail_path).length;
-      const published = projectsData.filter(p => p.is_published === 1).length;
+    function renderKanban(projects) {
+      const cols = {
+        1: document.getElementById('col-items-1'),
+        2: document.getElementById('col-items-2'),
+        3: document.getElementById('col-items-3'),
+        4: document.getElementById('col-items-4'),
+      };
 
-      document.getElementById('stat-total').innerText = total;
-      document.getElementById('stat-need-audio').innerText = needAudio;
-      document.getElementById('stat-need-capcut').innerText = needCapCut;
-      document.getElementById('stat-done-tiktok').innerText = doneTikTok;
-      document.getElementById('stat-done-youtube').innerText = doneYouTube;
-      document.getElementById('stat-done-thumb').innerText = doneThumb;
-      document.getElementById('stat-published').innerText = published;
+      Object.values(cols).forEach(col => col.innerHTML = '');
+      const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
-      document.getElementById('cnt-all').innerText = total;
-      document.getElementById('cnt-need_audio').innerText = needAudio;
-      document.getElementById('cnt-need_capcut').innerText = needCapCut;
-      document.getElementById('cnt-need_tiktok').innerText = projectsData.filter(p => !p.video_tiktok_path).length;
-      document.getElementById('cnt-need_youtube').innerText = projectsData.filter(p => !p.video_youtube_path).length;
-      document.getElementById('cnt-need_thumb').innerText = total - doneThumb;
-      document.getElementById('cnt-published').innerText = published;
+      projects.forEach(p => {
+        let colIndex = 1;
+        if (p.status === '3_da_co_audio') colIndex = 2;
+        else if (p.status === '4_da_render_video') colIndex = 3;
+        else if (p.status === '5_hoan_thanh') colIndex = 4;
 
-      const pct = total > 0 ? Math.round((published / total) * 100) : 0;
-      document.getElementById('kpi-progress-bar').style.width = `${pct}%`;
-    }
-
-    // 3. Filter Switching
-    function setFilter(filter) {
-      currentFilter = filter;
-      document.querySelectorAll('[id^="tab-"]').forEach(el => {
-        el.className = "px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition";
-      });
-      document.getElementById(`tab-${filter}`).className = "px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold transition shadow-sm";
-      renderTable();
-    }
-
-    // 4. Render Table
-    function renderTable() {
-      const search = document.getElementById('search-input').value.toLowerCase();
-      const tbody = document.getElementById('projects-table-body');
-
-      let filtered = projectsData.filter(p => {
-        const matchSearch = p.id.toLowerCase().includes(search) || p.title.toLowerCase().includes(search);
-        if (!matchSearch) return false;
-
-        if (currentFilter === 'need_audio') return !p.audio_path;
-        if (currentFilter === 'need_capcut') return p.audio_path && !p.capcut_draft_tiktok && !p.notes?.includes('CapCut');
-        if (currentFilter === 'need_tiktok') return !p.video_tiktok_path;
-        if (currentFilter === 'need_youtube') return !p.video_youtube_path;
-        if (currentFilter === 'need_thumb') return !p.has_thumbnail && !p.thumbnail_path;
-        if (currentFilter === 'published') return p.is_published === 1;
-        return true;
+        counts[colIndex]++;
+        cols[colIndex].appendChild(createCard(p));
       });
 
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">Không tìm thấy kịch bản phù hợp</td></tr>`;
-        return;
-      }
+      document.getElementById('col-count-1').innerText = counts[1];
+      document.getElementById('col-count-2').innerText = counts[2];
+      document.getElementById('col-count-3').innerText = counts[3];
+      document.getElementById('col-count-4').innerText = counts[4];
+    }
 
-      tbody.innerHTML = filtered.map(p => {
-        const isSelected = selectedIds.has(p.id);
-        const hasAudio = !!p.audio_path;
-        const hasTikTokDraft = !!p.capcut_draft_tiktok || (p.notes && p.notes.includes('TikTok'));
-        const hasYouTubeDraft = !!p.capcut_draft_youtube || (p.notes && p.notes.includes('YouTube'));
-        const hasTikTokVideo = !!p.video_tiktok_path;
-        const hasYouTubeVideo = !!p.video_youtube_path;
-        const hasThumb = p.has_thumbnail === 1 || !!p.thumbnail_path;
-        const isPub = p.is_published === 1;
+    function createCard(p) {
+      const card = document.createElement('div');
+      card.className = "bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-2.5";
+      
+      const hasAudio = !!p.audio_path;
+      const hasTikTokVideo = !!p.video_tiktok_path;
+      const hasYouTubeVideo = !!p.video_youtube_path;
+      const hasVideo = hasTikTokVideo || hasYouTubeVideo || !!p.video_path;
+      const hasThumb = p.has_thumbnail === 1 || !!p.thumbnail_path;
 
-        return `
-          <tr class="matrix-row border-b border-slate-100 transition ${isSelected ? 'bg-blue-50/50' : ''}">
-            <!-- Checkbox -->
-            <td class="p-3 text-center">
-              <input type="checkbox" onchange="toggleSelectRow('${p.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
-            </td>
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-violet-100 text-violet-700">${p.id}</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openPackageDirect('${p.id}')" class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 text-[10px] font-bold border border-blue-200" title="Mở thư mục trọn gói outputs/${p.id}/">
+              <i class="fa-solid fa-folder-open"></i> Gói KB
+            </button>
+            <span class="text-[10px] text-slate-400">${p.created_at ? p.created_at.split(' ')[0] : ''}</span>
+          </div>
+        </div>
+        <h4 class="font-semibold text-xs text-slate-800 line-clamp-2 leading-relaxed cursor-pointer hover:text-violet-600 transition" onclick="openViewModal('${p.id}')">${p.title}</h4>
+        
+        <p class="text-[11px] text-slate-500 line-clamp-2">${p.content.substring(0, 100)}...</p>
 
-            <!-- Mã ID -->
-            <td class="p-3 font-mono font-bold text-blue-600">
-              ${p.id}
-            </td>
+        <!-- Trạng thái chi tiết (Audio, CapCut 2 Bản, Video TikTok/YT, Thumb) -->
+        <div class="flex items-center gap-1 flex-wrap text-[10px]">
+          ${hasAudio ? '<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold"><i class="fa-solid fa-check"></i> Voice</span>' : ''}
+          ${p.capcut_draft_tiktok || p.notes?.includes('CapCut') ? '<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold"><i class="fa-brands fa-tiktok"></i> Dọc</span>' : ''}
+          ${p.capcut_draft_youtube || p.notes?.includes('CapCut') ? '<span class="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 font-semibold"><i class="fa-brands fa-youtube"></i> Ngang</span>' : ''}
+          ${hasTikTokVideo ? '<span class="px-1.5 py-0.5 rounded bg-pink-100 text-pink-800 font-bold">🎬 TikTok Xong</span>' : ''}
+          ${hasYouTubeVideo ? '<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-bold">🎬 YT Xong</span>' : ''}
+          ${hasThumb ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold"><i class="fa-solid fa-image"></i> Thumb</span>' : ''}
+        </div>
 
-            <!-- Tiêu đề & Preview Script -->
-            <td class="p-3">
-              <div class="flex items-center gap-2">
-                <button onclick="viewScript('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-blue-600 transition truncate max-w-[280px]" title="${p.title}">
-                  ${p.title}
-                </button>
-              </div>
-              <div class="text-[10px] text-slate-400 truncate max-w-[280px]">${p.created_at || ''}</div>
-            </td>
-
-            <!-- 1. Voice Audio -->
-            <td class="p-3 text-center">
-              ${hasAudio ? `
-                <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[11px]">
-                  <i class="fa-solid fa-check"></i> Có Voice
-                  <button onclick="playAudio('${p.id}')" class="text-emerald-600 hover:text-emerald-800 ml-1" title="Nghe thử"><i class="fa-solid fa-circle-play"></i></button>
-                </div>
-              ` : `
-                <button onclick="generateAudioSingle('${p.id}')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold transition">
-                  <i class="fa-solid fa-microphone"></i> Tạo Voice
-                </button>
-              `}
-            </td>
-
-            <!-- 2. CapCut 2 Bản (Dọc & Ngang) -->
-            <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1">
-                <!-- TikTok Draft -->
-                <span class="badge-check ${hasTikTokDraft ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-400 border-slate-200'}" title="${p.capcut_draft_tiktok || 'Chưa tạo draft TikTok'}">
-                  <i class="fa-brands fa-tiktok text-[10px]"></i> ${hasTikTokDraft ? 'Dọc ✓' : 'Dọc ❌'}
-                </span>
-
-                <!-- YouTube Draft -->
-                <span class="badge-check ${hasYouTubeDraft ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-400 border-slate-200'}" title="${p.capcut_draft_youtube || 'Chưa tạo draft YouTube'}">
-                  <i class="fa-brands fa-youtube text-[10px]"></i> ${hasYouTubeDraft ? 'Ngang ✓' : 'Ngang ❌'}
-                </span>
-
-                <!-- Nút tạo / tạo lại -->
-                <button onclick="createCapCutDualSingle('${p.id}')" class="p-1 text-slate-400 hover:text-blue-600 text-xs transition" title="Tạo lại cả 2 dự án CapCut">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i>
-                </button>
-              </div>
-            </td>
-
-            <!-- 3. Video Xuất (TikTok & YouTube) -->
-            <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <!-- Video TikTok -->
-                ${hasTikTokVideo ? `
-                  <button onclick="openFileExplorer('${p.video_tiktok_path}')" class="badge-check bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 transition" title="Mở file Video TikTok">
-                    <i class="fa-brands fa-tiktok text-[10px]"></i> TikTok ✓
-                  </button>
-                ` : `
-                  <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">TikTok ❌</span>
-                `}
-
-                <!-- Video YouTube -->
-                ${hasYouTubeVideo ? `
-                  <button onclick="openFileExplorer('${p.video_youtube_path}')" class="badge-check bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition" title="Mở file Video YouTube">
-                    <i class="fa-brands fa-youtube text-[10px]"></i> YT ✓
-                  </button>
-                ` : `
-                  <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">YT ❌</span>
-                `}
-              </div>
-            </td>
-
-            <!-- 4. Thumbnail -->
-            <td class="p-3 text-center">
-              <button onclick="toggleThumbnail('${p.id}')" class="badge-check transition ${hasThumb ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200 hover:text-slate-600'}" title="Bấm để chuyển trạng thái Thumbnail">
-                <i class="fa-solid ${hasThumb ? 'fa-check' : 'fa-xmark'}"></i>
-                ${hasThumb ? 'Có Thumb' : 'Chưa có'}
+        <!-- Trạng thái & Action Bar -->
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 flex-wrap">
+          <div class="flex items-center gap-1.5">
+            ${hasAudio ? `
+              <button onclick="playAudioDirect('${p.id}')" title="Nghe thử audio" class="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs transition">
+                <i class="fa-solid fa-play"></i>
               </button>
-            </td>
-
-            <!-- 5. Trạng Thái Đã Đăng -->
-            <td class="p-3 text-center">
-              <button onclick="togglePublished('${p.id}')" class="badge-check transition ${isPub ? 'bg-purple-50 text-purple-700 border-purple-200 font-bold' : 'bg-slate-100 text-slate-400 border-slate-200 hover:text-slate-600'}" title="Click để đảo trạng thái Đã Đăng">
-                <i class="fa-solid ${isPub ? 'fa-circle-check text-purple-600' : 'fa-circle-dot'}"></i>
-                ${isPub ? 'Đã Đăng ⭐' : 'Chờ Đăng'}
+              
+              <!-- NÚT TẠO CAPCUT PROJECT 1-CLICK (2 BẢN) -->
+              <button onclick="openCapCutModal('${p.id}')" title="Tự bốc video nền & tạo 2 Project CapCut (TikTok & YouTube)" class="px-2.5 py-1 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-medium transition flex items-center gap-1 shadow-sm">
+                <i class="fa-solid fa-film"></i> Tạo CapCut (2 Bản)
               </button>
-            </td>
+            ` : `
+              <button onclick="generateAudioDirect('${p.id}')" title="Tạo Audio tức thì (Edge-TTS)" class="px-2 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium transition flex items-center gap-1">
+                <i class="fa-solid fa-microphone"></i> Tạo Voice
+              </button>
+            `}
 
-            <!-- Quản Lý Gói KB (Mở Trọn Gói outputs/KBxxx) -->
-            <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <button onclick="openPackage('${p.id}')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-[11px] shadow-2xs flex items-center gap-1 transition" title="Mở thư mục outputs/${p.id}/ chứa trọn bộ Video, Thumb, Audio, Script">
-                  <i class="fa-solid fa-folder-open text-blue-600"></i> Gói ${p.id}
-                </button>
-                <button onclick="deleteSingle('${p.id}')" class="p-1 text-slate-400 hover:text-red-600 transition text-xs" title="Xóa"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
+            ${hasVideo ? `
+              <button onclick="openViewModal('${p.id}')" title="Xem video" class="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 flex items-center justify-center text-xs transition">
+                <i class="fa-solid fa-video"></i>
+              </button>
+            ` : ''}
+          </div>
+
+          <div class="flex items-center gap-1">
+            <select onchange="updateProjectStatus('${p.id}', this.value)" class="text-[10px] font-semibold py-1 px-1.5 rounded border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none">
+              <option value="1_cho_duyet" ${p.status === '1_cho_duyet' ? 'selected' : ''}>Chờ duyệt</option>
+              <option value="2_cho_voice" ${p.status === '2_cho_voice' ? 'selected' : ''}>Chờ voice</option>
+              <option value="3_da_co_audio" ${p.status === '3_da_co_audio' ? 'selected' : ''}>Đã có voice</option>
+              <option value="4_da_render_video" ${p.status === '4_da_render_video' ? 'selected' : ''}>Đã tạo CapCut</option>
+              <option value="5_hoan_thanh" ${p.status === '5_hoan_thanh' ? 'selected' : ''}>Hoàn thành</option>
+            </select>
+          </div>
+        </div>
+      `;
+      return card;
     }
 
-    // 5. Select & Batch Logic
-    function toggleSelectRow(id, checked) {
-      if (checked) selectedIds.add(id);
-      else selectedIds.delete(id);
-      updateBatchBar();
-      renderTable();
+    async function openCapCutModal(id) {
+      activeCapcutTargetId = id;
+      const p = allProjects.find(x => x.id === id);
+      document.getElementById('capcut-modal-subtitle').innerText = `Kịch bản: [${id}] ${p ? p.title : ''}`;
+      openModal('capcut-modal');
     }
 
-    function toggleSelectAll(checked) {
-      if (checked) {
-        projectsData.forEach(p => selectedIds.add(p.id));
-      } else {
-        selectedIds.clear();
-      }
-      updateBatchBar();
-      renderTable();
-    }
+    async function confirmCreateCapcutDraft() {
+      if (!activeCapcutTargetId) return;
+      const theme = document.querySelector('input[name="bg-theme"]:checked').value;
+      const btn = document.getElementById('btn-confirm-capcut');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Đang tạo 2 dự án...';
 
-    function deselectAll() {
-      selectedIds.clear();
-      document.getElementById('check-all').checked = false;
-      updateBatchBar();
-      renderTable();
-    }
-
-    function updateBatchBar() {
-      const bar = document.getElementById('batch-bar');
-      const countEl = document.getElementById('batch-count');
-      const count = selectedIds.size;
-      countEl.innerText = count;
-
-      if (count > 0) {
-        bar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
-      } else {
-        bar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
-      }
-    }
-
-    // 6. Action Handlers
-    async function openPackage(id) {
+      showToast(`Đang tạo 2 Project CapCut (TikTok & YouTube) cho [${activeCapcutTargetId}]...`, "info");
       try {
-        await fetch(`/api/projects/${id}/open-package`, { method: 'POST' });
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function createCapCutDualSingle(id) {
-      const theme = prompt("Chọn kho video nền ('nau_an' hoặc 'handmade'):", "nau_an") || "nau_an";
-      try {
-        const res = await fetch(`/api/projects/${id}/create-capcut-draft`, {
+        const res = await fetch(`/api/projects/${activeCapcutTargetId}/create-capcut-draft`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ theme: theme })
         });
         const data = await res.json();
         if (data.success) {
-          alert(`✅ ${data.message}`);
-          fetchProjects();
+          showToast(`✅ Đã tạo xong 2 Project CapCut (TikTok & YouTube)!`, "success");
+          closeModal('capcut-modal');
+          loadProjects();
         } else {
-          alert(`❌ Lỗi: ${data.detail || 'Không thể tạo project'}`);
+          showToast(data.detail || "Lỗi khi tạo Project CapCut", "error");
         }
       } catch (err) {
-        alert("Lỗi kết nối máy chủ");
+        showToast("Lỗi kết nối khi tạo Project CapCut", "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>Tạo Cả 2 Project Ngay</span>';
       }
     }
 
-    async function batchCreateCapCutDual() {
-      const ids = Array.from(selectedIds);
-      if (ids.length === 0) return;
-      const theme = document.getElementById('batch-theme-select').value;
-
-      if (!confirm(`Tạo ĐỒNG THỜI 2 Dự án CapCut (TikTok Dọc & YouTube Ngang) cho ${ids.length} kịch bản đã chọn?`)) return;
-
+    async function launchCapCutApp() {
+      showToast("Đang mở CapCut PC...", "info");
       try {
-        const res = await fetch('/api/projects/batch-create-capcut', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_ids: ids, theme: theme })
-        });
+        const res = await fetch('/api/open-capcut', { method: 'POST' });
         const data = await res.json();
-        alert(`✅ Đã tạo thành công ${data.created_count} cặp dự án CapCut!`);
-        deselectAll();
-        fetchProjects();
+        if (data.success) {
+          showToast("Đã mở CapCut PC!", "success");
+        } else {
+          showToast(data.message, "error");
+        }
       } catch (err) {
-        alert("Lỗi khi tạo hàng loạt CapCut");
+        showToast("Không thể mở CapCut PC", "error");
       }
     }
 
-    async function togglePublished(id) {
-      try {
-        await fetch(`/api/projects/${id}/toggle-published`, { method: 'PUT' });
-        fetchProjects();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function toggleThumbnail(id) {
-      try {
-        await fetch(`/api/projects/${id}/toggle-thumbnail`, { method: 'PUT' });
-        fetchProjects();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function generateAudioSingle(id) {
+    async function generateAudioDirect(id) {
+      showToast(`Đang tạo Audio cho ${id}... Vui lòng đợi 3-5 giây.`, "info");
       try {
         const res = await fetch(`/api/projects/${id}/generate-audio`, {
           method: 'POST',
@@ -578,124 +542,265 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert("✅ Đã tạo xong voice audio!");
-          fetchProjects();
+          showToast(`Đã tạo xong Audio cho ${id}!`, "success");
+          loadProjects();
         } else {
-          alert("❌ Lỗi tạo audio");
+          showToast("Lỗi khi tạo Audio", "error");
         }
-      } catch (e) {
-        alert("Lỗi kết nối");
+      } catch (err) {
+        showToast("Lỗi kết nối máy chủ", "error");
       }
     }
 
-    function playAudio(id) {
-      const audio = document.getElementById('global-audio-player');
-      audio.src = `/api/audio/${id}?t=${Date.now()}`;
-      audio.play();
-    }
-
-    async function openFileExplorer(filePath) {
-      if (!filePath) return;
+    async function updateProjectStatus(id, newStatus) {
       try {
-        await fetch('/api/open-file-in-explorer', {
-          method: 'POST',
+        await fetch(`/api/projects/${id}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file_path: filePath })
+          body: JSON.stringify({ status: newStatus })
         });
-      } catch (e) {
-        console.error(e);
+        showToast(`Đã cập nhật trạng thái ${id}`, "success");
+        loadProjects();
+      } catch (err) {
+        showToast("Lỗi cập nhật", "error");
       }
     }
 
-    async function openFolder(name) {
-      try {
-        await fetch('/api/open-folder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folder_name: name })
-        });
-      } catch (e) {
-        console.error(e);
+    function openViewModal(id) {
+      const p = allProjects.find(x => x.id === id);
+      if (!p) return;
+      currentViewingProject = p;
+
+      document.getElementById('view-modal-id').innerText = p.id;
+      document.getElementById('view-modal-title').innerText = p.title;
+      document.getElementById('view-modal-content').value = p.content;
+
+      // Audio section
+      const audioSec = document.getElementById('view-modal-audio-section');
+      const audioPlayer = document.getElementById('view-modal-audio-player');
+      if (p.audio_path) {
+        audioSec.classList.remove('hidden');
+        audioPlayer.src = `/api/audio/${p.id}?t=${Date.now()}`;
+      } else {
+        audioSec.classList.add('hidden');
+        audioPlayer.src = '';
       }
-    }
 
-    async function openCapCutApp() {
-      try {
-        await fetch('/api/open-capcut', { method: 'POST' });
-      } catch (e) {
-        console.error(e);
+      // Video section
+      const videoSec = document.getElementById('view-modal-video-section');
+      const videoPlayer = document.getElementById('view-modal-video-player');
+      if (p.video_tiktok_path || p.video_youtube_path || p.video_path) {
+        videoSec.classList.remove('hidden');
+        videoPlayer.src = `/api/video/${p.id}?t=${Date.now()}`;
+      } else {
+        videoSec.classList.add('hidden');
+        videoPlayer.src = '';
       }
+
+      openModal('view-script-modal');
     }
 
-    async function launch5Chrome() {
+    async function saveUpdatedScript() {
+      if (!currentViewingProject) return;
+      const newContent = document.getElementById('view-modal-content').value;
       try {
-        await fetch('/api/launch-chrome', { method: 'POST' });
-        alert("Đang khởi chạy 5 cửa sổ Chrome Claude...");
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function deleteSingle(id) {
-      if (!confirm(`Bạn có chắc muốn xóa kịch bản ${id}?`)) return;
-      try {
-        await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-        fetchProjects();
-      } catch (e) {
-        alert("Lỗi khi xóa");
-      }
-    }
-
-    async function batchDeleteSelected() {
-      const ids = Array.from(selectedIds);
-      if (ids.length === 0) return;
-      if (!confirm(`Xóa toàn bộ ${ids.length} kịch bản đã chọn?`)) return;
-      try {
-        await fetch('/api/projects/batch-delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_ids: ids })
-        });
-        deselectAll();
-        fetchProjects();
-      } catch (e) {
-        alert("Lỗi khi xóa hàng loạt");
-      }
-    }
-
-    // 7. Modal View & Edit Script
-    function viewScript(id) {
-      const proj = projectsData.find(p => p.id === id);
-      if (!proj) return;
-      editingProjectId = id;
-      document.getElementById('modal-title').innerText = `[${proj.id}] ${proj.title}`;
-      document.getElementById('modal-content').value = proj.content;
-      document.getElementById('modal-script').classList.remove('hidden');
-    }
-
-    async function saveModalScript() {
-      if (!editingProjectId) return;
-      const newContent = document.getElementById('modal-content').value;
-      try {
-        await fetch(`/api/projects/${editingProjectId}`, {
+        await fetch(`/api/projects/${currentViewingProject.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: newContent })
         });
-        closeModal('modal-script');
-        fetchProjects();
-      } catch (e) {
-        alert("Lỗi khi lưu kịch bản");
+        showToast("Đã lưu nội dung kịch bản", "success");
+        closeModal('view-script-modal');
+        loadProjects();
+      } catch (err) {
+        showToast("Lỗi lưu kịch bản", "error");
       }
     }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.add('hidden');
+    async function deleteCurrentProject() {
+      if (!currentViewingProject) return;
+      if (!confirm(`Bạn có chắc chắn muốn xóa ${currentViewingProject.id}?`)) return;
+      try {
+        await fetch(`/api/projects/${currentViewingProject.id}`, { method: 'DELETE' });
+        showToast(`Đã xóa ${currentViewingProject.id}`, "success");
+        closeModal('view-script-modal');
+        loadProjects();
+      } catch (err) {
+        showToast("Lỗi khi xóa", "error");
+      }
     }
 
-    // Auto-load on page start & auto-refresh every 5s
-    fetchProjects();
-    setInterval(fetchProjects, 5000);
+    function playAudioDirect(id) {
+      openViewModal(id);
+      setTimeout(() => {
+        const p = document.getElementById('view-modal-audio-player');
+        if (p) p.play();
+      }, 300);
+    }
+
+    function openNewScriptModal() {
+      document.getElementById('script-title').value = '';
+      document.getElementById('script-content').value = '';
+      openModal('new-script-modal');
+    }
+
+    async function submitNewScript() {
+      const title = document.getElementById('script-title').value.trim();
+      const content = document.getElementById('script-content').value.trim();
+      const voice = document.getElementById('script-voice').value;
+
+      if (!title || !content) {
+        showToast("Vui lòng nhập đầy đủ tiêu đề và kịch bản", "error");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, voice })
+        });
+        const data = await res.json();
+        showToast(`Đã tạo kịch bản [${data.id}] thành công!`, "success");
+        closeModal('new-script-modal');
+        loadProjects();
+      } catch (err) {
+        showToast("Lỗi khi lưu kịch bản", "error");
+      }
+    }
+
+    // Chrome Profile Management
+    async function openChromeModal() {
+      openModal('chrome-modal');
+      const container = document.getElementById('chrome-profiles-list');
+      container.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Đang tải danh sách tài khoản...</div>';
+
+      try {
+        const res = await fetch('/api/chrome-profiles');
+        availableProfiles = await res.json();
+        
+        let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
+        if (savedSelected.length === 0) {
+          savedSelected = availableProfiles.map(p => p.id);
+        }
+
+        container.innerHTML = '';
+        availableProfiles.forEach(p => {
+          const isChecked = savedSelected.includes(p.id);
+          const div = document.createElement('label');
+          div.className = "flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition select-none";
+          div.innerHTML = `
+            <div class="flex items-center gap-3">
+              <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} onchange="onProfileCheckChange()" class="profile-checkbox w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500">
+              <div>
+                <p class="text-xs font-bold text-slate-800">${p.name || p.gaia_name || p.id}</p>
+                <p class="text-[11px] text-slate-500">${p.email || 'Chưa đăng nhập Gmail'}</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">${p.id}</span>
+          `;
+          container.appendChild(div);
+        });
+
+        updateSelectedProfileCount();
+      } catch (err) {
+        container.innerHTML = '<div class="text-center py-4 text-rose-500 text-xs">Lỗi khi đọc profile Chrome</div>';
+      }
+    }
+
+    function onProfileCheckChange() {
+      updateSelectedProfileCount();
+      const checkboxes = document.querySelectorAll('.profile-checkbox:checked');
+      const selected = Array.from(checkboxes).map(cb => cb.value);
+      localStorage.setItem('selectedChromeProfiles', JSON.stringify(selected));
+    }
+
+    function selectAllProfiles(checked) {
+      document.querySelectorAll('.profile-checkbox').forEach(cb => cb.checked = checked);
+      onProfileCheckChange();
+    }
+
+    function updateSelectedProfileCount() {
+      const count = document.querySelectorAll('.profile-checkbox:checked').length;
+      document.getElementById('selected-profile-count').innerText = `Đã chọn: ${count} profile`;
+    }
+
+    async function launchSelectedProfiles() {
+      const checkboxes = document.querySelectorAll('.profile-checkbox:checked');
+      const selected = Array.from(checkboxes).map(cb => cb.value);
+
+      if (selected.length === 0) {
+        showToast("Vui lòng tích chọn ít nhất 1 profile để mở", "error");
+        return;
+      }
+
+      showToast(`Đang mở ${selected.length} cửa sổ Chrome...`, "info");
+      try {
+        const res = await fetch('/api/launch-chrome-selected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profiles: selected })
+        });
+        const data = await res.json();
+        showToast(`Đã mở thành công ${data.count} tài khoản Chrome!`, "success");
+        closeModal('chrome-modal');
+      } catch (err) {
+        showToast("Lỗi khi mở Chrome", "error");
+      }
+    }
+
+    async function openFolder(folderName) {
+      try {
+        await fetch('/api/open-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_name: folderName })
+        });
+      } catch (err) {
+        showToast("Lỗi mở thư mục", "error");
+      }
+    }
+
+    async function openPackageDirect(id) {
+      if (!id) return;
+      try {
+        await fetch(`/api/projects/${id}/open-package`, { method: 'POST' });
+        showToast(`Đã mở thư mục gói outputs/${id}/`, "info");
+      } catch (err) {
+        showToast("Lỗi mở gói kịch bản", "error");
+      }
+    }
+
+    function filterProjects() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allProjects.filter(p => 
+        p.id.toLowerCase().includes(q) || 
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q)
+      );
+      renderKanban(filtered);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function showToast(msg, type = "info") {
+      const t = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-msg').innerText = msg;
+      
+      if (type === "success") icon.className = "fa-solid fa-circle-check text-emerald-400";
+      else if (type === "error") icon.className = "fa-solid fa-circle-exclamation text-rose-400";
+      else icon.className = "fa-solid fa-circle-info text-blue-400";
+
+      t.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+      setTimeout(() => {
+        t.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+      }, 3500);
+    }
+
+    setInterval(loadProjects, 8000);
+    window.onload = loadProjects;
   </script>
 </body>
 </html>
