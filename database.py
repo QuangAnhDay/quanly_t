@@ -208,3 +208,126 @@ def batch_delete(project_ids: List[str]) -> int:
     count = cursor.rowcount
     conn.close()
     return count
+
+def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
+    """
+    Quét thực tế ổ đĩa (outputs/KBxxx, 2_audio_input, 3_video_output, 4_thumbnails)
+    và đồng bộ chuẩn xác trạng thái trong DB (kể cả khi file bị xóa)
+    """
+    p = get_project(pid)
+    if not p:
+        return None
+    
+    pkg_dir = os.path.join(OUTPUTS_DIR, pid)
+    audio_dir = os.path.join(BASE_DIR, "2_audio_input")
+    video_dir = os.path.join(BASE_DIR, "3_video_output")
+    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
+    
+    # 1. Voice Audio
+    found_audio = None
+    if os.path.exists(pkg_dir):
+        for f in os.listdir(pkg_dir):
+            if f.lower().endswith((".wav", ".mp3", ".m4a")):
+                found_audio = os.path.join(pkg_dir, f)
+                break
+    if not found_audio:
+        for ext in [".wav", ".mp3", ".m4a"]:
+            cand = os.path.join(audio_dir, f"{pid}{ext}")
+            if os.path.exists(cand):
+                found_audio = cand
+                break
+                
+    # 2. Video TikTok (9:16)
+    found_tt = None
+    if os.path.exists(pkg_dir):
+        for f in os.listdir(pkg_dir):
+            if f.lower().endswith((".mp4", ".mov", ".mkv")) and ("tiktok" in f.lower() or "doc" in f.lower()):
+                found_tt = os.path.join(pkg_dir, f)
+                break
+    if not found_tt:
+        for ext in [".mp4", ".mov", ".mkv"]:
+            cand = os.path.join(video_dir, "tiktok", f"{pid}{ext}")
+            if os.path.exists(cand):
+                found_tt = cand
+                break
+                
+    # 3. Video YouTube (16:9)
+    found_yt = None
+    if os.path.exists(pkg_dir):
+        for f in os.listdir(pkg_dir):
+            if f.lower().endswith((".mp4", ".mov", ".mkv")) and ("youtube" in f.lower() or "ngang" in f.lower() or "yt" in f.lower()):
+                found_yt = os.path.join(pkg_dir, f)
+                break
+    if not found_yt:
+        for ext in [".mp4", ".mov", ".mkv"]:
+            cand = os.path.join(video_dir, "youtube", f"{pid}{ext}")
+            if os.path.exists(cand):
+                found_yt = cand
+                break
+    # Nếu có mp4 chung trong gói mà chưa phân loại rõ
+    if not found_yt and not found_tt and os.path.exists(pkg_dir):
+        for f in os.listdir(pkg_dir):
+            if f.lower().endswith((".mp4", ".mov", ".mkv")) and not f.startswith("."):
+                found_yt = os.path.join(pkg_dir, f)
+                break
+                
+    # 4. Thumbnail
+    found_th = None
+    if os.path.exists(pkg_dir):
+        for f in os.listdir(pkg_dir):
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                found_th = os.path.join(pkg_dir, f)
+                break
+    if not found_th:
+        for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+            cand = os.path.join(thumb_dir, f"{pid}{ext}")
+            if os.path.exists(cand):
+                found_th = cand
+                break
+
+    updates = {}
+    if p.get("audio_path") != found_audio:
+        updates["audio_path"] = found_audio
+        
+    if p.get("video_tiktok_path") != found_tt:
+        updates["video_tiktok_path"] = found_tt
+        
+    if p.get("video_youtube_path") != found_yt:
+        updates["video_youtube_path"] = found_yt
+        
+    main_video = found_yt or found_tt
+    if p.get("video_path") != main_video:
+        updates["video_path"] = main_video
+        
+    has_thumb_val = 1 if (found_th or p.get("has_thumbnail") == 1) else 0
+    if p.get("has_thumbnail") != has_thumb_val or p.get("thumbnail_path") != found_th:
+        updates["has_thumbnail"] = has_thumb_val
+        updates["thumbnail_path"] = found_th
+
+    # Cập nhật status logic
+    current_status = p.get("status", "1_cho_duyet")
+    new_status = current_status
+    if main_video:
+        new_status = "5_hoan_thanh"
+    elif p.get("capcut_draft_youtube") or p.get("capcut_draft_tiktok") or (p.get("notes") and "CapCut" in p.get("notes", "")):
+        new_status = "4_dang_dung_video"
+    elif found_audio:
+        new_status = "3_da_co_audio"
+    else:
+        if current_status in ["3_da_co_audio", "4_dang_dung_video", "5_hoan_thanh"]:
+            new_status = "1_cho_duyet"
+            
+    if new_status != current_status:
+        updates["status"] = new_status
+
+    if updates:
+        return update_project(pid, **updates)
+    return p
+
+def sync_all_projects() -> List[Dict[str, Any]]:
+    """Đồng bộ thực tế tất cả các kịch bản với ổ đĩa"""
+    projects = get_all_projects()
+    for p in projects:
+        sync_project_files(p["id"])
+    return get_all_projects()
+

@@ -23,14 +23,18 @@ class PackageOutputsWatcher(FileSystemEventHandler):
     """
     Theo dõi thư mục outputs/ trọn gói từng kịch bản (outputs/KBxxx/)
     Tự động nhận diện Voice Audio, Video TikTok, Video YouTube, Thumbnail
+    và tự động đồng bộ khi file được tạo, sửa hoặc BỊ XÓA.
     """
     def on_created(self, event):
-        self.handle_file(event.src_path)
+        self.handle_event(event.src_path, "tạo mới")
 
     def on_modified(self, event):
-        self.handle_file(event.src_path)
+        self.handle_event(event.src_path, "cập nhật")
 
-    def handle_file(self, file_path):
+    def on_deleted(self, event):
+        self.handle_event(event.src_path, "đã xóa")
+
+    def handle_event(self, file_path, action_name=""):
         if os.path.isdir(file_path):
             return
         filename = os.path.basename(file_path)
@@ -42,54 +46,23 @@ class PackageOutputsWatcher(FileSystemEventHandler):
             return
         
         kb_id = match.group(1).upper()
-        proj = database.get_project(kb_id)
-        if not proj:
-            return
-
-        updates = {}
-        fn_lower = filename.lower()
-
-        # 1. Nhận diện Audio
-        if fn_lower.endswith((".wav", ".mp3", ".m4a")):
-            updates["audio_path"] = file_path
-            if proj["status"] in ["1_cho_duyet", "2_cho_voice"]:
-                updates["status"] = "3_da_co_audio"
-            print(f"[Watcher] Gói {kb_id} -> Đã nhận diện Voice Audio: {filename}")
-
-        # 2. Nhận diện Video
-        elif fn_lower.endswith((".mp4", ".mov", ".mkv")):
-            if "tiktok" in fn_lower or "doc" in fn_lower:
-                updates["video_tiktok_path"] = file_path
-                updates["video_path"] = file_path
-                print(f"[Watcher] Gói {kb_id} -> Đã nhận diện Video TikTok: {filename}")
-            elif "youtube" in fn_lower or "ngang" in fn_lower or "yt" in fn_lower:
-                updates["video_youtube_path"] = file_path
-                if not updates.get("video_path"):
-                    updates["video_path"] = file_path
-                print(f"[Watcher] Gói {kb_id} -> Đã nhận diện Video YouTube: {filename}")
-            else:
-                updates["video_path"] = file_path
-            
-            updates["status"] = "5_hoan_thanh"
-
-        # 3. Nhận diện Thumbnail
-        elif fn_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
-            updates["has_thumbnail"] = 1
-            updates["thumbnail_path"] = file_path
-            print(f"[Watcher] Gói {kb_id} -> Đã nhận diện Thumbnail: {filename}")
-
-        if updates:
-            database.update_project(kb_id, **updates)
+        # Đồng bộ trực tiếp và chuẩn xác với ổ đĩa thực tế
+        proj = database.sync_project_files(kb_id)
+        if proj:
+            print(f"[Watcher] Gói {kb_id} -> File {filename} {action_name}. Đã đồng bộ DB.")
 
 class FallbackWatcher(FileSystemEventHandler):
     """Hỗ trợ quét thêm các thư mục phụ cũ nếu người dùng lưu riêng"""
     def on_created(self, event):
-        self.handle_file(event.src_path)
+        self.handle_event(event.src_path, "tạo mới")
 
     def on_modified(self, event):
-        self.handle_file(event.src_path)
+        self.handle_event(event.src_path, "cập nhật")
 
-    def handle_file(self, file_path):
+    def on_deleted(self, event):
+        self.handle_event(event.src_path, "đã xóa")
+
+    def handle_event(self, file_path, action_name=""):
         if os.path.isdir(file_path):
             return
         filename = os.path.basename(file_path)
@@ -97,14 +70,8 @@ class FallbackWatcher(FileSystemEventHandler):
         if not match:
             return
         kb_id = match.group(1).upper()
-        
-        fn_lower = filename.lower()
-        if fn_lower.endswith((".wav", ".mp3", ".m4a")):
-            database.update_project(kb_id, audio_path=file_path, status="3_da_co_audio")
-        elif fn_lower.endswith((".mp4", ".mov")):
-            database.update_project(kb_id, video_path=file_path, status="5_hoan_thanh")
-        elif fn_lower.endswith((".png", ".jpg", ".jpeg")):
-            database.update_project(kb_id, has_thumbnail=1, thumbnail_path=file_path)
+        database.sync_project_files(kb_id)
+
 
 def start_watching():
     outputs_dir = os.path.join(BASE_DIR, "outputs")
