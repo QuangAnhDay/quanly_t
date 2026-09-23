@@ -18,7 +18,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-  <!-- Header theo phong cách chuẩn -->
+  <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
       
@@ -30,11 +30,11 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-bold text-slate-900 leading-tight">Xưởng Sản Xuất Video Truyện</h1>
-            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded border border-violet-200">TikTok & YouTube</span>
+            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded border border-violet-200">YouTube & TikTok</span>
           </div>
           <p class="text-xs text-slate-500 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            Tự Động 2 Bản CapCut $\cdot$ Chuyển Đổi 16:9 $\rightarrow$ 9:16 $\cdot$ Gói <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
+            Tạo CapCut 16:9 $\cdot$ Tự Động Sinh TikTok 9:16 (10s) $\cdot$ Gói <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
           </p>
         </div>
       </div>
@@ -51,61 +51,26 @@
           <span>Quản Lý Profile Claude</span>
         </button>
 
-<!-- Dropdown Mở Thư Mục -->
-<div class="relative group">
-  <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
-    <i class="fa-regular fa-folder-open"></i>
-    <span>Mở Thư Mục</span>
-    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
-  </button>
+        <!-- Dropdown Mở Thư Mục -->
+        <div class="relative group">
+          <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
+            <i class="fa-regular fa-folder-open"></i>
+            <span>Mở Thư Mục</span>
+            <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+          </button>
+          <div class="absolute right-0 top-full pt-1 hidden group-hover:block z-50">
+            <div class="w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1">
+              <button onclick="openFolder('outputs')" class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold"><i class="fa-solid fa-box-archive text-amber-500"></i> Gói Kịch Bản (outputs/)</button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button onclick="openFolder('bg_nau_an_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-youtube text-red-500"></i> Kho Nền Nấu Ăn (16:9)</button>
+              <button onclick="openFolder('bg_handmade_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-pink-500"></i> Kho Nền Handmade (16:9)</button>
+              <button onclick="openFolder('bg_nau_an_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-tiktok text-slate-600"></i> Kho Nền Dọc (9:16)</button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button onclick="openFolder('capcut_drafts')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-diagram-project text-cyan-600"></i> Thư Mục CapCut Drafts</button>
+            </div>
+          </div>
+        </div>
 
-  <!-- Wrapper này giữ vùng hover liền mạch -->
-  <div class="absolute right-0 top-full pt-1 hidden group-hover:block z-50">
-    <div class="w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1">
-      
-      <button onclick="openFolder('outputs')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold">
-        <i class="fa-solid fa-box-archive text-amber-500"></i>
-        Gói Kịch Bản (outputs/)
-      </button>
-
-      <div class="border-t border-slate-100 my-1"></div>
-
-      <button onclick="openFolder('bg_nau_an_doc')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-        <i class="fa-brands fa-tiktok text-pink-500"></i>
-        Kho Nấu Ăn Dọc (TikTok)
-      </button>
-
-      <button onclick="openFolder('bg_nau_an_ngang')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-        <i class="fa-brands fa-youtube text-red-500"></i>
-        Kho Nấu Ăn Ngang (YouTube)
-      </button>
-
-      <button onclick="openFolder('bg_handmade_doc')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-        <i class="fa-solid fa-scissors text-pink-500"></i>
-        Kho Handmade Dọc (TikTok)
-      </button>
-
-      <button onclick="openFolder('bg_handmade_ngang')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-        <i class="fa-solid fa-scissors text-red-500"></i>
-        Kho Handmade Ngang (YouTube)
-      </button>
-
-      <div class="border-t border-slate-100 my-1"></div>
-
-      <button onclick="openFolder('capcut_drafts')" 
-        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-        <i class="fa-solid fa-diagram-project text-cyan-600"></i>
-        Thư Mục CapCut Drafts
-      </button>
-
-    </div>
-  </div>
-</div>
         <!-- Nút Thêm Kịch Bản Mới -->
         <button onclick="openNewScriptModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-plus"></i>
@@ -119,7 +84,7 @@
   <!-- Main Container -->
   <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex flex-col gap-4">
     
-    <!-- Stats Bar (6 Thẻ Thống Kê Chuẩn) -->
+    <!-- Stats Bar -->
     <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
@@ -144,17 +109,17 @@
       </div>
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-[11px] font-medium text-slate-500">TikTok Xong</p>
-          <p id="stat-done-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-brands fa-tiktok"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
           <p class="text-[11px] font-medium text-slate-500">YouTube Xong</p>
           <p id="stat-done-youtube" class="text-lg font-bold text-red-600 mt-0.5">0</p>
         </div>
         <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600"><i class="fa-brands fa-youtube"></i></div>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-medium text-slate-500">TikTok Xong</p>
+          <p id="stat-done-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-brands fa-tiktok"></i></div>
       </div>
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
@@ -173,8 +138,8 @@
         <button onclick="setFilter('all')" id="tab-all" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white transition shadow-sm">Tất cả (<span id="cnt-all">0</span>)</button>
         <button onclick="setFilter('need_audio')" id="tab-need_audio" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🔴 Cần Voice (<span id="cnt-need_audio">0</span>)</button>
         <button onclick="setFilter('need_capcut')" id="tab-need_capcut" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🟡 Cần CapCut (<span id="cnt-need_capcut">0</span>)</button>
-        <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
         <button onclick="setFilter('need_youtube')" id="tab-need_youtube" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">▶️ Chờ YouTube (<span id="cnt-need_youtube">0</span>)</button>
+        <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
         <button onclick="setFilter('need_thumb')" id="tab-need_thumb" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🖼️ Thiếu Thumb (<span id="cnt-need_thumb">0</span>)</button>
         <button onclick="setFilter('published')" id="tab-published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⭐ Đã Đăng (<span id="cnt-published">0</span>)</button>
       </div>
@@ -204,10 +169,10 @@
                 <input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-violet-600 focus:ring-0 cursor-pointer">
               </th>
               <th class="p-3 w-20">Mã KB</th>
-              <th class="p-3 min-w-[200px]">Tiêu đề Kịch bản</th>
+              <th class="p-3 min-w-[220px]">Tiêu đề Kịch bản</th>
               <th class="p-3 w-28 text-center">1. Voice Audio</th>
-              <th class="p-3 w-40 text-center">2. CapCut 2 Bản</th>
-              <th class="p-3 min-w-[210px] text-center">3. Video Xuất (TikTok & YouTube)</th>
+              <th class="p-3 w-36 text-center">2. Dự Án CapCut</th>
+              <th class="p-3 min-w-[240px] text-center">3. Video Xuất (YouTube & TikTok)</th>
               <th class="p-3 w-28 text-center">4. Thumbnail</th>
               <th class="p-3 w-28 text-center">5. Trạng Thái</th>
               <th class="p-3 w-36 text-center">Quản Lý Gói KB</th>
@@ -237,14 +202,14 @@
     <div class="flex items-center gap-1.5 text-xs text-slate-700">
       <span class="text-slate-500 font-medium">Kho nền:</span>
       <select id="batch-theme-select" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-800 text-xs font-semibold focus:outline-none focus:border-violet-500">
-        <option value="nau_an">🍳 Nấu ăn (Dọc & Ngang)</option>
-        <option value="handmade">✂️ Handmade (Dọc & Ngang)</option>
+        <option value="nau_an">🍳 Nấu ăn (16:9)</option>
+        <option value="handmade">✂️ Handmade (16:9)</option>
       </select>
     </div>
 
-    <!-- Batch Create CapCut Drafts (Dual) -->
-    <button onclick="batchCreateCapCutDual()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
-      <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo CapCut Cả 2 Bản
+    <!-- Batch Create CapCut Drafts (Single 16:9) -->
+    <button onclick="batchCreateCapCutSingle()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+      <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo CapCut Hàng Loạt (16:9)
     </button>
 
     <!-- Batch Delete -->
@@ -409,24 +374,24 @@
     function updateKPICounters() {
       const total = projectsData.length;
       const needAudio = projectsData.filter(p => !p.audio_path).length;
-      const needCapCut = projectsData.filter(p => p.audio_path && (!p.capcut_draft_tiktok && !p.notes?.includes('CapCut'))).length;
-      const doneTikTok = projectsData.filter(p => p.video_tiktok_path || (p.video_path && p.video_path.includes('tiktok'))).length;
-      const doneYouTube = projectsData.filter(p => p.video_youtube_path || (p.video_path && p.video_path.includes('youtube'))).length;
+      const needCapCut = projectsData.filter(p => p.audio_path && (!p.capcut_draft_youtube && !p.notes?.includes('CapCut'))).length;
+      const doneYouTube = projectsData.filter(p => p.video_youtube_path || p.video_path).length;
+      const doneTikTok = projectsData.filter(p => p.video_tiktok_path).length;
       const doneThumb = projectsData.filter(p => p.has_thumbnail === 1 || p.thumbnail_path).length;
       const published = projectsData.filter(p => p.is_published === 1).length;
 
       document.getElementById('stat-total').innerText = total;
       document.getElementById('stat-need-audio').innerText = needAudio;
       document.getElementById('stat-need-capcut').innerText = needCapCut;
-      document.getElementById('stat-done-tiktok').innerText = doneTikTok;
       document.getElementById('stat-done-youtube').innerText = doneYouTube;
+      document.getElementById('stat-done-tiktok').innerText = doneTikTok;
       document.getElementById('stat-published').innerText = published;
 
       document.getElementById('cnt-all').innerText = total;
       document.getElementById('cnt-need_audio').innerText = needAudio;
       document.getElementById('cnt-need_capcut').innerText = needCapCut;
+      document.getElementById('cnt-need_youtube').innerText = projectsData.filter(p => !p.video_youtube_path && !p.video_path).length;
       document.getElementById('cnt-need_tiktok').innerText = projectsData.filter(p => !p.video_tiktok_path).length;
-      document.getElementById('cnt-need_youtube').innerText = projectsData.filter(p => !p.video_youtube_path).length;
       document.getElementById('cnt-need_thumb').innerText = total - doneThumb;
       document.getElementById('cnt-published').innerText = published;
     }
@@ -451,9 +416,9 @@
         if (!matchSearch) return false;
 
         if (currentFilter === 'need_audio') return !p.audio_path;
-        if (currentFilter === 'need_capcut') return p.audio_path && !p.capcut_draft_tiktok && !p.notes?.includes('CapCut');
+        if (currentFilter === 'need_capcut') return p.audio_path && !p.capcut_draft_youtube && !p.notes?.includes('CapCut');
+        if (currentFilter === 'need_youtube') return !p.video_youtube_path && !p.video_path;
         if (currentFilter === 'need_tiktok') return !p.video_tiktok_path;
-        if (currentFilter === 'need_youtube') return !p.video_youtube_path;
         if (currentFilter === 'need_thumb') return !p.has_thumbnail && !p.thumbnail_path;
         if (currentFilter === 'published') return p.is_published === 1;
         return true;
@@ -467,10 +432,9 @@
       tbody.innerHTML = filtered.map(p => {
         const isSelected = selectedIds.has(p.id);
         const hasAudio = !!p.audio_path;
-        const hasTikTokDraft = !!p.capcut_draft_tiktok || (p.notes && p.notes.includes('TikTok'));
-        const hasYouTubeDraft = !!p.capcut_draft_youtube || (p.notes && p.notes.includes('YouTube'));
+        const hasCapcutDraft = !!p.capcut_draft_youtube || !!p.capcut_draft_tiktok || (p.notes && p.notes.includes('CapCut'));
+        const hasYouTubeVideo = !!p.video_youtube_path || !!p.video_path;
         const hasTikTokVideo = !!p.video_tiktok_path;
-        const hasYouTubeVideo = !!p.video_youtube_path;
         const hasThumb = p.has_thumbnail === 1 || !!p.thumbnail_path;
         const isPub = p.is_published === 1;
 
@@ -489,11 +453,11 @@
             <!-- Tiêu đề & Preview Script -->
             <td class="p-3">
               <div class="flex items-center gap-2">
-                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[260px]" title="${p.title}">
+                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[240px]" title="${p.title}">
                   ${p.title}
                 </button>
               </div>
-              <div class="text-[10px] text-slate-400 truncate max-w-[260px]">${p.created_at || ''}</div>
+              <div class="text-[10px] text-slate-400 truncate max-w-[240px]">${p.created_at || ''}</div>
             </td>
 
             <!-- 1. Voice Audio -->
@@ -510,45 +474,43 @@
               `}
             </td>
 
-            <!-- 2. CapCut 2 Bản (Dọc & Ngang) -->
+            <!-- 2. Dự Án CapCut (16:9) -->
             <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1">
-                <!-- TikTok Draft -->
-                <span class="badge-check ${hasTikTokDraft ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-400 border-slate-200'}" title="${p.capcut_draft_tiktok || 'Chưa tạo draft TikTok'}">
-                  <i class="fa-brands fa-tiktok text-[10px]"></i> ${hasTikTokDraft ? 'Dọc ✓' : 'Dọc ❌'}
-                </span>
-
-                <!-- YouTube Draft -->
-                <span class="badge-check ${hasYouTubeDraft ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-400 border-slate-200'}" title="${p.capcut_draft_youtube || 'Chưa tạo draft YouTube'}">
-                  <i class="fa-brands fa-youtube text-[10px]"></i> ${hasYouTubeDraft ? 'Ngang ✓' : 'Ngang ❌'}
-                </span>
-
-                <!-- Nút tạo / tạo lại -->
-                <button onclick="createCapCutDualSingle('${p.id}')" class="p-1 text-slate-400 hover:text-violet-600 text-xs transition" title="Tạo lại cả 2 dự án CapCut">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+              ${hasCapcutDraft ? `
+                <div class="inline-flex items-center gap-1">
+                  <span class="badge-check bg-blue-50 text-blue-700 border-blue-200" title="${p.capcut_draft_youtube || p.notes || ''}">
+                    <i class="fa-solid fa-film text-[10px]"></i> CapCut 16:9 ✓
+                  </span>
+                  <button onclick="createCapCutSingle('${p.id}')" class="p-1 text-slate-400 hover:text-violet-600 text-xs transition" title="Tạo lại dự án CapCut">
+                    <i class="fa-solid fa-rotate-right"></i>
+                  </button>
+                </div>
+              ` : `
+                <button onclick="createCapCutSingle('${p.id}')" class="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-semibold transition flex items-center gap-1 mx-auto">
+                  <i class="fa-solid fa-film"></i> Tạo CapCut
                 </button>
-              </div>
+              `}
             </td>
 
-            <!-- 3. Video Xuất (TikTok & YouTube) + NÚT TẠO TIKTOK SIÊU TỐC TỪ YOUTUBE -->
+            <!-- 3. Video Xuất (YouTube & TikTok) + NÚT TẠO TIKTOK 10S TỪ YOUTUBE -->
             <td class="p-3 text-center">
               <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                <!-- Video YouTube -->
+                <!-- Video YouTube (16:9) -->
                 ${hasYouTubeVideo ? `
-                  <button onclick="openFileExplorer('${p.video_youtube_path}')" class="badge-check bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition" title="Mở file Video YouTube">
+                  <button onclick="openFileExplorer('${p.video_youtube_path || p.video_path}')" class="badge-check bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition" title="Mở file Video YouTube">
                     <i class="fa-brands fa-youtube text-[10px]"></i> YT ✓
                   </button>
                 ` : `
                   <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">YT ❌</span>
                 `}
 
-                <!-- Video TikTok HOẶC Nút Convert 1-Click từ YouTube sang TikTok -->
+                <!-- Video TikTok (9:16) HOẶC Nút Tạo TikTok 10s Tự Động -->
                 ${hasTikTokVideo ? `
                   <button onclick="openFileExplorer('${p.video_tiktok_path}')" class="badge-check bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 transition" title="Mở file Video TikTok">
                     <i class="fa-brands fa-tiktok text-[10px]"></i> TikTok ✓
                   </button>
                 ` : (hasYouTubeVideo ? `
-                  <button onclick="convertToTikTokFast('${p.id}')" class="badge-check bg-amber-500 hover:bg-amber-600 text-white font-bold border-amber-600 transition shadow-2xs" title="Tự động chuyển từ video YouTube sang TikTok dọc 9:16 (Nền mờ Cinematic) chỉ mất 10s">
+                  <button onclick="convertToTikTokFast('${p.id}')" class="badge-check bg-amber-500 hover:bg-amber-600 text-white font-bold border-amber-600 transition shadow-2xs" title="Tự động tạo video TikTok dọc 9:16 (Nền mờ Cinematic) từ video YouTube trong 10s">
                     <i class="fa-solid fa-bolt"></i> Tạo TikTok (10s)
                   </button>
                 ` : `
@@ -634,7 +596,7 @@
 
     // 6. Action Handlers
     async function convertToTikTokFast(id) {
-      showToast(`Đang chuyển đổi video 16:9 sang 9:16 cho [${id}]...`, "info");
+      showToast(`Đang chuyển đổi sang video dọc TikTok 9:16 cho [${id}]...`, "info");
       try {
         const res = await fetch(`/api/projects/${id}/convert-to-tiktok`, {
           method: 'POST',
@@ -687,7 +649,7 @@
       }
     }
 
-    async function createCapCutDualSingle(id) {
+    async function createCapCutSingle(id) {
       const theme = prompt("Chọn kho video nền ('nau_an' hoặc 'handmade'):", "nau_an") || "nau_an";
       try {
         const res = await fetch(`/api/projects/${id}/create-capcut-draft`, {
@@ -707,12 +669,12 @@
       }
     }
 
-    async function batchCreateCapCutDual() {
+    async function batchCreateCapCutSingle() {
       const ids = Array.from(selectedIds);
       if (ids.length === 0) return;
       const theme = document.getElementById('batch-theme-select').value;
 
-      if (!confirm(`Tạo ĐỒNG THỜI 2 Dự án CapCut (TikTok Dọc & YouTube Ngang) cho ${ids.length} kịch bản đã chọn?`)) return;
+      if (!confirm(`Tạo Dự án CapCut (16:9) cho ${ids.length} kịch bản đã chọn?`)) return;
 
       try {
         const res = await fetch('/api/projects/batch-create-capcut', {
@@ -721,7 +683,7 @@
           body: JSON.stringify({ project_ids: ids, theme: theme })
         });
         const data = await res.json();
-        showToast(`✅ Đã tạo thành công ${data.created_count} cặp dự án CapCut!`, "success");
+        showToast(`✅ Đã tạo thành công ${data.created_count} dự án CapCut!`, "success");
         deselectAll();
         fetchProjects();
       } catch (err) {

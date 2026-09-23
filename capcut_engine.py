@@ -577,26 +577,17 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
     except Exception as e:
         print(f"Lỗi cập nhật root_meta_info.json: {e}")
 
-def create_dual_capcut_drafts(
+def create_capcut_draft(
     project_id: str,
     title: str,
     audio_path: str,
     theme: str = "nau_an"
 ) -> dict:
     """
-    Tạo ĐỒNG THỜI 2 Dự án CapCut cho 1 kịch bản:
-    1. Bản Dọc (9:16) cho TikTok / Shorts / Reels từ backgrounds/{theme}/doc
-    2. Bản Ngang (16:9) cho YouTube từ backgrounds/{theme}/ngang
+    Tạo 1 Project CapCut duy nhất chuẩn 16:9 (YouTube) với video nền tự khớp thời lượng audio.
+    Bản dọc TikTok (9:16) sẽ được hệ thống tự động sinh từ video YouTube trong 10 giây!
     """
-    tiktok_res = create_single_capcut_draft(
-        project_id=project_id,
-        title=title,
-        audio_path=audio_path,
-        theme=theme,
-        orientation="doc"
-    )
-
-    youtube_res = create_single_capcut_draft(
+    return create_single_capcut_draft(
         project_id=project_id,
         title=title,
         audio_path=audio_path,
@@ -604,13 +595,14 @@ def create_dual_capcut_drafts(
         orientation="ngang"
     )
 
-    return {
-        "success": True,
-        "tiktok": tiktok_res,
-        "youtube": youtube_res,
-        "theme": theme,
-        "message": f"Đã tạo thành công 2 dự án: [TikTok 9:16] & [YouTube 16:9]"
-    }
+def create_dual_capcut_drafts(
+    project_id: str,
+    title: str,
+    audio_path: str,
+    theme: str = "nau_an"
+) -> dict:
+    """Tạo cả 2 dự án (nếu cần thiết)"""
+    tiktok_res = create_single_capcut_draft(project_id=project_id, title=title, audio_path=audio_path, theme=theme, orientation="doc")
+    youtube_res = create_single_capcut_draft(project_id=project_id, title=title, audio_path=audio_path, theme=theme, orientation="ngang")
+    return {"success": True, "tiktok": tiktok_res, "youtube": youtube_res, "theme": theme}
 
-# Giữ tương thích ngược với code cũ
-create_capcut_draft = create_dual_capcut_drafts

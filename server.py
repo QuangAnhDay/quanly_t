@@ -338,7 +338,7 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")
 async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
-    """Tự động tạo ĐỒNG THỜI 2 Dự Án CapCut (TikTok 9:16 và YouTube 16:9)"""
+    """Tự động tạo 1 Dự Án CapCut chuẩn 16:9 (YouTube) với video nền tự khớp"""
     proj = database.get_project(project_id)
     if not proj or not proj.get("audio_path"):
         raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
@@ -349,7 +349,7 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
 
     theme = payload.theme or "nau_an"
     try:
-        draft_res = capcut_engine.create_dual_capcut_drafts(
+        draft_res = capcut_engine.create_capcut_draft(
             project_id=project_id,
             title=proj["title"],
             audio_path=audio_path,
@@ -358,21 +358,19 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
         theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
         theme_vn = theme_names.get(theme, theme)
         
-        tiktok_name = draft_res["tiktok"]["draft_name"]
-        youtube_name = draft_res["youtube"]["draft_name"]
-        notes = f"CapCut ({theme_vn}): TikTok & YouTube"
+        draft_name = draft_res["draft_name"]
+        notes = f"CapCut ({theme_vn}): {draft_name}"
         
         updated = database.update_project(
             project_id,
-            capcut_draft_tiktok=tiktok_name,
-            capcut_draft_youtube=youtube_name,
+            capcut_draft_youtube=draft_name,
             notes=notes,
             status="4_da_render_video"
         )
         
         return {
             "success": True,
-            "message": f"Đã tạo xong 2 Dự Án CapCut: [TikTok 9:16 ({draft_res['tiktok']['clips_count']} clip)] & [YouTube 16:9 ({draft_res['youtube']['clips_count']} clip)]",
+            "message": f"Đã tạo xong Project CapCut: {draft_name} ({draft_res['clips_count']} clip nền)!",
             "draft_info": draft_res,
             "project": updated
         }
@@ -381,7 +379,7 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
 
 @app.post("/api/projects/batch-create-capcut")
 async def batch_create_capcut_api(payload: BatchCapCutPayload):
-    """Tạo hàng loạt 2 Dự Án CapCut cho toàn bộ kịch bản đã chọn"""
+    """Tạo hàng loạt Dự Án CapCut 16:9 cho toàn bộ kịch bản đã chọn"""
     theme = payload.theme or "nau_an"
     theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
     theme_vn = theme_names.get(theme, theme)
@@ -396,21 +394,20 @@ async def batch_create_capcut_api(payload: BatchCapCutPayload):
             errors.append(f"{pid}: Chưa có file audio")
             continue
         try:
-            draft_res = capcut_engine.create_dual_capcut_drafts(
+            draft_res = capcut_engine.create_capcut_draft(
                 project_id=pid,
                 title=proj["title"],
                 audio_path=proj["audio_path"],
                 theme=theme
             )
-            notes = f"CapCut ({theme_vn}): TikTok & YouTube"
+            notes = f"CapCut ({theme_vn}): {draft_res['draft_name']}"
             database.update_project(
                 pid,
-                capcut_draft_tiktok=draft_res["tiktok"]["draft_name"],
-                capcut_draft_youtube=draft_res["youtube"]["draft_name"],
+                capcut_draft_youtube=draft_res["draft_name"],
                 notes=notes,
                 status="4_da_render_video"
             )
-            results.append({"id": pid, "tiktok": draft_res["tiktok"]["draft_name"], "youtube": draft_res["youtube"]["draft_name"]})
+            results.append({"id": pid, "draft_name": draft_res["draft_name"], "clips": draft_res["clips_count"]})
             success_count += 1
         except Exception as e:
             errors.append(f"{pid}: {str(e)}")
