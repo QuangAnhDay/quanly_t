@@ -523,11 +523,12 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
     if not os.path.exists(root_meta_file):
         return
     try:
+        clean_draft_dir = draft_dir.replace("\\", "/")
         with open(root_meta_file, "r", encoding="utf-8") as f:
             root_meta = json.load(f)
         
         draft_store = root_meta.get("all_draft_store", [])
-        draft_store = [d for d in draft_store if d.get("draft_fold_path") != draft_dir.replace("\\", "/")]
+        draft_store = [d for d in draft_store if d.get("draft_fold_path") != clean_draft_dir]
 
         draft_store.insert(0, {
             "cloud_draft_cover": False,
@@ -537,8 +538,8 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
             "draft_cloud_template_id": "",
             "draft_cloud_tutorial_info": "",
             "draft_cloud_videocut_purchase_info": "",
-            "draft_cover": f"{draft_dir.replace('\\', '/')}/draft_cover.jpg",
-            "draft_fold_path": draft_dir.replace("\\", "/"),
+            "draft_cover": f"{clean_draft_dir}/draft_cover.jpg",
+            "draft_fold_path": clean_draft_dir,
             "draft_id": draft_id,
             "draft_is_ai_shorts": False,
             "draft_is_cloud_temp_draft": False,
@@ -546,7 +547,7 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
             "draft_is_invisible": False,
             "draft_is_pippit_draft": False,
             "draft_is_web_article_video": False,
-            "draft_json_file": f"{draft_dir.replace('\\', '/')}/draft_content.json",
+            "draft_json_file": f"{clean_draft_dir}/draft_content.json",
             "draft_name": display_name,
             "draft_new_version": "",
             "draft_root_path": CAPCUT_DRAFT_ROOT.replace("\\", "/"),
