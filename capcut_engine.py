@@ -30,7 +30,7 @@ def remove_accents(text: str) -> str:
     return text
 
 def init_theme_folders():
-    """Tạo sẵn các thư mục chủ đề và định dạng trong backgrounds/ và 3_video_output/"""
+    """Tạo sẵn các thư mục chủ đề và định dạng trong backgrounds/ và outputs/"""
     for t in THEMES:
         for o in ORIENTATIONS:
             dir_path = os.path.join(BG_BASE_DIR, t, o)
@@ -39,12 +39,10 @@ def init_theme_folders():
             if not os.path.exists(gk):
                 open(gk, "w").close()
     
-    # Tạo sẵn thư mục xuất video theo kênh
-    os.makedirs(os.path.join(PROJECT_DIR, "3_video_output", "tiktok"), exist_ok=True)
-    os.makedirs(os.path.join(PROJECT_DIR, "3_video_output", "youtube"), exist_ok=True)
-    os.makedirs(os.path.join(PROJECT_DIR, "4_thumbnails"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_DIR, "outputs"), exist_ok=True)
 
 init_theme_folders()
+
 
 def get_media_duration_and_size(file_path: str):
     """Lấy thời lượng (giây), chiều rộng và chiều cao của file video/audio"""

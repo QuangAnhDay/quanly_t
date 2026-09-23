@@ -92,21 +92,9 @@ def create_project(title: str, content: str, status: str = "1_cho_duyet", voice:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     pkg_dir = get_package_dir(kb_id)
 
-    # 1. Lưu file text kịch bản vào đúng gói outputs/KBxxx/KBxxx_script.txt
-    clean_sub_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:30]
+    # Lưu file text kịch bản trực tiếp vào gói outputs/KBxxx/KBxxx_script.txt
     pkg_script_file = os.path.join(pkg_dir, f"{kb_id}_script.txt")
     with open(pkg_script_file, "w", encoding="utf-8") as f:
-        f.write(f"Tiêu đề: {title}\n")
-        f.write(f"Mã kịch bản: {kb_id}\n")
-        f.write(f"Ngày tạo: {now}\n")
-        f.write("="*40 + "\n\n")
-        f.write(content)
-
-    # 2. Lưu bản sao lưu vào 1_scripts/KBxxx.txt
-    scripts_dir = os.path.join(BASE_DIR, "1_scripts")
-    os.makedirs(scripts_dir, exist_ok=True)
-    script_file = os.path.join(scripts_dir, f"{kb_id}_{clean_sub_title}.txt")
-    with open(script_file, "w", encoding="utf-8") as f:
         f.write(f"Tiêu đề: {title}\n")
         f.write(f"Mã kịch bản: {kb_id}\n")
         f.write(f"Ngày tạo: {now}\n")
@@ -192,12 +180,8 @@ CAPCUT_DRAFT_ROOT = os.path.expandvars(r"%LOCALAPPDATA%\CapCut\User Data\Project
 
 def clean_project_files(project_id: str):
     """
-    Xóa toàn bộ các file và thư mục liên quan đến kịch bản:
-    - Gói thư mục outputs/KBxxx/
-    - File kịch bản backup trong 1_scripts/
-    - File audio trong 2_audio_input/
-    - File video trong 3_video_output/
-    - File thumbnail trong 4_thumbnails/
+    Xóa sạch toàn bộ dữ liệu của kịch bản:
+    - Gói thư mục duy nhất outputs/KBxxx/
     - Draft dự án trong CapCut PC
     """
     if not project_id:
@@ -211,44 +195,7 @@ def clean_project_files(project_id: str):
         except Exception as e:
             print(f"[Delete] Lỗi xóa thư mục {pkg_dir}: {e}")
 
-    # 2. Xóa file trong 1_scripts/
-    scripts_dir = os.path.join(BASE_DIR, "1_scripts")
-    if os.path.exists(scripts_dir):
-        for f in glob.glob(os.path.join(scripts_dir, f"{project_id}*")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-
-    # 3. Xóa file trong 2_audio_input/
-    audio_dir = os.path.join(BASE_DIR, "2_audio_input")
-    if os.path.exists(audio_dir):
-        for f in glob.glob(os.path.join(audio_dir, f"{project_id}.*")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-
-    # 4. Xóa file trong 3_video_output/
-    for sub in ["tiktok", "youtube"]:
-        v_dir = os.path.join(BASE_DIR, "3_video_output", sub)
-        if os.path.exists(v_dir):
-            for f in glob.glob(os.path.join(v_dir, f"{project_id}.*")):
-                try:
-                    os.remove(f)
-                except Exception:
-                    pass
-
-    # 5. Xóa file trong 4_thumbnails/
-    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
-    if os.path.exists(thumb_dir):
-        for f in glob.glob(os.path.join(thumb_dir, f"{project_id}.*")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-
-    # 6. Xóa Dự án Draft trong CapCut PC
+    # 2. Xóa Dự án Draft trong CapCut PC nếu có
     if os.path.exists(CAPCUT_DRAFT_ROOT):
         for d in glob.glob(os.path.join(CAPCUT_DRAFT_ROOT, f"{project_id}_*")):
             if os.path.isdir(d):
@@ -287,79 +234,46 @@ def batch_delete(project_ids: List[str]) -> int:
 
 def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
     """
-    Quét thực tế ổ đĩa (outputs/KBxxx, 2_audio_input, 3_video_output, 4_thumbnails)
-    và đồng bộ chuẩn xác trạng thái trong DB (kể cả khi file bị xóa)
+    Quét thực tế duy nhất gói outputs/KBxxx và đồng bộ chuẩn xác trạng thái trong DB
     """
     p = get_project(pid)
     if not p:
         return None
     
     pkg_dir = os.path.join(OUTPUTS_DIR, pid)
-    audio_dir = os.path.join(BASE_DIR, "2_audio_input")
-    video_dir = os.path.join(BASE_DIR, "3_video_output")
-    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
     
-    # 1. Voice Audio
     found_audio = None
-    if os.path.exists(pkg_dir):
-        for f in os.listdir(pkg_dir):
-            if f.lower().endswith((".wav", ".mp3", ".m4a")):
-                found_audio = os.path.join(pkg_dir, f)
-                break
-    if not found_audio:
-        for ext in [".wav", ".mp3", ".m4a"]:
-            cand = os.path.join(audio_dir, f"{pid}{ext}")
-            if os.path.exists(cand):
-                found_audio = cand
-                break
-                
-    # 2. Video TikTok (9:16)
     found_tt = None
-    if os.path.exists(pkg_dir):
-        for f in os.listdir(pkg_dir):
-            if f.lower().endswith((".mp4", ".mov", ".mkv")) and ("tiktok" in f.lower() or "doc" in f.lower()):
-                found_tt = os.path.join(pkg_dir, f)
-                break
-    if not found_tt:
-        for ext in [".mp4", ".mov", ".mkv"]:
-            cand = os.path.join(video_dir, "tiktok", f"{pid}{ext}")
-            if os.path.exists(cand):
-                found_tt = cand
-                break
-                
-    # 3. Video YouTube (16:9)
     found_yt = None
-    if os.path.exists(pkg_dir):
-        for f in os.listdir(pkg_dir):
-            if f.lower().endswith((".mp4", ".mov", ".mkv")) and ("youtube" in f.lower() or "ngang" in f.lower() or "yt" in f.lower()):
-                found_yt = os.path.join(pkg_dir, f)
-                break
-    if not found_yt:
-        for ext in [".mp4", ".mov", ".mkv"]:
-            cand = os.path.join(video_dir, "youtube", f"{pid}{ext}")
-            if os.path.exists(cand):
-                found_yt = cand
-                break
-    # Nếu có mp4 chung trong gói mà chưa phân loại rõ
-    if not found_yt and not found_tt and os.path.exists(pkg_dir):
-        for f in os.listdir(pkg_dir):
-            if f.lower().endswith((".mp4", ".mov", ".mkv")) and not f.startswith("."):
-                found_yt = os.path.join(pkg_dir, f)
-                break
-                
-    # 4. Thumbnail
     found_th = None
+    
     if os.path.exists(pkg_dir):
         for f in os.listdir(pkg_dir):
-            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
-                found_th = os.path.join(pkg_dir, f)
-                break
-    if not found_th:
-        for ext in [".png", ".jpg", ".jpeg", ".webp"]:
-            cand = os.path.join(thumb_dir, f"{pid}{ext}")
-            if os.path.exists(cand):
-                found_th = cand
-                break
+            fn_lower = f.lower()
+            full_p = os.path.join(pkg_dir, f)
+            if os.path.isdir(full_p):
+                continue
+                
+            # 1. Voice Audio
+            if fn_lower.endswith((".wav", ".mp3", ".m4a")):
+                if not found_audio:
+                    found_audio = full_p
+                    
+            # 2. Video
+            elif fn_lower.endswith((".mp4", ".mov", ".mkv")):
+                if "tiktok" in fn_lower or "doc" in fn_lower:
+                    found_tt = full_p
+                elif "youtube" in fn_lower or "ngang" in fn_lower or "yt" in fn_lower:
+                    found_yt = full_p
+                else:
+                    # Nếu file mp4 chung chưa phân loại, mặc định coi là video YouTube (16:9)
+                    if not found_yt:
+                        found_yt = full_p
+                        
+            # 3. Thumbnail
+            elif fn_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
+                if not found_th:
+                    found_th = full_p
 
     updates = {}
     if p.get("audio_path") != found_audio:
@@ -401,7 +315,7 @@ def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
     return p
 
 def sync_all_projects() -> List[Dict[str, Any]]:
-    """Đồng bộ thực tế tất cả các kịch bản với ổ đĩa"""
+    """Đồng bộ thực tế tất cả các kịch bản với thư mục outputs/"""
     projects = get_all_projects()
     for p in projects:
         sync_project_files(p["id"])

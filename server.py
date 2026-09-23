@@ -221,20 +221,13 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
     os.makedirs(pkg_dir, exist_ok=True)
     pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
 
-    audio_path = await audio_engine.generate_speech(
+    actual_path = await audio_engine.generate_speech(
         text=proj["content"],
-        output_filename=f"{project_id}.mp3",
+        output_path=pkg_audio_path,
         voice=payload.voice or proj.get("voice") or "vi-VN-HoaiMyNeural",
         rate=payload.rate or "+0%",
         pitch=payload.pitch or "+0Hz"
     )
-    
-    import shutil
-    try:
-        shutil.copy2(audio_path, pkg_audio_path)
-        actual_path = pkg_audio_path
-    except Exception:
-        actual_path = audio_path
     
     updated = database.update_project(
         project_id,
@@ -245,6 +238,7 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
         status="3_da_co_audio"
     )
     return {"success": True, "audio_path": actual_path, "project": updated}
+
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")
 async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
@@ -426,19 +420,11 @@ async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
     pkg_thumb_path = os.path.join(pkg_dir, f"{project_id}_thumb.jpg")
 
     prompt = payload.prompt or f"Cinematic illustration for Vietnamese story: {proj['title']}"
-    output_filename = f"{project_id}.jpg"
-    thumb_path = thumbnail_engine.generate_thumbnail(
+    actual_path = thumbnail_engine.generate_thumbnail(
         prompt=prompt,
-        output_filename=output_filename,
+        output_path=pkg_thumb_path,
         aspect_ratio=payload.aspect_ratio or "9:16"
     )
-    
-    import shutil
-    try:
-        shutil.copy2(thumb_path, pkg_thumb_path)
-        actual_path = pkg_thumb_path
-    except Exception:
-        actual_path = thumb_path
 
     updated = database.update_project(
         project_id,
@@ -498,10 +484,6 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     valid_folders = {
         "root": BASE_DIR,
         "outputs": os.path.join(BASE_DIR, "outputs"),
-        "scripts": os.path.join(BASE_DIR, "1_scripts"),
-        "audios": os.path.join(BASE_DIR, "2_audio_input"),
-        "videos": os.path.join(BASE_DIR, "3_video_output"),
-        "thumbnails": os.path.join(BASE_DIR, "4_thumbnails"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
         "bg_nau_an_doc": os.path.join(BASE_DIR, "backgrounds", "nau_an", "doc"),
         "bg_nau_an_ngang": os.path.join(BASE_DIR, "backgrounds", "nau_an", "ngang"),
@@ -513,6 +495,7 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     os.makedirs(target, exist_ok=True)
     subprocess.Popen(f'explorer "{target}"')
     return {"success": True, "opened": target}
+
 
 @app.post("/api/launch-chrome")
 async def launch_chrome_profiles():

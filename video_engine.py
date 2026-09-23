@@ -8,8 +8,8 @@ import imageio_ffmpeg
 
 FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
 PROJECT_DIR = os.path.dirname(__file__)
-BG_DIR = os.path.join(PROJECT_DIR, "backgrounds")
-OUTPUT_DIR = os.path.join(PROJECT_DIR, "3_video_output")
+OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
+
 
 def get_audio_duration(file_path: str) -> float:
     """Lấy thời lượng file audio/video bằng ffmpeg"""

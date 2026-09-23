@@ -51,49 +51,14 @@ class PackageOutputsWatcher(FileSystemEventHandler):
         if proj:
             print(f"[Watcher] Gói {kb_id} -> File {filename} {action_name}. Đã đồng bộ DB.")
 
-class FallbackWatcher(FileSystemEventHandler):
-    """Hỗ trợ quét thêm các thư mục phụ cũ nếu người dùng lưu riêng"""
-    def on_created(self, event):
-        self.handle_event(event.src_path, "tạo mới")
-
-    def on_modified(self, event):
-        self.handle_event(event.src_path, "cập nhật")
-
-    def on_deleted(self, event):
-        self.handle_event(event.src_path, "đã xóa")
-
-    def handle_event(self, file_path, action_name=""):
-        if os.path.isdir(file_path):
-            return
-        filename = os.path.basename(file_path)
-        match = re.search(r"(KB\d+)", filename, re.IGNORECASE)
-        if not match:
-            return
-        kb_id = match.group(1).upper()
-        database.sync_project_files(kb_id)
-
-
 def start_watching():
     outputs_dir = os.path.join(BASE_DIR, "outputs")
-    audio_dir = os.path.join(BASE_DIR, "2_audio_input")
-    video_dir = os.path.join(BASE_DIR, "3_video_output")
-    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
-    
     os.makedirs(outputs_dir, exist_ok=True)
-    os.makedirs(audio_dir, exist_ok=True)
-    os.makedirs(video_dir, exist_ok=True)
-    os.makedirs(thumb_dir, exist_ok=True)
 
     observer = Observer()
-
-    # 1. Giám sát chính: Thư mục outputs/ trọn gói từng kịch bản
+    # Giám sát duy nhất: Thư mục outputs/ trọn gói từng kịch bản
     observer.schedule(PackageOutputsWatcher(), outputs_dir, recursive=True)
-    print(f"[Watcher] Đang theo dõi trọn gói tại: {outputs_dir}")
-
-    # 2. Giám sát phụ các thư mục lẻ
-    observer.schedule(FallbackWatcher(), audio_dir, recursive=False)
-    observer.schedule(FallbackWatcher(), video_dir, recursive=True)
-    observer.schedule(FallbackWatcher(), thumb_dir, recursive=True)
+    print(f"[Watcher] Đang theo dõi duy nhất tại: {outputs_dir}")
 
     observer.start()
     try:
@@ -105,3 +70,4 @@ def start_watching():
 
 if __name__ == "__main__":
     start_watching()
+

@@ -7,17 +7,20 @@ THUMB_DIR = os.path.join(PROJECT_DIR, "4_thumbnails")
 
 def generate_thumbnail(
     prompt: str,
-    output_filename: str,
-    aspect_ratio: str = "9:16"
+    output_filename: str = "thumb.jpg",
+    aspect_ratio: str = "9:16",
+    output_path: Optional[str] = None
 ) -> str:
     """
     Tạo thumbnail chất lượng cao miễn phí sử dụng Pollinations (FLUX / SDXL).
     """
-    os.makedirs(THUMB_DIR, exist_ok=True)
-    if not (output_filename.endswith(".jpg") or output_filename.endswith(".png")):
-        output_filename += ".jpg"
+    if not output_path:
+        if not (output_filename.endswith(".jpg") or output_filename.endswith(".png")):
+            output_filename += ".jpg"
+        output_path = os.path.join(THUMB_DIR, output_filename)
         
-    output_path = os.path.join(THUMB_DIR, output_filename)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     
     width, height = (1080, 1920) if aspect_ratio == "9:16" else (1920, 1080)
     
