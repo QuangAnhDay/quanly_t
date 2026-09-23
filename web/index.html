@@ -34,7 +34,7 @@
           </div>
           <p class="text-xs text-slate-500 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            Tự Động 2 Bản CapCut $\cdot$ Gói Trọn Bộ <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
+            Tự Động 2 Bản CapCut $\cdot$ Chuyển Đổi 16:9 $\rightarrow$ 9:16 $\cdot$ Gói <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
           </p>
         </div>
       </div>
@@ -83,7 +83,7 @@
   <!-- Main Container -->
   <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex flex-col gap-4">
     
-    <!-- Stats Bar (5 Thẻ Thống Kê Chuẩn) -->
+    <!-- Stats Bar (6 Thẻ Thống Kê Chuẩn) -->
     <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
@@ -168,10 +168,10 @@
                 <input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-violet-600 focus:ring-0 cursor-pointer">
               </th>
               <th class="p-3 w-20">Mã KB</th>
-              <th class="p-3 min-w-[220px]">Tiêu đề Kịch bản</th>
+              <th class="p-3 min-w-[200px]">Tiêu đề Kịch bản</th>
               <th class="p-3 w-28 text-center">1. Voice Audio</th>
-              <th class="p-3 w-44 text-center">2. CapCut 2 Bản</th>
-              <th class="p-3 w-40 text-center">3. Video Xuất</th>
+              <th class="p-3 w-40 text-center">2. CapCut 2 Bản</th>
+              <th class="p-3 min-w-[210px] text-center">3. Video Xuất (TikTok & YouTube)</th>
               <th class="p-3 w-28 text-center">4. Thumbnail</th>
               <th class="p-3 w-28 text-center">5. Trạng Thái</th>
               <th class="p-3 w-36 text-center">Quản Lý Gói KB</th>
@@ -453,11 +453,11 @@
             <!-- Tiêu đề & Preview Script -->
             <td class="p-3">
               <div class="flex items-center gap-2">
-                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[280px]" title="${p.title}">
+                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[260px]" title="${p.title}">
                   ${p.title}
                 </button>
               </div>
-              <div class="text-[10px] text-slate-400 truncate max-w-[280px]">${p.created_at || ''}</div>
+              <div class="text-[10px] text-slate-400 truncate max-w-[260px]">${p.created_at || ''}</div>
             </td>
 
             <!-- 1. Voice Audio -->
@@ -494,18 +494,9 @@
               </div>
             </td>
 
-            <!-- 3. Video Xuất (TikTok & YouTube) -->
+            <!-- 3. Video Xuất (TikTok & YouTube) + NÚT TẠO TIKTOK SIÊU TỐC TỪ YOUTUBE -->
             <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <!-- Video TikTok -->
-                ${hasTikTokVideo ? `
-                  <button onclick="openFileExplorer('${p.video_tiktok_path}')" class="badge-check bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 transition" title="Mở file Video TikTok">
-                    <i class="fa-brands fa-tiktok text-[10px]"></i> TikTok ✓
-                  </button>
-                ` : `
-                  <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">TikTok ❌</span>
-                `}
-
+              <div class="flex items-center justify-center gap-1.5 flex-wrap">
                 <!-- Video YouTube -->
                 ${hasYouTubeVideo ? `
                   <button onclick="openFileExplorer('${p.video_youtube_path}')" class="badge-check bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition" title="Mở file Video YouTube">
@@ -514,6 +505,26 @@
                 ` : `
                   <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">YT ❌</span>
                 `}
+
+                <!-- Video TikTok HOẶC Nút Convert 1-Click từ YouTube sang TikTok -->
+                ${hasTikTokVideo ? `
+                  <button onclick="openFileExplorer('${p.video_tiktok_path}')" class="badge-check bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 transition" title="Mở file Video TikTok">
+                    <i class="fa-brands fa-tiktok text-[10px]"></i> TikTok ✓
+                  </button>
+                ` : (hasYouTubeVideo ? `
+                  <button onclick="convertToTikTokFast('${p.id}')" class="badge-check bg-amber-500 hover:bg-amber-600 text-white font-bold border-amber-600 transition shadow-2xs" title="Tự động chuyển từ video YouTube sang TikTok dọc 9:16 (Nền mờ Cinematic) chỉ mất 10s">
+                    <i class="fa-solid fa-bolt"></i> Tạo TikTok (10s)
+                  </button>
+                ` : `
+                  <span class="badge-check bg-slate-100 text-slate-400 border-slate-200">TikTok ❌</span>
+                `)}
+
+                <!-- Nút Cắt Part nếu có video -->
+                ${(hasTikTokVideo || hasYouTubeVideo) ? `
+                  <button onclick="splitPartsPrompt('${p.id}')" class="p-1 text-slate-400 hover:text-violet-600 text-[11px] transition" title="Cắt video dài thành các Part ngắn 3 phút">
+                    <i class="fa-solid fa-scissors"></i>
+                  </button>
+                ` : ''}
               </div>
             </td>
 
@@ -586,6 +597,50 @@
     }
 
     // 6. Action Handlers
+    async function convertToTikTokFast(id) {
+      showToast(`Đang chuyển đổi video 16:9 sang 9:16 cho [${id}]...`, "info");
+      try {
+        const res = await fetch(`/api/projects/${id}/convert-to-tiktok`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ style: "blur" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✅ ${data.message}`, "success");
+          fetchProjects();
+        } else {
+          showToast(data.detail || "Lỗi chuyển đổi video", "error");
+        }
+      } catch (err) {
+        showToast("Lỗi kết nối máy chủ", "error");
+      }
+    }
+
+    async function splitPartsPrompt(id) {
+      const durStr = prompt("Nhập thời lượng mỗi tập (giây) - Mặc định 180s (3 phút):", "180");
+      if (!durStr) return;
+      const dur = parseInt(durStr) || 180;
+
+      showToast(`Đang cắt video thành các Part ngắn cho [${id}]...`, "info");
+      try {
+        const res = await fetch(`/api/projects/${id}/split-parts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ part_duration_sec: dur })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✅ ${data.message}`, "success");
+          openPackageDirect(id);
+        } else {
+          showToast(data.detail || "Lỗi khi cắt tập", "error");
+        }
+      } catch (err) {
+        showToast("Lỗi kết nối máy chủ", "error");
+      }
+    }
+
     async function openPackageDirect(id) {
       if (!id) return;
       try {
@@ -841,7 +896,7 @@
         await fetch(`/api/projects/${currentViewingProject.id}`, { method: 'DELETE' });
         showToast(`Đã xóa ${currentViewingProject.id}`, "success");
         closeModal('view-script-modal');
-        fetchProjects();
+        loadProjects();
       } catch (err) {
         showToast("Lỗi khi xóa", "error");
       }

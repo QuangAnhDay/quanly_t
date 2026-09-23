@@ -193,6 +193,12 @@ class BatchDeletePayload(BaseModel):
 class OpenFilePayload(BaseModel):
     file_path: str
 
+class ConvertTikTokPayload(BaseModel):
+    style: Optional[str] = "blur"
+
+class SplitPartsPayload(BaseModel):
+    part_duration_sec: Optional[int] = 180
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = os.path.join(BASE_DIR, "web", "index.html")
@@ -305,7 +311,6 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
     os.makedirs(pkg_dir, exist_ok=True)
     pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
 
-    # Sinh file vào outputs/KBxxx/
     audio_path = await audio_engine.generate_speech(
         text=proj["content"],
         output_filename=f"{project_id}.mp3",
@@ -314,7 +319,6 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
         pitch=payload.pitch or "+0Hz"
     )
     
-    # Copy sang thư mục gói outputs/KBxxx
     import shutil
     try:
         shutil.copy2(audio_path, pkg_audio_path)
@@ -417,6 +421,84 @@ async def batch_create_capcut_api(payload: BatchCapCutPayload):
         "results": results,
         "errors": errors
     }
+
+@app.post("/api/projects/{project_id}/convert-to-tiktok")
+async def convert_to_tiktok_api(project_id: str, payload: Optional[ConvertTikTokPayload] = None):
+    """
+    Tự động chuyển đổi video ngang (YouTube 16:9) sang video dọc (TikTok 9:16) siêu tốc
+    bằng hiệu ứng nền mờ Cinematic (Blur Background) không cần render lại CapCut lần 2!
+    """
+    proj = database.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    
+    style = payload.style if payload else "blur"
+    
+    # Tìm file video nguồn 16:9
+    src_video = proj.get("video_youtube_path") or proj.get("video_path")
+    if not src_video or not os.path.exists(src_video):
+        pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+        if os.path.exists(pkg_dir):
+            for f in os.listdir(pkg_dir):
+                if f.lower().endswith((".mp4", ".mov")) and "tiktok" not in f.lower() and "doc" not in f.lower():
+                    src_video = os.path.join(pkg_dir, f)
+                    break
+    
+    if not src_video or not os.path.exists(src_video):
+        raise HTTPException(status_code=400, detail="Chưa có video ngang (YouTube) để chuyển đổi! Vui lòng xuất video YouTube trước.")
+
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    os.makedirs(pkg_dir, exist_ok=True)
+    out_tiktok_path = os.path.join(pkg_dir, f"{project_id}_tiktok.mp4")
+
+    try:
+        video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style)
+        updated = database.update_project(
+            project_id,
+            video_tiktok_path=out_tiktok_path,
+            status="5_hoan_thanh"
+        )
+        return {
+            "success": True,
+            "message": "Đã chuyển đổi thành công sang bản dọc TikTok 9:16 (Nền mờ Cinematic)!",
+            "video_tiktok_path": out_tiktok_path,
+            "project": updated
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi chuyển đổi video: {str(e)}")
+
+@app.post("/api/projects/{project_id}/split-parts")
+async def split_parts_api(project_id: str, payload: Optional[SplitPartsPayload] = None):
+    """
+    Cắt video dài (ví dụ 50 phút) thành chuỗi các tập ngắn Part 1, Part 2... cho TikTok (chỉ mất vài giây)
+    """
+    proj = database.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    
+    part_dur = payload.part_duration_sec if payload else 180
+    src_video = proj.get("video_tiktok_path") or proj.get("video_youtube_path") or proj.get("video_path")
+    if not src_video or not os.path.exists(src_video):
+        raise HTTPException(status_code=400, detail="Chưa có video để cắt tập!")
+    
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id, "parts")
+    os.makedirs(pkg_dir, exist_ok=True)
+    
+    try:
+        parts = video_engine.split_video_into_parts(
+            input_video_path=src_video,
+            output_dir=pkg_dir,
+            part_prefix=project_id,
+            part_duration_sec=part_dur
+        )
+        return {
+            "success": True,
+            "parts_count": len(parts),
+            "parts": parts,
+            "message": f"Đã cắt thành công {len(parts)} tập ngắn vào thư mục outputs/{project_id}/parts/"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi cắt tập: {str(e)}")
 
 @app.post("/api/open-capcut")
 async def open_capcut_app():
