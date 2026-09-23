@@ -185,7 +185,80 @@ def toggle_thumbnail(project_id: str) -> Optional[Dict[str, Any]]:
     new_val = 0 if p.get("has_thumbnail", 0) else 1
     return update_project(project_id, has_thumbnail=new_val)
 
+import shutil
+import glob
+
+CAPCUT_DRAFT_ROOT = os.path.expandvars(r"%LOCALAPPDATA%\CapCut\User Data\Projects\com.lveditor.draft")
+
+def clean_project_files(project_id: str):
+    """
+    Xóa toàn bộ các file và thư mục liên quan đến kịch bản:
+    - Gói thư mục outputs/KBxxx/
+    - File kịch bản backup trong 1_scripts/
+    - File audio trong 2_audio_input/
+    - File video trong 3_video_output/
+    - File thumbnail trong 4_thumbnails/
+    - Draft dự án trong CapCut PC
+    """
+    if not project_id:
+        return
+    
+    # 1. Xóa gói outputs/KBxxx/
+    pkg_dir = os.path.join(OUTPUTS_DIR, project_id)
+    if os.path.exists(pkg_dir):
+        try:
+            shutil.rmtree(pkg_dir, ignore_errors=True)
+        except Exception as e:
+            print(f"[Delete] Lỗi xóa thư mục {pkg_dir}: {e}")
+
+    # 2. Xóa file trong 1_scripts/
+    scripts_dir = os.path.join(BASE_DIR, "1_scripts")
+    if os.path.exists(scripts_dir):
+        for f in glob.glob(os.path.join(scripts_dir, f"{project_id}*")):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    # 3. Xóa file trong 2_audio_input/
+    audio_dir = os.path.join(BASE_DIR, "2_audio_input")
+    if os.path.exists(audio_dir):
+        for f in glob.glob(os.path.join(audio_dir, f"{project_id}.*")):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    # 4. Xóa file trong 3_video_output/
+    for sub in ["tiktok", "youtube"]:
+        v_dir = os.path.join(BASE_DIR, "3_video_output", sub)
+        if os.path.exists(v_dir):
+            for f in glob.glob(os.path.join(v_dir, f"{project_id}.*")):
+                try:
+                    os.remove(f)
+                except Exception:
+                    pass
+
+    # 5. Xóa file trong 4_thumbnails/
+    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
+    if os.path.exists(thumb_dir):
+        for f in glob.glob(os.path.join(thumb_dir, f"{project_id}.*")):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    # 6. Xóa Dự án Draft trong CapCut PC
+    if os.path.exists(CAPCUT_DRAFT_ROOT):
+        for d in glob.glob(os.path.join(CAPCUT_DRAFT_ROOT, f"{project_id}_*")):
+            if os.path.isdir(d):
+                try:
+                    shutil.rmtree(d, ignore_errors=True)
+                except Exception:
+                    pass
+
 def delete_project(project_id: str) -> bool:
+    clean_project_files(project_id)
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -196,10 +269,12 @@ def delete_project(project_id: str) -> bool:
     return affected > 0
 
 def batch_delete(project_ids: List[str]) -> int:
-    """Xóa hàng loạt kịch bản theo danh sách ID"""
-    init_db()
+    """Xóa hàng loạt kịch bản và toàn bộ file liên quan theo danh sách ID"""
     if not project_ids:
         return 0
+    for pid in project_ids:
+        clean_project_files(pid)
+    init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     placeholders = ",".join(["?"] * len(project_ids))
@@ -208,6 +283,7 @@ def batch_delete(project_ids: List[str]) -> int:
     count = cursor.rowcount
     conn.close()
     return count
+
 
 def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
     """
