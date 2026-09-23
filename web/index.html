@@ -383,6 +383,22 @@
       </div>
 
       <div class="p-6 overflow-y-auto custom-scroll flex-1 space-y-4">
+        <!-- Tampermonkey Userscript Banner -->
+        <div class="p-3.5 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-xl flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+              <i class="fa-solid fa-code"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-violet-950">Userscript Tự Động Hóa Tampermonkey (v2.1)</p>
+              <p class="text-[11px] text-violet-700">Tự động gõ lệnh 2 Skill, chờ AI viết và bắn dữ liệu về xưởng</p>
+            </div>
+          </div>
+          <a href="/claude_to_truyen.user.js" target="_blank" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition whitespace-nowrap">
+            <i class="fa-solid fa-download"></i> Cài/Cập Nhật Script
+          </a>
+        </div>
+
         <!-- Cài đặt lệnh Skill -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
           <div class="flex items-center justify-between">
@@ -561,7 +577,7 @@
             <!-- 1. Voice Audio -->
             <td class="p-3 text-center">
               ${isRaw ? `
-                <button onclick="dispatchBatchToClaude()" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold transition" title="Mở Claude để hoàn thiện kịch bản">
+                <button onclick="dispatchSingleToClaude('${p.id}')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold transition" title="Mở 1 Claude để hoàn thiện kịch bản này">
                   <i class="fa-solid fa-bolt"></i> Chờ Claude
                 </button>
               ` : (hasAudio ? `
@@ -700,16 +716,45 @@
 
     // 6. Action Handlers
     async function dispatchBatchToClaude() {
-      showToast("Đang mở các cửa sổ Chrome để Claude chạy 2 Skill...", "info");
+      let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
+      const ids = Array.from(selectedIds);
+      const count = savedSelected.length > 0 ? savedSelected.length : 5;
+      showToast(`Đang mở ${count} Claude chạy kịch bản thô...`, "info");
       try {
         const res = await fetch('/api/dispatch-claude-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profile_count: 5 })
+          body: JSON.stringify({
+            profiles: savedSelected.length > 0 ? savedSelected : null,
+            project_ids: ids.length > 0 ? ids : null,
+            profile_count: count
+          })
         });
         const data = await res.json();
         if (data.success) {
           showToast(`🚀 ${data.message}!`, "success");
+        }
+      } catch (err) {
+        showToast("Lỗi mở Claude", "error");
+      }
+    }
+
+    async function dispatchSingleToClaude(id) {
+      let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
+      showToast(`Đang mở Claude cho kịch bản [${id}]...`, "info");
+      try {
+        const res = await fetch('/api/dispatch-claude-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profiles: savedSelected.length > 0 ? [savedSelected[0]] : null,
+            project_ids: [id],
+            profile_count: 1
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🚀 Đã mở Claude cho [${id}]!`, "success");
         }
       } catch (err) {
         showToast("Lỗi mở Claude", "error");

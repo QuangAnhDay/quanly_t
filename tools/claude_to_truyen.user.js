@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Claude to Truyen Auto Producer (2-Skill Automation)
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Tự động hóa 2 Skill Claude (Tạo Kịch Bản + Gợi Ý Tiêu Đề/Thumb) và bắn dữ liệu về xưởng tại localhost:8888
+// @version      2.1
+// @description  Tự động hóa 2 Skill Claude (Tạo Kịch Bản + Gợi Ý Tiêu Đề/Thumb) và gửi dữ liệu về xưởng tại localhost:8888
 // @author       Antigravity
 // @match        https://claude.ai/*
 // @grant        GM_xmlhttpRequest
@@ -19,7 +19,7 @@
     // Helper sleep
     const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-    // Helper gọi API
+    // Helper gọi API tới server
     async function apiFetch(endpoint, options = {}) {
         const url = `${SERVER_URL}${endpoint}`;
         return new Promise((resolve, reject) => {
@@ -43,31 +43,44 @@
     // Lấy ô nhập liệu ProseMirror của Claude
     function getChatInput() {
         return document.querySelector('div.ProseMirror[contenteditable="true"]') ||
-               document.querySelector('div[contenteditable="true"]');
+               document.querySelector('div[contenteditable="true"]') ||
+               document.querySelector('fieldset div[contenteditable="true"]');
     }
 
     // Lấy nút Send của Claude
     function getSendButton() {
-        return document.querySelector('button[aria-label="Send message"], button[aria-label="Send Message"]') ||
-               document.querySelector('button.bg-text-000, button[type="submit"]');
+        return document.querySelector('button[aria-label*="Send"]') ||
+               document.querySelector('button[aria-label*="Gửi"]') ||
+               document.querySelector('button[type="submit"]') ||
+               document.querySelector('button.bg-text-000') ||
+               document.querySelector('fieldset button:last-child');
     }
 
-    // Kiểm tra Claude có đang trả lời không
+    // Kiểm tra Claude có đang streaming/phản hồi không
     function isClaudeStreaming() {
-        // Nút stop đang hiện hoặc streaming attribute
-        const stopBtn = document.querySelector('button[aria-label="Stop Response"], button[aria-label="Stop response"], button[aria-label="Dừng câu trả lời"]');
+        const stopBtn = document.querySelector('button[aria-label*="Stop"], button[aria-label*="Dừng"]');
         const streamingEl = document.querySelector('[data-is-streaming="true"]');
         return !!(stopBtn || streamingEl);
     }
 
+    // Chờ phần tử xuất hiện trong DOM
+    async function waitForElement(getterFn, maxWaitSeconds = 15) {
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitSeconds * 1000) {
+            const el = getterFn();
+            if (el) return el;
+            await sleep(500);
+        }
+        return null;
+    }
+
     // Chờ Claude hoàn thành câu trả lời
-    async function waitForClaudeDone(maxWaitSeconds = 180) {
-        await sleep(2500); // Chờ khởi động streaming
+    async function waitForClaudeDone(maxWaitSeconds = 240) {
+        await sleep(3000); // Chờ khởi động streaming
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
             if (!isClaudeStreaming()) {
-                // Kiểm tra xem nút send đã hoạt động trở lại chưa
-                await sleep(1500);
+                await sleep(2000);
                 if (!isClaudeStreaming()) return true;
             }
             await sleep(1000);
@@ -77,32 +90,49 @@
 
     // Nhập text vào khung chat Claude một cách an toàn
     async function typeIntoChat(text) {
-        const input = getChatInput();
-        if (!input) throw new Error("Không tìm thấy khung chat Claude!");
+        const input = await waitForElement(getChatInput, 15);
+        if (!input) throw new Error("Không tìm thấy khung chat Claude! Vui lòng tải lại trang.");
 
         input.focus();
-        // Xóa nội dung cũ
-        input.innerHTML = '';
-        // Chèn nội dung mới
-        document.execCommand('insertText', false, text);
+        await sleep(300);
+
+        // Bôi đen toàn bộ nếu có nội dung cũ
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(input);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Chèn nội dung text
+        const inserted = document.execCommand('insertText', false, text);
+        if (!inserted || !input.innerText.trim()) {
+            input.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
+        }
         
-        // Dispatch các sự kiện input
+        // Dispatch các sự kiện cần thiết cho React / ProseMirror
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        await sleep(500);
+        await sleep(600);
     }
 
     // Bấm gửi tin nhắn
     async function clickSend() {
+        await sleep(300);
         const btn = getSendButton();
         if (btn && !btn.disabled) {
             btn.click();
             return true;
         }
-        // Fallback: bấm Enter
+        // Fallback: bấm Enter vào input
         const input = getChatInput();
         if (input) {
-            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+            input.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Enter',
+                code: 'Enter',
+                keyCode: 13,
+                which: 13,
+                bubbles: true
+            }));
             return true;
         }
         return false;
@@ -118,10 +148,10 @@
     async function runTwoSkillPipeline(project) {
         if (isAutoRunning) return;
         isAutoRunning = true;
-        updateStatusWidget(`⏳ Đang xử lý [${project.id}]...`, "#eab308");
+        updateStatusWidget(`⏳ Đang chạy kịch bản [${project.id}]...`, "#eab308");
 
         try {
-            // 1. Lấy cấu hình skill
+            // 1. Lấy cấu hình skill từ server
             const skillConfig = await apiFetch('/api/claude-skill-config').catch(() => ({
                 script_skill_command: '/tao-kich-ban',
                 title_thumb_skill_command: '/tieu-de-thumb'
@@ -131,43 +161,43 @@
             const titleThumbSkill = (skillConfig.title_thumb_skill_command || '/tieu-de-thumb').trim();
 
             const rawContent = project.raw_content || project.content || "";
-            if (!rawContent) throw new Error(`Kịch bản ${project.id} không có nội dung thô!`);
+            if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
 
             // 2. LƯỢT 1: Gửi Skill Kịch Bản + Bản Thô
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
-            await sleep(600);
+            await sleep(800);
             await clickSend();
 
             // Chờ Claude viết xong kịch bản
-            const done1 = await waitForClaudeDone(240);
-            if (!done1) throw new Error("Claude xử lý kịch bản quá lâu hoặc bị lỗi!");
+            const done1 = await waitForClaudeDone(300);
+            if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian!");
 
             // 3. LƯỢT 2: Gửi Skill Gợi Ý Tiêu Đề & Thumbnail
             updateStatusWidget(`[2/2] Đang xin Tiêu đề & Thumb [${project.id}]...`, "#3b82f6");
-            await sleep(1500);
+            await sleep(2000);
             const prompt2 = `${titleThumbSkill}\n\nHãy gợi ý 3 tiêu đề hấp dẫn và 1 đoạn prompt mô tả ảnh thumbnail (tiếng Anh và tiếng Việt) cho kịch bản vừa tạo ở trên.`;
             await typeIntoChat(prompt2);
-            await sleep(600);
+            await sleep(800);
             await clickSend();
 
             // Chờ Claude phản hồi lượt 2
-            const done2 = await waitForClaudeDone(120);
-            if (!done2) throw new Error("Claude sinh tiêu đề quá lâu!");
+            const done2 = await waitForClaudeDone(150);
+            if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian!");
 
             // 4. Bóc tách kết quả
             const responses = getClaudeResponses();
             const fullScript = responses[responses.length - 2] || responses[0] || "";
             const titleThumbText = responses[responses.length - 1] || "";
 
-            // Trích xuất tiêu đề hay nhất
+            // Trích xuất tiêu đề
             let title = project.title || "";
             const titleLines = titleThumbText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
             for (const line of titleLines) {
-                if (line.match(/(tiêu đề|title|1\.|-)/i) && line.length > 10 && line.length < 120) {
+                if (line.match(/(tiêu đề|title|1\.|-)/i) && line.length > 8 && line.length < 120) {
                     title = line.replace(/^(tiêu đề|title|1\.|2\.|3\.|-|\*|\"|\:)+/i, '').replace(/[\"\*]/g, '').trim();
-                    if (title.length > 10) break;
+                    if (title.length > 8) break;
                 }
             }
             if (!title || title.startsWith("Bản thô:")) {
@@ -176,7 +206,7 @@
 
             // Gửi dữ liệu về xưởng
             updateStatusWidget(`💾 Đang lưu [${project.id}] về Xưởng...`, "#6366f1");
-            const saveRes = await apiFetch(`/api/projects/${project.id}/ai-complete`, {
+            await apiFetch(`/api/projects/${project.id}/ai-complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -279,61 +309,48 @@
         }
     }
 
-    // Thêm nút lưu thủ công cho từng tin nhắn
-    function addManualSaveButtons() {
-        const messages = document.querySelectorAll('.font-claude-message, [data-is-streaming="false"]');
-        messages.forEach((msg) => {
-            if (msg.dataset.truyenSavedBtn) return;
-            msg.dataset.truyenSavedBtn = "true";
+    // Tự động kiểm tra URL xem có gắn cờ auto_kb=KBxxx không
+    async function checkAutoRunFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoKbId = urlParams.get('auto_kb');
 
-            const btn = document.createElement('button');
-            btn.innerHTML = '📥 Lưu vào Xưởng';
-            btn.style.cssText = `
-                margin-top: 8px;
-                padding: 4px 10px;
-                background-color: #f1f5f9;
-                color: #475569;
-                font-size: 11px;
-                font-weight: 600;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            `;
+        if (!autoKbId) return;
 
-            btn.onclick = async () => {
-                btn.disabled = true;
-                btn.innerHTML = '⏳ Đang lưu...';
-                const content = msg.innerText.trim();
-                const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                let title = lines[0] ? lines[0].replace(/^[#*-.\s]+/, '') : "Kịch bản Claude";
-                if (title.length > 60) title = title.substring(0, 60) + "...";
+        // Xóa tham số trên URL để tránh lặp khi refresh
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
 
-                try {
-                    const data = await apiFetch('/api/save-script', {
-                        method: 'POST',
-                        body: JSON.stringify({ title: title, content: content })
-                    });
-                    if (data.success) {
-                        btn.innerHTML = `✅ Đã lưu [${data.id}]`;
-                        btn.style.backgroundColor = '#dcfce7';
-                        btn.style.color = '#15803d';
-                    }
-                } catch (err) {
-                    btn.innerHTML = '❌ Lỗi lưu';
-                    btn.disabled = false;
-                }
-            };
-            msg.appendChild(btn);
-        });
+        updateStatusWidget(`🚀 Tìm thấy kịch bản [${autoKbId}]. Đang tải dữ liệu...`, "#f59e0b");
+
+        try {
+            // Lấy thông tin kịch bản từ server
+            const projData = await apiFetch(`/api/projects/${autoKbId}`);
+            const project = projData.project || projData;
+
+            if (!project || (!project.raw_content && !project.content)) {
+                updateStatusWidget(`⚠️ Không tìm thấy nội dung của [${autoKbId}]`, "#ef4444");
+                return;
+            }
+
+            // Chờ khung chat sẵn sàng
+            updateStatusWidget(`⏳ Chuẩn bị chạy 2 Skill cho [${autoKbId}] trong 2s...`, "#8b5cf6");
+            await sleep(2500);
+
+            // Bắt đầu chạy tự động
+            runTwoSkillPipeline(project);
+
+        } catch (err) {
+            console.error("Lỗi tự động chạy từ URL:", err);
+            updateStatusWidget(`❌ Lỗi kết nối Xưởng: ${err.message}`, "#ef4444");
+        }
     }
 
     // Khởi tạo
     setTimeout(() => {
         createFloatingWidget();
         refreshPendingList();
+        checkAutoRunFromUrl();
         setInterval(refreshPendingList, 15000);
-        setInterval(addManualSaveButtons, 2500);
-    }, 2000);
+    }, 1500);
 
 })();

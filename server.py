@@ -128,8 +128,18 @@ class SplitPartsPayload(BaseModel):
     part_duration_sec: Optional[int] = 180
 
 class DispatchClaudePayload(BaseModel):
+    profiles: Optional[List[str]] = None
     project_ids: Optional[List[str]] = None
     profile_count: Optional[int] = 5
+
+@app.get("/claude_to_truyen.user.js")
+async def get_userscript_file():
+    """Endpoint giúp cài đặt hoặc cập nhật Tampermonkey Userscript 1-Click"""
+    js_path = os.path.join(BASE_DIR, "tools", "claude_to_truyen.user.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="text/javascript")
+    raise HTTPException(status_code=404, detail="Không tìm thấy file Userscript")
+
 
 
 
@@ -242,11 +252,22 @@ async def complete_raw_by_ai(project_id: str, payload: AICompletePayload):
 
 @app.post("/api/dispatch-claude-batch")
 async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
-    """Mở các profile Chrome để xử lý kịch bản thô"""
+    """Mở chính xác các profile Chrome đã chọn và tự động gán kịch bản thô tương ứng"""
     cfg = get_config()
-    profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"])
-    count = min(payload.profile_count or 5, len(profiles))
-    selected_profiles = profiles[:count]
+    
+    # Ưu tiên danh sách profile gửi từ giao diện web
+    if payload.profiles and len(payload.profiles) > 0:
+        selected_profiles = payload.profiles
+    else:
+        profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"])
+        count = min(payload.profile_count or 5, len(profiles))
+        selected_profiles = profiles[:count]
+
+    # Lấy danh sách kịch bản thô cần xử lý
+    if payload.project_ids and len(payload.project_ids) > 0:
+        pending_list = [database.get_project(pid) for pid in payload.project_ids if database.get_project(pid)]
+    else:
+        pending_list = database.get_pending_raw_projects()
 
     chrome_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
     if not os.path.exists(chrome_path):
@@ -255,17 +276,20 @@ async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
         chrome_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
 
     launched = []
-    for pid in selected_profiles:
-        cmd = f'"{chrome_path}" --profile-directory="{pid}" "https://claude.ai"'
+    for idx, pid in enumerate(selected_profiles):
+        target_kb = pending_list[idx]["id"] if idx < len(pending_list) else None
+        target_url = f"https://claude.ai/new?auto_kb={target_kb}" if target_kb else "https://claude.ai/new"
+        cmd = f'"{chrome_path}" --profile-directory="{pid}" "{target_url}"'
         subprocess.Popen(cmd, shell=True)
-        launched.append(pid)
+        launched.append({"profile": pid, "assigned_kb": target_kb})
 
     return {
         "success": True,
         "launched": launched,
         "count": len(launched),
-        "message": f"Đã mở {len(launched)} Profile Chrome để chạy kịch bản thô"
+        "message": f"Đã mở {len(launched)} Profile Chrome với kịch bản thô được gán tự động"
     }
+
 
 @app.post("/api/save-script")
 async def save_script_from_claude(payload: ScriptPayload):
@@ -602,6 +626,14 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     subprocess.Popen(f'explorer "{target}"')
     return {"success": True, "opened": target}
 
+
+@app.get("/claude_to_truyen.user.js")
+async def serve_userscript():
+    """Phục vụ file Tampermonkey script trực tiếp để cài đặt 1-click"""
+    script_path = os.path.join(BASE_DIR, "tools", "claude_to_truyen.user.js")
+    if not os.path.exists(script_path):
+        raise HTTPException(status_code=404, detail="Không tìm thấy script")
+    return FileResponse(script_path, media_type="application/javascript")
 
 @app.post("/api/launch-chrome")
 async def launch_chrome_profiles():

@@ -2,12 +2,18 @@
   "project_dir": "D:\\quanly_tt",
   "server_host": "127.0.0.1",
   "server_port": 8888,
-  "chrome_profiles": ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"],
+  "chrome_profiles": [
+    "Profile 7",
+    "Profile 2",
+    "Profile 4",
+    "Profile 5",
+    "Profile 1"
+  ],
   "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "default_voice": "vi-VN-HoaiMyNeural",
   "voicestudio_output_dir": "C:\\voicestudio\\outputs",
   "claude_skills": {
-    "script_skill_command": "/tao-kich-ban",
-    "title_thumb_skill_command": "/tieu-de-thumb"
+    "script_skill_command": "/kichban-audio-hocduong",
+    "title_thumb_skill_command": "/tieu-de-thumb-audio-hoc-duong"
   }
 }
