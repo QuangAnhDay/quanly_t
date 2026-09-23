@@ -97,17 +97,28 @@ class BatchCapCutPayload(BaseModel):
     project_ids: List[str]
     theme: Optional[str] = "nau_an"
 
-class BatchDeletePayload(BaseModel):
-    project_ids: List[str]
+class RawScriptPayload(BaseModel):
+    raw_content: str
+    title: Optional[str] = None
+    notes: Optional[str] = ""
 
-class OpenFilePayload(BaseModel):
-    file_path: str
+class BatchRawScriptPayload(BaseModel):
+    raw_scripts: List[str]
 
-class ConvertTikTokPayload(BaseModel):
-    style: Optional[str] = "blur"
+class AICompletePayload(BaseModel):
+    title: str
+    content: str
+    thumb_prompt: Optional[str] = ""
+    notes: Optional[str] = ""
 
-class SplitPartsPayload(BaseModel):
-    part_duration_sec: Optional[int] = 180
+class ClaudeSkillConfigPayload(BaseModel):
+    script_skill_command: str
+    title_thumb_skill_command: str
+
+class DispatchClaudePayload(BaseModel):
+    project_ids: Optional[List[str]] = None
+    profile_count: Optional[int] = 5
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
@@ -162,6 +173,86 @@ async def create_project_api(payload: ScriptPayload):
     )
     return proj
 
+@app.get("/api/claude-skill-config")
+async def api_get_claude_skill_config():
+    cfg = get_config()
+    skills = cfg.get("claude_skills", {
+        "script_skill_command": "/tao-kich-ban",
+        "title_thumb_skill_command": "/tieu-de-thumb"
+    })
+    return skills
+
+@app.post("/api/claude-skill-config")
+async def api_set_claude_skill_config(payload: ClaudeSkillConfigPayload):
+    cfg = get_config()
+    cfg["claude_skills"] = {
+        "script_skill_command": payload.script_skill_command.strip(),
+        "title_thumb_skill_command": payload.title_thumb_skill_command.strip()
+    }
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return {"success": True, "claude_skills": cfg["claude_skills"]}
+
+@app.get("/api/projects/pending-raw")
+async def get_pending_raw():
+    """Lấy danh sách các kịch bản thô chưa hoàn thiện"""
+    return database.get_pending_raw_projects()
+
+@app.post("/api/projects/create-raw")
+async def create_raw_project_api(payload: RawScriptPayload):
+    proj = database.create_raw_project(
+        raw_content=payload.raw_content,
+        title=payload.title,
+        notes=payload.notes
+    )
+    return proj
+
+@app.post("/api/projects/batch-create-raw")
+async def batch_create_raw_api(payload: BatchRawScriptPayload):
+    projs = database.batch_create_raw_projects(payload.raw_scripts)
+    return {"success": True, "count": len(projs), "projects": projs}
+
+@app.post("/api/projects/{project_id}/ai-complete")
+async def complete_raw_by_ai(project_id: str, payload: AICompletePayload):
+    """Cập nhật kịch bản sau khi Claude chạy xong 2 Skill"""
+    proj = database.complete_raw_project(
+        project_id=project_id,
+        title=payload.title,
+        content=payload.content,
+        thumb_prompt=payload.thumb_prompt or "",
+        notes=payload.notes or ""
+    )
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    return {"success": True, "project": proj}
+
+@app.post("/api/dispatch-claude-batch")
+async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
+    """Mở các profile Chrome để xử lý kịch bản thô"""
+    cfg = get_config()
+    profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"])
+    count = min(payload.profile_count or 5, len(profiles))
+    selected_profiles = profiles[:count]
+
+    chrome_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    if not os.path.exists(chrome_path):
+        chrome_path = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+    if not os.path.exists(chrome_path):
+        chrome_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
+
+    launched = []
+    for pid in selected_profiles:
+        cmd = f'"{chrome_path}" --profile-directory="{pid}" "https://claude.ai"'
+        subprocess.Popen(cmd, shell=True)
+        launched.append(pid)
+
+    return {
+        "success": True,
+        "launched": launched,
+        "count": len(launched),
+        "message": f"Đã mở {len(launched)} Profile Chrome để chạy kịch bản thô"
+    }
+
 @app.post("/api/save-script")
 async def save_script_from_claude(payload: ScriptPayload):
     """API dành riêng cho Tampermonkey Userscript trên Claude Web"""
@@ -172,6 +263,7 @@ async def save_script_from_claude(payload: ScriptPayload):
         notes="Lưu tự động từ Claude Web (1-Click)"
     )
     return {"success": True, "id": proj["id"], "project": proj}
+
 
 @app.get("/api/projects/{project_id}")
 async def get_project_api(project_id: str):

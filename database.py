@@ -19,6 +19,8 @@ def init_db():
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
+        raw_content TEXT,
+        thumb_prompt TEXT,
         status TEXT NOT NULL DEFAULT '1_cho_duyet',
         voice TEXT DEFAULT 'vi-VN-HoaiMyNeural',
         rate TEXT DEFAULT '+0%',
@@ -51,6 +53,8 @@ def init_db():
         ("capcut_draft_youtube", "TEXT"),
         ("has_thumbnail", "INTEGER DEFAULT 0"),
         ("package_dir", "TEXT"),
+        ("raw_content", "TEXT"),
+        ("thumb_prompt", "TEXT"),
     ]
     
     for col_name, col_type in migrations:
@@ -86,7 +90,15 @@ def get_package_dir(kb_id: str) -> str:
     os.makedirs(pkg_dir, exist_ok=True)
     return pkg_dir
 
-def create_project(title: str, content: str, status: str = "1_cho_duyet", voice: str = "vi-VN-HoaiMyNeural", notes: str = "") -> Dict[str, Any]:
+def create_project(
+    title: str,
+    content: str,
+    status: str = "1_cho_duyet",
+    voice: str = "vi-VN-HoaiMyNeural",
+    notes: str = "",
+    raw_content: str = "",
+    thumb_prompt: str = ""
+) -> Dict[str, Any]:
     init_db()
     kb_id = get_next_kb_id()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -98,24 +110,93 @@ def create_project(title: str, content: str, status: str = "1_cho_duyet", voice:
         f.write(f"Tiêu đề: {title}\n")
         f.write(f"Mã kịch bản: {kb_id}\n")
         f.write(f"Ngày tạo: {now}\n")
+        if raw_content:
+            f.write(f"Kịch bản thô ban đầu:\n{raw_content}\n")
+            f.write("-" * 40 + "\n")
         f.write("="*40 + "\n\n")
-        f.write(content)
+        f.write(content or raw_content)
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO projects (
-        id, title, content, status, voice, rate, pitch, 
+        id, title, content, raw_content, thumb_prompt, status, voice, rate, pitch, 
         audio_path, video_path, video_tiktok_path, video_youtube_path,
         capcut_draft_tiktok, capcut_draft_youtube, has_thumbnail, thumbnail_path,
         package_dir, created_at, updated_at, notes, is_published
     )
-    VALUES (?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0)
-    """, (kb_id, title, content, status, voice, pkg_dir, now, now, notes))
+    VALUES (?, ?, ?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0)
+    """, (kb_id, title, content, raw_content, thumb_prompt, status, voice, pkg_dir, now, now, notes))
     conn.commit()
     conn.close()
 
     return get_project(kb_id)
+
+def create_raw_project(raw_content: str, title: Optional[str] = None, notes: str = "") -> Dict[str, Any]:
+    """Tạo một kịch bản thô (chờ AI hoàn thiện)"""
+    first_line = raw_content.strip().split("\n")[0][:40] if raw_content.strip() else "Kịch bản thô"
+    auto_title = title or f"Bản thô: {first_line}..."
+    return create_project(
+        title=auto_title,
+        content="",
+        raw_content=raw_content,
+        status="0_ban_tho",
+        notes=notes or "Kịch bản thô (Chờ Claude xử lý 2 Skill)"
+    )
+
+def batch_create_raw_projects(raw_list: List[str]) -> List[Dict[str, Any]]:
+    """Tạo hàng loạt kịch bản thô cùng lúc"""
+    results = []
+    for raw in raw_list:
+        clean = raw.strip()
+        if clean:
+            p = create_raw_project(clean)
+            results.append(p)
+    return results
+
+def get_pending_raw_projects() -> List[Dict[str, Any]]:
+    """Lấy danh sách các kịch bản thô chưa được AI xử lý"""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM projects WHERE status = '0_ban_tho' ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def complete_raw_project(project_id: str, title: str, content: str, thumb_prompt: str = "", notes: str = "") -> Optional[Dict[str, Any]]:
+    """Cập nhật kịch bản thô sau khi Claude chạy xong 2 Skill"""
+    p = get_project(project_id)
+    if not p:
+        return None
+    
+    pkg_dir = get_package_dir(project_id)
+    pkg_script_file = os.path.join(pkg_dir, f"{project_id}_script.txt")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(pkg_script_file, "w", encoding="utf-8") as f:
+        f.write(f"Tiêu đề: {title}\n")
+        f.write(f"Mã kịch bản: {project_id}\n")
+        f.write(f"Ngày cập nhật: {now}\n")
+        if p.get("raw_content"):
+            f.write(f"Kịch bản thô gốc:\n{p['raw_content']}\n")
+            f.write("-" * 40 + "\n")
+        if thumb_prompt:
+            f.write(f"Gợi ý Thumbnail Prompt:\n{thumb_prompt}\n")
+            f.write("-" * 40 + "\n")
+        f.write("="*40 + "\n\n")
+        f.write(content)
+
+    updated_notes = notes or f"AI Claude hoàn thiện lúc {now}"
+    return update_project(
+        project_id,
+        title=title,
+        content=content,
+        thumb_prompt=thumb_prompt,
+        status="1_cho_duyet",
+        notes=updated_notes
+    )
+
 
 def get_all_projects() -> List[Dict[str, Any]]:
     init_db()
