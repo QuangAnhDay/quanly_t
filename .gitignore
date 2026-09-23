@@ -9,6 +9,8 @@ data/*.sqlite3
 !data/**/.gitkeep
 
 # Output folders (ignored so large media files are not uploaded to git)
+outputs/*
+!outputs/**/.gitkeep
 2_audio_input/*
 !2_audio_input/**/.gitkeep
 3_video_output/*

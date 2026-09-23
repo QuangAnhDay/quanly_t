@@ -21,6 +21,7 @@ import capcut_engine
 
 # Khởi tạo toàn bộ thư mục cần thiết
 capcut_engine.init_theme_folders()
+os.makedirs(os.path.join(BASE_DIR, "outputs"), exist_ok=True)
 
 # Khởi tạo DB
 database.init_db()
@@ -64,70 +65,96 @@ def get_detected_chrome_profiles():
     return profiles
 
 def auto_sync_disk_files():
-    """Tự động kiểm tra các thư mục đĩa để đồng bộ trạng thái Audio, Video Đa Kênh và Thumbnail"""
+    """Tự động kiểm tra gói outputs/KBxxx và các thư mục liên quan để cập nhật trạng thái"""
+    outputs_base = os.path.join(BASE_DIR, "outputs")
     audio_dir = os.path.join(BASE_DIR, "2_audio_input")
     video_dir = os.path.join(BASE_DIR, "3_video_output")
-    tiktok_dir = os.path.join(video_dir, "tiktok")
-    youtube_dir = os.path.join(video_dir, "youtube")
     thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
     
     projects = database.get_all_projects()
     for p in projects:
         pid = p["id"]
+        pkg_dir = os.path.join(outputs_base, pid)
+        os.makedirs(pkg_dir, exist_ok=True)
         updates = {}
         
-        # 1. Kiểm tra file audio
+        # 1. Kiểm tra file Audio trong gói outputs/KBxxx/ trước
         if not p.get("audio_path") or not os.path.exists(p["audio_path"]):
-            for ext in [".wav", ".mp3", ".m4a"]:
-                cand = os.path.join(audio_dir, f"{pid}{ext}")
-                if os.path.exists(cand):
-                    updates["audio_path"] = cand
-                    if p["status"] in ["1_cho_duyet", "2_cho_voice"]:
-                        updates["status"] = "3_da_co_audio"
-                    break
-        
-        # 2. Kiểm tra Video TikTok
-        if not p.get("video_tiktok_path") or not os.path.exists(p["video_tiktok_path"]):
-            for ext in [".mp4", ".mov"]:
-                cand = os.path.join(tiktok_dir, f"{pid}{ext}")
-                if not os.path.exists(cand):
-                    cand = os.path.join(tiktok_dir, f"{pid}_tiktok{ext}")
-                if os.path.exists(cand):
-                    updates["video_tiktok_path"] = cand
-                    break
-                    
-        # 3. Kiểm tra Video YouTube
-        if not p.get("video_youtube_path") or not os.path.exists(p["video_youtube_path"]):
-            for ext in [".mp4", ".mov"]:
-                cand = os.path.join(youtube_dir, f"{pid}{ext}")
-                if not os.path.exists(cand):
-                    cand = os.path.join(youtube_dir, f"{pid}_youtube{ext}")
-                if os.path.exists(cand):
-                    updates["video_youtube_path"] = cand
-                    break
-                    
-        # 4. Kiểm tra Video chung
-        if not p.get("video_path") or not os.path.exists(p["video_path"]):
-            cand = os.path.join(video_dir, f"{pid}.mp4")
-            if os.path.exists(cand):
-                updates["video_path"] = cand
-            elif updates.get("video_tiktok_path"):
-                updates["video_path"] = updates["video_tiktok_path"]
-            elif updates.get("video_youtube_path"):
-                updates["video_path"] = updates["video_youtube_path"]
+            found_audio = None
+            if os.path.exists(pkg_dir):
+                for f in os.listdir(pkg_dir):
+                    if f.lower().endswith((".wav", ".mp3", ".m4a")):
+                        found_audio = os.path.join(pkg_dir, f)
+                        break
+            if not found_audio:
+                for ext in [".wav", ".mp3", ".m4a"]:
+                    cand = os.path.join(audio_dir, f"{pid}{ext}")
+                    if os.path.exists(cand):
+                        found_audio = cand
+                        break
+            if found_audio:
+                updates["audio_path"] = found_audio
+                if p["status"] in ["1_cho_duyet", "2_cho_voice"]:
+                    updates["status"] = "3_da_co_audio"
 
-        # Nếu có video đã xuất thì cập nhật hoàn thành
-        if (updates.get("video_tiktok_path") or updates.get("video_youtube_path") or updates.get("video_path")) and p["status"] != "5_hoan_thanh":
+        # 2. Kiểm tra Video TikTok trong gói outputs/KBxxx/
+        if not p.get("video_tiktok_path") or not os.path.exists(p["video_tiktok_path"]):
+            found_tt = None
+            if os.path.exists(pkg_dir):
+                for f in os.listdir(pkg_dir):
+                    if f.lower().endswith((".mp4", ".mov")) and ("tiktok" in f.lower() or "doc" in f.lower()):
+                        found_tt = os.path.join(pkg_dir, f)
+                        break
+            if not found_tt:
+                for ext in [".mp4", ".mov"]:
+                    cand = os.path.join(video_dir, "tiktok", f"{pid}{ext}")
+                    if os.path.exists(cand):
+                        found_tt = cand
+                        break
+            if found_tt:
+                updates["video_tiktok_path"] = found_tt
+                updates["video_path"] = found_tt
+
+        # 3. Kiểm tra Video YouTube trong gói outputs/KBxxx/
+        if not p.get("video_youtube_path") or not os.path.exists(p["video_youtube_path"]):
+            found_yt = None
+            if os.path.exists(pkg_dir):
+                for f in os.listdir(pkg_dir):
+                    if f.lower().endswith((".mp4", ".mov")) and ("youtube" in f.lower() or "ngang" in f.lower() or "yt" in f.lower()):
+                        found_yt = os.path.join(pkg_dir, f)
+                        break
+            if not found_yt:
+                for ext in [".mp4", ".mov"]:
+                    cand = os.path.join(video_dir, "youtube", f"{pid}{ext}")
+                    if os.path.exists(cand):
+                        found_yt = cand
+                        break
+            if found_yt:
+                updates["video_youtube_path"] = found_yt
+                if not updates.get("video_path"):
+                    updates["video_path"] = found_yt
+
+        # Cập nhật hoàn thành nếu đã có video
+        if (updates.get("video_tiktok_path") or updates.get("video_youtube_path") or p.get("video_tiktok_path") or p.get("video_youtube_path")) and p["status"] != "5_hoan_thanh":
             updates["status"] = "5_hoan_thanh"
 
-        # 5. Kiểm tra Thumbnail
+        # 4. Kiểm tra Thumbnail trong gói outputs/KBxxx/
         if not p.get("has_thumbnail") or not p.get("thumbnail_path") or not os.path.exists(p.get("thumbnail_path", "")):
-            for ext in [".png", ".jpg", ".jpeg", ".webp"]:
-                cand = os.path.join(thumb_dir, f"{pid}{ext}")
-                if os.path.exists(cand):
-                    updates["has_thumbnail"] = 1
-                    updates["thumbnail_path"] = cand
-                    break
+            found_th = None
+            if os.path.exists(pkg_dir):
+                for f in os.listdir(pkg_dir):
+                    if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                        found_th = os.path.join(pkg_dir, f)
+                        break
+            if not found_th:
+                for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                    cand = os.path.join(thumb_dir, f"{pid}{ext}")
+                    if os.path.exists(cand):
+                        found_th = cand
+                        break
+            if found_th:
+                updates["has_thumbnail"] = 1
+                updates["thumbnail_path"] = found_th
 
         if updates:
             database.update_project(pid, **updates)
@@ -274,28 +301,40 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
-    output_filename = f"{project_id}.mp3"
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    os.makedirs(pkg_dir, exist_ok=True)
+    pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
+
+    # Sinh file vào outputs/KBxxx/
     audio_path = await audio_engine.generate_speech(
         text=proj["content"],
-        output_filename=output_filename,
+        output_filename=f"{project_id}.mp3",
         voice=payload.voice or proj.get("voice") or "vi-VN-HoaiMyNeural",
         rate=payload.rate or "+0%",
         pitch=payload.pitch or "+0Hz"
     )
     
+    # Copy sang thư mục gói outputs/KBxxx
+    import shutil
+    try:
+        shutil.copy2(audio_path, pkg_audio_path)
+        actual_path = pkg_audio_path
+    except Exception:
+        actual_path = audio_path
+    
     updated = database.update_project(
         project_id,
-        audio_path=audio_path,
+        audio_path=actual_path,
         voice=payload.voice,
         rate=payload.rate,
         pitch=payload.pitch,
         status="3_da_co_audio"
     )
-    return {"success": True, "audio_path": audio_path, "project": updated}
+    return {"success": True, "audio_path": actual_path, "project": updated}
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")
 async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
-    """Tự động tạo ĐỒNG THỜI 2 Dự Án CapCut (TikTok 9:16 và YouTube 16:9) với video nền tự khớp"""
+    """Tự động tạo ĐỒNG THỜI 2 Dự Án CapCut (TikTok 9:16 và YouTube 16:9)"""
     proj = database.get_project(project_id)
     if not proj or not proj.get("audio_path"):
         raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
@@ -338,7 +377,7 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
 
 @app.post("/api/projects/batch-create-capcut")
 async def batch_create_capcut_api(payload: BatchCapCutPayload):
-    """Tạo hàng loạt 2 Dự Án CapCut (TikTok & YouTube) cho toàn bộ kịch bản đã chọn"""
+    """Tạo hàng loạt 2 Dự Án CapCut cho toàn bộ kịch bản đã chọn"""
     theme = payload.theme or "nau_an"
     theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
     theme_vn = theme_names.get(theme, theme)
@@ -387,38 +426,16 @@ async def open_capcut_app():
         return {"success": True, "message": "Đã mở CapCut PC"}
     return {"success": False, "message": "Không tìm thấy CapCut.exe trong máy"}
 
-@app.post("/api/projects/{project_id}/render-video")
-async def render_video_api(project_id: str, payload: RenderVideoPayload):
-    proj = database.get_project(project_id)
-    if not proj or not proj.get("audio_path"):
-        raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
-    
-    audio_path = proj["audio_path"]
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=400, detail=f"Không tìm thấy file audio tại {audio_path}")
-        
-    output_filename = f"{project_id}.mp4"
-    video_path = video_engine.render_video(
-        audio_path=audio_path,
-        output_filename=output_filename,
-        title=proj["title"],
-        aspect_ratio=payload.aspect_ratio or "9:16"
-    )
-    
-    updated = database.update_project(
-        project_id,
-        video_path=video_path,
-        video_tiktok_path=video_path,
-        status="4_da_render_video"
-    )
-    return {"success": True, "video_path": video_path, "project": updated}
-
 @app.post("/api/projects/{project_id}/generate-thumb")
 async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
     proj = database.get_project(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    os.makedirs(pkg_dir, exist_ok=True)
+    pkg_thumb_path = os.path.join(pkg_dir, f"{project_id}_thumb.jpg")
+
     prompt = payload.prompt or f"Cinematic illustration for Vietnamese story: {proj['title']}"
     output_filename = f"{project_id}.jpg"
     thumb_path = thumbnail_engine.generate_thumbnail(
@@ -427,12 +444,19 @@ async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
         aspect_ratio=payload.aspect_ratio or "9:16"
     )
     
+    import shutil
+    try:
+        shutil.copy2(thumb_path, pkg_thumb_path)
+        actual_path = pkg_thumb_path
+    except Exception:
+        actual_path = thumb_path
+
     updated = database.update_project(
         project_id,
         has_thumbnail=1,
-        thumbnail_path=thumb_path
+        thumbnail_path=actual_path
     )
-    return {"success": True, "thumbnail_path": thumb_path, "project": updated}
+    return {"success": True, "thumbnail_path": actual_path, "project": updated}
 
 @app.get("/api/audio/{project_id}")
 async def stream_audio(project_id: str):
@@ -457,6 +481,14 @@ async def stream_thumb(project_id: str):
         raise HTTPException(status_code=404, detail="Ảnh thumbnail không tồn tại")
     return FileResponse(proj["thumbnail_path"], media_type="image/jpeg")
 
+@app.post("/api/projects/{project_id}/open-package")
+async def open_package_folder(project_id: str):
+    """Mở đúng thư mục gói outputs/KBxxx của kịch bản trong Windows Explorer"""
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    os.makedirs(pkg_dir, exist_ok=True)
+    subprocess.Popen(f'explorer "{pkg_dir}"')
+    return {"success": True, "opened": pkg_dir}
+
 @app.post("/api/open-file-in-explorer")
 async def open_file_in_explorer(payload: OpenFilePayload):
     """Mở Windows Explorer và tự động Highlight file được chọn"""
@@ -465,7 +497,6 @@ async def open_file_in_explorer(payload: OpenFilePayload):
         subprocess.Popen(f'explorer /select,"{target}"')
         return {"success": True, "opened": target}
     else:
-        # Nếu file chưa có thì mở thư mục cha
         parent = os.path.dirname(target)
         if os.path.exists(parent):
             subprocess.Popen(f'explorer "{parent}"')
@@ -477,11 +508,10 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     """Mở nhanh thư mục trực tiếp trong Windows Explorer"""
     valid_folders = {
         "root": BASE_DIR,
+        "outputs": os.path.join(BASE_DIR, "outputs"),
         "scripts": os.path.join(BASE_DIR, "1_scripts"),
         "audios": os.path.join(BASE_DIR, "2_audio_input"),
         "videos": os.path.join(BASE_DIR, "3_video_output"),
-        "tiktok_videos": os.path.join(BASE_DIR, "3_video_output", "tiktok"),
-        "youtube_videos": os.path.join(BASE_DIR, "3_video_output", "youtube"),
         "thumbnails": os.path.join(BASE_DIR, "4_thumbnails"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
         "bg_nau_an_doc": os.path.join(BASE_DIR, "backgrounds", "nau_an", "doc"),

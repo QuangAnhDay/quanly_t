@@ -4,11 +4,14 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 
-DB_DIR = os.path.join(os.path.dirname(__file__), "data")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DB_DIR, "truyen.db")
+OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
 
 def init_db():
     os.makedirs(DB_DIR, exist_ok=True)
+    os.makedirs(OUTPUTS_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -28,6 +31,7 @@ def init_db():
         capcut_draft_youtube TEXT,
         has_thumbnail INTEGER DEFAULT 0,
         thumbnail_path TEXT,
+        package_dir TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         notes TEXT,
@@ -46,6 +50,7 @@ def init_db():
         ("capcut_draft_tiktok", "TEXT"),
         ("capcut_draft_youtube", "TEXT"),
         ("has_thumbnail", "INTEGER DEFAULT 0"),
+        ("package_dir", "TEXT"),
     ]
     
     for col_name, col_type in migrations:
@@ -75,15 +80,31 @@ def get_next_kb_id() -> str:
                 max_num = num
     return f"KB{max_num + 1:03d}"
 
+def get_package_dir(kb_id: str) -> str:
+    """Tạo và trả về đường dẫn thư mục trọn gói cho kịch bản outputs/KBxxx/"""
+    pkg_dir = os.path.join(OUTPUTS_DIR, kb_id)
+    os.makedirs(pkg_dir, exist_ok=True)
+    return pkg_dir
+
 def create_project(title: str, content: str, status: str = "1_cho_duyet", voice: str = "vi-VN-HoaiMyNeural", notes: str = "") -> Dict[str, Any]:
     init_db()
     kb_id = get_next_kb_id()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    pkg_dir = get_package_dir(kb_id)
 
-    # Lưu file text dự phòng vào 1_scripts/KBxxx.txt
-    scripts_dir = os.path.join(os.path.dirname(__file__), "1_scripts")
-    os.makedirs(scripts_dir, exist_ok=True)
+    # 1. Lưu file text kịch bản vào đúng gói outputs/KBxxx/KBxxx_script.txt
     clean_sub_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:30]
+    pkg_script_file = os.path.join(pkg_dir, f"{kb_id}_script.txt")
+    with open(pkg_script_file, "w", encoding="utf-8") as f:
+        f.write(f"Tiêu đề: {title}\n")
+        f.write(f"Mã kịch bản: {kb_id}\n")
+        f.write(f"Ngày tạo: {now}\n")
+        f.write("="*40 + "\n\n")
+        f.write(content)
+
+    # 2. Lưu bản sao lưu vào 1_scripts/KBxxx.txt
+    scripts_dir = os.path.join(BASE_DIR, "1_scripts")
+    os.makedirs(scripts_dir, exist_ok=True)
     script_file = os.path.join(scripts_dir, f"{kb_id}_{clean_sub_title}.txt")
     with open(script_file, "w", encoding="utf-8") as f:
         f.write(f"Tiêu đề: {title}\n")
@@ -99,10 +120,10 @@ def create_project(title: str, content: str, status: str = "1_cho_duyet", voice:
         id, title, content, status, voice, rate, pitch, 
         audio_path, video_path, video_tiktok_path, video_youtube_path,
         capcut_draft_tiktok, capcut_draft_youtube, has_thumbnail, thumbnail_path,
-        created_at, updated_at, notes, is_published
+        package_dir, created_at, updated_at, notes, is_published
     )
-    VALUES (?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, 0)
-    """, (kb_id, title, content, status, voice, now, now, notes))
+    VALUES (?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0)
+    """, (kb_id, title, content, status, voice, pkg_dir, now, now, notes))
     conn.commit()
     conn.close()
 
