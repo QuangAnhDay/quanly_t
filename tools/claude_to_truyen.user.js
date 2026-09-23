@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Claude to Truyen Auto Producer (2-Skill Automation)
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Tự động hóa 2 Skill Claude (Tạo Kịch Bản + Gợi Ý Tiêu Đề/Thumb) và gửi dữ liệu về xưởng tại localhost:8888
 // @author       Antigravity
 // @match        https://claude.ai/*
@@ -16,10 +16,8 @@
     const SERVER_URL = 'http://localhost:8888';
     let isAutoRunning = false;
 
-    // Helper sleep
     const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-    // Helper gọi API tới server
     async function apiFetch(endpoint, options = {}) {
         const url = `${SERVER_URL}${endpoint}`;
         return new Promise((resolve, reject) => {
@@ -40,14 +38,12 @@
         });
     }
 
-    // Lấy ô nhập liệu ProseMirror của Claude
     function getChatInput() {
         return document.querySelector('div.ProseMirror[contenteditable="true"]') ||
                document.querySelector('div[contenteditable="true"]') ||
                document.querySelector('fieldset div[contenteditable="true"]');
     }
 
-    // Lấy nút Send của Claude
     function getSendButton() {
         return document.querySelector('button[aria-label*="Send"]') ||
                document.querySelector('button[aria-label*="Gửi"]') ||
@@ -56,14 +52,12 @@
                document.querySelector('fieldset button:last-child');
     }
 
-    // Kiểm tra Claude có đang streaming/phản hồi không
     function isClaudeStreaming() {
         const stopBtn = document.querySelector('button[aria-label*="Stop"], button[aria-label*="Dừng"]');
         const streamingEl = document.querySelector('[data-is-streaming="true"]');
         return !!(stopBtn || streamingEl);
     }
 
-    // Chờ phần tử xuất hiện trong DOM
     async function waitForElement(getterFn, maxWaitSeconds = 15) {
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
@@ -74,9 +68,8 @@
         return null;
     }
 
-    // Chờ Claude hoàn thành câu trả lời
     async function waitForClaudeDone(maxWaitSeconds = 240) {
-        await sleep(3000); // Chờ khởi động streaming
+        await sleep(3500);
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
             if (!isClaudeStreaming()) {
@@ -88,42 +81,41 @@
         return false;
     }
 
-    // Nhập text vào khung chat Claude một cách an toàn
+    // Nhập text bằng cơ chế Paste giả lập (tương thích 100% ProseMirror của Claude)
     async function typeIntoChat(text) {
         const input = await waitForElement(getChatInput, 15);
-        if (!input) throw new Error("Không tìm thấy khung chat Claude! Vui lòng tải lại trang.");
+        if (!input) throw new Error("Không tìm thấy khung chat Claude!");
 
         input.focus();
         await sleep(300);
 
-        // Bôi đen toàn bộ nếu có nội dung cũ
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(input);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        // Tạo sự kiện Paste giả lập
+        const dt = new DataTransfer();
+        dt.setData('text/plain', text);
+        const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: dt
+        });
+        input.dispatchEvent(pasteEvent);
 
-        // Chèn nội dung text
-        const inserted = document.execCommand('insertText', false, text);
-        if (!inserted || !input.innerText.trim()) {
-            input.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
+        // Fallback nếu Paste bị chặn
+        if (!input.innerText || input.innerText.trim().length === 0) {
+            document.execCommand('insertText', false, text);
         }
-        
-        // Dispatch các sự kiện cần thiết cho React / ProseMirror
+
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        await sleep(600);
+        await sleep(800);
     }
 
-    // Bấm gửi tin nhắn
     async function clickSend() {
-        await sleep(300);
+        await sleep(400);
         const btn = getSendButton();
         if (btn && !btn.disabled) {
             btn.click();
             return true;
         }
-        // Fallback: bấm Enter vào input
         const input = getChatInput();
         if (input) {
             input.dispatchEvent(new KeyboardEvent('keydown', {
@@ -138,20 +130,17 @@
         return false;
     }
 
-    // Lấy các câu trả lời của Claude trong đoạn chat hiện tại
     function getClaudeResponses() {
         const messages = Array.from(document.querySelectorAll('.font-claude-message, [data-is-streaming="false"], .grid-cols-1 .whitespace-pre-wrap'));
         return messages.map(m => m.innerText.trim()).filter(t => t.length > 0);
     }
 
-    // Quy trình tự động 2 Skill cho 1 kịch bản thô
     async function runTwoSkillPipeline(project) {
         if (isAutoRunning) return;
         isAutoRunning = true;
-        updateStatusWidget(`⏳ Đang chạy kịch bản [${project.id}]...`, "#eab308");
+        updateStatusWidget(`⏳ Đang chạy [${project.id}]...`, "#eab308");
 
         try {
-            // 1. Lấy cấu hình skill từ server
             const skillConfig = await apiFetch('/api/claude-skill-config').catch(() => ({
                 script_skill_command: '/tao-kich-ban',
                 title_thumb_skill_command: '/tieu-de-thumb'
@@ -163,18 +152,17 @@
             const rawContent = project.raw_content || project.content || "";
             if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
 
-            // 2. LƯỢT 1: Gửi Skill Kịch Bản + Bản Thô
+            // 1. LƯỢT 1
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
             await sleep(800);
             await clickSend();
 
-            // Chờ Claude viết xong kịch bản
             const done1 = await waitForClaudeDone(300);
             if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian!");
 
-            // 3. LƯỢT 2: Gửi Skill Gợi Ý Tiêu Đề & Thumbnail
+            // 2. LƯỢT 2
             updateStatusWidget(`[2/2] Đang xin Tiêu đề & Thumb [${project.id}]...`, "#3b82f6");
             await sleep(2000);
             const prompt2 = `${titleThumbSkill}\n\nHãy gợi ý 3 tiêu đề hấp dẫn và 1 đoạn prompt mô tả ảnh thumbnail (tiếng Anh và tiếng Việt) cho kịch bản vừa tạo ở trên.`;
@@ -182,16 +170,14 @@
             await sleep(800);
             await clickSend();
 
-            // Chờ Claude phản hồi lượt 2
             const done2 = await waitForClaudeDone(150);
             if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian!");
 
-            // 4. Bóc tách kết quả
+            // 3. Bóc tách kết quả
             const responses = getClaudeResponses();
             const fullScript = responses[responses.length - 2] || responses[0] || "";
             const titleThumbText = responses[responses.length - 1] || "";
 
-            // Trích xuất tiêu đề
             let title = project.title || "";
             const titleLines = titleThumbText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
             for (const line of titleLines) {
@@ -204,7 +190,7 @@
                 title = titleLines[0] ? titleLines[0].substring(0, 70) : `Kịch bản ${project.id}`;
             }
 
-            // Gửi dữ liệu về xưởng
+            // 4. Gửi về xưởng
             updateStatusWidget(`💾 Đang lưu [${project.id}] về Xưởng...`, "#6366f1");
             await apiFetch(`/api/projects/${project.id}/ai-complete`, {
                 method: 'POST',
@@ -228,7 +214,6 @@
         }
     }
 
-    // Floating UI Widget
     let statusWidget = null;
     function createFloatingWidget() {
         if (statusWidget) return;
@@ -309,21 +294,17 @@
         }
     }
 
-    // Tự động kiểm tra URL xem có gắn cờ auto_kb=KBxxx không
     async function checkAutoRunFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
         const autoKbId = urlParams.get('auto_kb');
-
         if (!autoKbId) return;
 
-        // Xóa tham số trên URL để tránh lặp khi refresh
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
 
         updateStatusWidget(`🚀 Tìm thấy kịch bản [${autoKbId}]. Đang tải dữ liệu...`, "#f59e0b");
 
         try {
-            // Lấy thông tin kịch bản từ server
             const projData = await apiFetch(`/api/projects/${autoKbId}`);
             const project = projData.project || projData;
 
@@ -332,11 +313,8 @@
                 return;
             }
 
-            // Chờ khung chat sẵn sàng
             updateStatusWidget(`⏳ Chuẩn bị chạy 2 Skill cho [${autoKbId}] trong 2s...`, "#8b5cf6");
             await sleep(2500);
-
-            // Bắt đầu chạy tự động
             runTwoSkillPipeline(project);
 
         } catch (err) {
@@ -345,7 +323,6 @@
         }
     }
 
-    // Khởi tạo
     setTimeout(() => {
         createFloatingWidget();
         refreshPendingList();
