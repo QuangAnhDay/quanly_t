@@ -51,25 +51,61 @@
           <span>Quản Lý Profile Claude</span>
         </button>
 
-        <!-- Dropdown Mở Thư Mục -->
-        <div class="relative group">
-          <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
-            <i class="fa-regular fa-folder-open"></i>
-            <span>Mở Thư Mục</span>
-            <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
-          </button>
-          <div class="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1 hidden group-hover:block z-50">
-            <button onclick="openFolder('outputs')" class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold"><i class="fa-solid fa-box-archive text-amber-500"></i> Gói Kịch Bản (outputs/)</button>
-            <div class="border-t border-slate-100 my-1"></div>
-            <button onclick="openFolder('bg_nau_an_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-tiktok text-pink-500"></i> Kho Nấu Ăn Dọc (TikTok)</button>
-            <button onclick="openFolder('bg_nau_an_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-youtube text-red-500"></i> Kho Nấu Ăn Ngang (YouTube)</button>
-            <button onclick="openFolder('bg_handmade_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-pink-500"></i> Kho Handmade Dọc (TikTok)</button>
-            <button onclick="openFolder('bg_handmade_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-red-500"></i> Kho Handmade Ngang (YouTube)</button>
-            <div class="border-t border-slate-100 my-1"></div>
-            <button onclick="openFolder('capcut_drafts')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-diagram-project text-cyan-600"></i> Thư Mục CapCut Drafts</button>
-          </div>
-        </div>
+<!-- Dropdown Mở Thư Mục -->
+<div class="relative group">
+  <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
+    <i class="fa-regular fa-folder-open"></i>
+    <span>Mở Thư Mục</span>
+    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+  </button>
 
+  <!-- Wrapper này giữ vùng hover liền mạch -->
+  <div class="absolute right-0 top-full pt-1 hidden group-hover:block z-50">
+    <div class="w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1">
+      
+      <button onclick="openFolder('outputs')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold">
+        <i class="fa-solid fa-box-archive text-amber-500"></i>
+        Gói Kịch Bản (outputs/)
+      </button>
+
+      <div class="border-t border-slate-100 my-1"></div>
+
+      <button onclick="openFolder('bg_nau_an_doc')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-brands fa-tiktok text-pink-500"></i>
+        Kho Nấu Ăn Dọc (TikTok)
+      </button>
+
+      <button onclick="openFolder('bg_nau_an_ngang')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-brands fa-youtube text-red-500"></i>
+        Kho Nấu Ăn Ngang (YouTube)
+      </button>
+
+      <button onclick="openFolder('bg_handmade_doc')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-solid fa-scissors text-pink-500"></i>
+        Kho Handmade Dọc (TikTok)
+      </button>
+
+      <button onclick="openFolder('bg_handmade_ngang')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-solid fa-scissors text-red-500"></i>
+        Kho Handmade Ngang (YouTube)
+      </button>
+
+      <div class="border-t border-slate-100 my-1"></div>
+
+      <button onclick="openFolder('capcut_drafts')" 
+        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-solid fa-diagram-project text-cyan-600"></i>
+        Thư Mục CapCut Drafts
+      </button>
+
+    </div>
+  </div>
+</div>
         <!-- Nút Thêm Kịch Bản Mới -->
         <button onclick="openNewScriptModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-plus"></i>

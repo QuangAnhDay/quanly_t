@@ -48,7 +48,7 @@ init_theme_folders()
 
 def get_media_duration_and_size(file_path: str):
     """Lấy thời lượng (giây), chiều rộng và chiều cao của file video/audio"""
-    cmd = [FFMPEG_PATH, "-i", file_path, "-f", "null", "-"]
+    cmd = [FFMPEG_PATH, "-i", file_path]
     res = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="ignore")
     
     m_dur = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
@@ -383,7 +383,7 @@ def create_single_capcut_draft(
     # 3. draft_content.json
     draft_content = {
         "canvas_config": {"background": None, "height": canvas_h, "ratio": canvas_ratio, "width": canvas_w},
-        "color_space": 0,
+        "color_space": -1,
         "config": {
             "adjust_max_index": 1,
             "attachment_info": [],
@@ -418,27 +418,58 @@ def create_single_capcut_draft(
         "is_drop_frame_timecode": False,
         "keyframe_graph_list": [],
         "keyframes": {"adjusts": [], "audios": [], "effects": [], "filters": [], "handwrites": [], "stickers": [], "texts": [], "videos": []},
-        "last_modified_platform": {"app_id": 3704, "app_source": "capcut", "app_version": "164.0.0", "device_id": "", "hard_disk_id": "", "mac_address": "", "os": "windows", "os_version": "10.0.22631"},
+        "last_modified_platform": {"app_id": 359289, "app_source": "cc", "app_version": "9.5.0", "device_id": "00d3e94146a314625caeb7746c687fd2", "hard_disk_id": "", "mac_address": "9413a4a526540ba7691a6a298a617181", "os": "windows", "os_version": "10.0.26200"},
         "materials": materials,
         "mixed_track_mode_on": False,
         "mutable_config": None,
         "name": display_name,
-        "new_version": "164.0.0",
-        "path": os.path.join(draft_dir, "draft_content.json").replace("\\", "/"),
-        "platform": {"app_id": 3704, "app_source": "capcut", "app_version": "164.0.0", "device_id": "", "hard_disk_id": "", "mac_address": "", "os": "windows", "os_version": "10.0.22631"},
+        "new_version": "187.0.0",
+        "path": "",
+        "platform": {"app_id": 359289, "app_source": "cc", "app_version": "9.5.0", "device_id": "00d3e94146a314625caeb7746c687fd2", "hard_disk_id": "", "mac_address": "9413a4a526540ba7691a6a298a617181", "os": "windows", "os_version": "10.0.26200"},
         "relationships": [],
-        "render_index_track_mode_on": False,
+        "render_index_track_mode_on": True,
         "retouch_cover": None,
         "static_cover_image_path": "",
         "time_marks": None,
         "tracks": tracks,
         "update_time": now_us,
-        "version": 360000
+        "version": 360000,
+        "draft_type": "video",
+        "source": "default",
+        "lyrics_effects": [],
+        "uneven_animation_template_info": {"composition": "", "content": "", "order": "", "sub_template_info_list": []},
+        "smart_ads_info": {"page_from": "", "routine": "", "draft_url": ""},
+        "function_assistant_info": {"smart_rec_applied": False, "fixed_rec_applied": False, "auto_adjust": False, "auto_adjust_segid_list": [], "color_correction": False, "color_correction_segid_list": [], "enhance_quality": False, "smooth_slow_motion": False, "deflicker_segid_list": [], "video_noise_segid_list": [], "enhance_quality_segid_list": [], "smart_segid_list": [], "retouch": False, "retouch_segid_list": [], "enhande_voice": False, "enhance_voice_segid_list": [], "audio_noise_segid_list": [], "auto_caption": False, "auto_caption_segid_list": [], "auto_caption_template_id": "", "caption_opt": False, "caption_opt_segid_list": [], "eye_correction": False, "eye_correction_segid_list": [], "normalize_loudness": False, "normalize_loudness_segid_list": [], "normalize_loudness_audio_denoise_segid_list": [], "auto_adjust_fixed": False, "auto_adjust_fixed_value": 50.0, "color_correction_fixed": False, "color_correction_fixed_value": 50.0, "normalize_loudness_fixed": False, "enhande_voice_fixed": False, "retouch_fixed": False, "enhance_quality_fixed": False, "smooth_slow_motion_fixed": False, "fps": {"num": 0, "den": 1}}
     }
 
     content_file = os.path.join(draft_dir, "draft_content.json")
     with open(content_file, "w", encoding="utf-8") as f:
         json.dump(draft_content, f, ensure_ascii=False, indent=2)
+
+    # Auxiliary config files required by CapCut parser
+    with open(os.path.join(draft_dir, "draft_biz_config.json"), "w", encoding="utf-8") as f:
+        f.write("{}")
+
+    agency_data = {"is_auto_agency_enabled": False, "is_auto_agency_popup": False, "is_single_agency_mode": False, "marterials": None, "use_converter": False, "video_resolution": 720}
+    with open(os.path.join(draft_dir, "draft_agency_config.json"), "w", encoding="utf-8") as f:
+        json.dump(agency_data, f, indent=2)
+
+    with open(os.path.join(draft_dir, "attachment_pc_common.json"), "w", encoding="utf-8") as f:
+        json.dump({"ai_packaging_infos": [], "pc_feature_flag": 0}, f, indent=2)
+
+    with open(os.path.join(draft_dir, "attachment_editing.json"), "w", encoding="utf-8") as f:
+        json.dump({"editing_draft": {"version": "1.0.0"}}, f, indent=2)
+
+    v_store = {
+        "draft_materials": [],
+        "draft_virtual_store": [
+            {"type": 0, "value": [{"creation_time": 0, "display_name": "", "filter_type": 0, "id": "", "import_time": 0, "import_time_us": 0, "material_color_tag": "", "sort_sub_type": 0, "sort_type": 0, "subdraft_filter_type": 0}]},
+            {"type": 1, "value": [{"child_id": m["id"], "parent_id": ""} for m in materials.get("videos", []) + materials.get("audios", [])]},
+            {"type": 2, "value": []}
+        ]
+    }
+    with open(os.path.join(draft_dir, "draft_virtual_store.json"), "w", encoding="utf-8") as f:
+        json.dump(v_store, f, ensure_ascii=False, indent=2)
 
     # 4. draft_meta_info.json
     draft_meta = {
@@ -456,10 +487,11 @@ def create_single_capcut_draft(
         "draft_id": draft_id,
         "draft_materials": [],
         "draft_name": display_name,
-        "draft_new_version": "164.0.0",
+        "draft_need_rename_folder": False,
+        "draft_new_version": "",
         "draft_root_path": CAPCUT_DRAFT_ROOT.replace("\\", "/"),
         "draft_timeline_materials_size": 0,
-        "draft_type": "",
+        "draft_type": "video",
         "tm_draft_create": now_us,
         "tm_draft_modified": now_us,
         "tm_draft_removed": 0,
@@ -505,7 +537,7 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
             "draft_cloud_template_id": "",
             "draft_cloud_tutorial_info": "",
             "draft_cloud_videocut_purchase_info": "",
-            "draft_cover": "",
+            "draft_cover": f"{draft_dir.replace('\\', '/')}/draft_cover.jpg",
             "draft_fold_path": draft_dir.replace("\\", "/"),
             "draft_id": draft_id,
             "draft_is_ai_shorts": False,
@@ -514,12 +546,12 @@ def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name,
             "draft_is_invisible": False,
             "draft_is_pippit_draft": False,
             "draft_is_web_article_video": False,
-            "draft_json_file": content_file.replace("\\", "/"),
+            "draft_json_file": f"{draft_dir.replace('\\', '/')}/draft_content.json",
             "draft_name": display_name,
-            "draft_new_version": "164.0.0",
+            "draft_new_version": "",
             "draft_root_path": CAPCUT_DRAFT_ROOT.replace("\\", "/"),
             "draft_timeline_materials_size": 0,
-            "draft_type": "",
+            "draft_type": "video",
             "draft_web_article_video_enter_from": "",
             "pippit_avatar_url": "",
             "pippit_extra_info": "",

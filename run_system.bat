@@ -35,7 +35,11 @@ echo   - Nhan Ctrl+C tai cua so nay de dung he thong khi xong viec.
 echo ======================================================================
 echo.
 
-python -X utf8 server.py
+if exist ".venv\Scripts\python.exe" (
+    .venv\Scripts\python.exe -X utf8 server.py
+) else (
+    python -X utf8 server.py
+)
 
 if %errorlevel% neq 0 (
     echo.
