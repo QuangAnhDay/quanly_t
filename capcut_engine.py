@@ -14,9 +14,13 @@ FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 CAPCUT_DRAFT_ROOT = os.path.expandvars(r"%LOCALAPPDATA%\CapCut\User Data\Projects\com.lveditor.draft")
 
-# Thư mục chứa video nền theo chủ đề
+# Thư mục chứa video nền theo chủ đề và định dạng (dọc / ngang)
 BG_BASE_DIR = os.path.join(PROJECT_DIR, "backgrounds")
 THEMES = ["nau_an", "handmade"]
+ORIENTATIONS = ["doc", "ngang"]
+
+# Bộ nhớ chống trùng lặp clip mở đầu giữa các kịch bản
+_LAST_USED_INDEX = {}
 
 def remove_accents(text: str) -> str:
     """Xóa dấu tiếng Việt để tạo tên thư mục chuẩn ASCII an toàn tuyệt đối trên Windows"""
@@ -26,12 +30,19 @@ def remove_accents(text: str) -> str:
     return text
 
 def init_theme_folders():
-    """Tạo sẵn các thư mục chủ đề trong backgrounds/"""
+    """Tạo sẵn các thư mục chủ đề và định dạng trong backgrounds/ và 3_video_output/"""
     for t in THEMES:
-        os.makedirs(os.path.join(BG_BASE_DIR, t), exist_ok=True)
-        gk = os.path.join(BG_BASE_DIR, t, ".gitkeep")
-        if not os.path.exists(gk):
-            open(gk, "w").close()
+        for o in ORIENTATIONS:
+            dir_path = os.path.join(BG_BASE_DIR, t, o)
+            os.makedirs(dir_path, exist_ok=True)
+            gk = os.path.join(dir_path, ".gitkeep")
+            if not os.path.exists(gk):
+                open(gk, "w").close()
+    
+    # Tạo sẵn thư mục xuất video theo kênh
+    os.makedirs(os.path.join(PROJECT_DIR, "3_video_output", "tiktok"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_DIR, "3_video_output", "youtube"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_DIR, "4_thumbnails"), exist_ok=True)
 
 init_theme_folders()
 
@@ -40,35 +51,48 @@ def get_media_duration_and_size(file_path: str):
     cmd = [FFMPEG_PATH, "-i", file_path, "-f", "null", "-"]
     res = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="ignore")
     
-    # Đo thời lượng
     m_dur = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
     dur = (int(m_dur.group(1))*3600 + int(m_dur.group(2))*60 + float(m_dur.group(3))) if m_dur else 10.0
     
-    # Đo kích thước video (nếu có)
     m_dim = re.search(r"Video:.*?(\d{3,4})x(\d{3,4})", res.stderr)
     w, h = (int(m_dim.group(1)), int(m_dim.group(2))) if m_dim else (1080, 1920)
     
     return dur, w, h
 
-def get_theme_videos(theme: str = "nau_an"):
-    """Lấy danh sách các file video thuộc chủ đề được chọn"""
-    theme_dir = os.path.join(BG_BASE_DIR, theme)
+def get_theme_videos(theme: str = "nau_an", orientation: str = "doc"):
+    """
+    Lấy danh sách các file video thuộc chủ đề và định dạng (doc / ngang).
+    Có cơ chế Fallback thông minh nếu thư mục con chưa có video.
+    """
+    # 1. Tìm chính xác trong backgrounds/{theme}/{orientation}
+    target_dir = os.path.join(BG_BASE_DIR, theme, orientation)
     videos = []
-    if os.path.exists(theme_dir):
-        videos = glob.glob(os.path.join(theme_dir, "*.mp4")) + glob.glob(os.path.join(theme_dir, "*.mov"))
+    if os.path.exists(target_dir):
+        videos = glob.glob(os.path.join(target_dir, "*.mp4")) + glob.glob(os.path.join(target_dir, "*.mov"))
     
-    # Fallback: nếu thư mục chủ đề trống, tìm trong thư mục backgrounds chung
+    # 2. Fallback: Nếu thư mục con trống, tìm trong thư mục theme cha backgrounds/{theme}
+    if not videos:
+        theme_dir = os.path.join(BG_BASE_DIR, theme)
+        if os.path.exists(theme_dir):
+            videos = glob.glob(os.path.join(theme_dir, "*.mp4")) + glob.glob(os.path.join(theme_dir, "*.mov"))
+    
+    # 3. Fallback: Nếu vẫn trống, tìm trong thư mục backgrounds gốc
     if not videos:
         videos = glob.glob(os.path.join(BG_BASE_DIR, "*.mp4")) + glob.glob(os.path.join(BG_BASE_DIR, "*.mov"))
         
     return [v.replace("\\", "/") for v in videos]
 
 def get_theme_stats():
-    """Trả về số lượng video trong từng chủ đề"""
+    """Trả về số lượng video chi tiết theo chủ đề và định dạng (dọc / ngang)"""
     stats = {}
     for t in THEMES:
-        v_list = get_theme_videos(t)
-        stats[t] = len(v_list)
+        doc_v = get_theme_videos(t, "doc")
+        ngang_v = get_theme_videos(t, "ngang")
+        stats[t] = {
+            "total": len(doc_v) + len(ngang_v),
+            "doc": len(doc_v),
+            "ngang": len(ngang_v)
+        }
     return stats
 
 def launch_capcut_app():
@@ -79,18 +103,19 @@ def launch_capcut_app():
         return True
     return False
 
-def create_capcut_draft(
+def create_single_capcut_draft(
     project_id: str,
     title: str,
     audio_path: str,
-    theme: str = "nau_an"
+    theme: str = "nau_an",
+    orientation: str = "doc",  # "doc" (9:16 TikTok) hoặc "ngang" (16:9 YouTube)
 ) -> dict:
     """
-    Tạo một Project CapCut hoàn chỉnh:
-    1. Tự bốc ngẫu nhiên các video thuộc theme (nau_an hoặc handmade) sao cho đủ độ dài audio.
-    2. Đặt các video lên Track Video (khớp khít, không thừa không thiếu).
-    3. Đặt file audio lên Track Audio.
-    4. Ghi thẳng vào thư mục Projects của CapCut PC và cập nhật root_meta_info.json.
+    Tạo 1 Project CapCut theo chuẩn định dạng dọc (9:16) hoặc ngang (16:9):
+    1. Bốc video nền phù hợp từ kho backgrounds/{theme}/{orientation}/
+    2. Áp dụng thuật toán Smart Anti-Duplicate (tránh trùng clip mở đầu)
+    3. Tự cắt ghép khớp khít với thời lượng audio
+    4. Ghi thẳng vào thư mục Projects của CapCut PC và cập nhật root_meta_info.json
     """
     if not os.path.exists(CAPCUT_DRAFT_ROOT):
         raise Exception(f"Không tìm thấy thư mục CapCut Drafts tại {CAPCUT_DRAFT_ROOT}")
@@ -103,10 +128,10 @@ def create_capcut_draft(
     audio_dur_sec, _, _ = get_media_duration_and_size(audio_path)
     total_duration_us = int(audio_dur_sec * 1_000_000)
 
-    # Lấy kho video theo chủ đề
-    video_files = get_theme_videos(theme)
+    # Lấy kho video theo chủ đề và định dạng
+    video_files = get_theme_videos(theme, orientation)
     if not video_files:
-        raise Exception(f"Kho video cho chủ đề '{theme}' đang trống! Vui lòng thêm video vào thư mục backgrounds/{theme}/")
+        raise Exception(f"Kho video cho chủ đề '{theme}' dạng '{orientation}' đang trống! Vui lòng thêm video vào backgrounds/{theme}/{orientation}/")
 
     # Đo độ dài từng video
     video_info_list = []
@@ -119,18 +144,27 @@ def create_capcut_draft(
             "height": vh
         })
 
-    # Bốc ngẫu nhiên các video nối tiếp nhau cho đủ độ dài audio
-    random.shuffle(video_info_list)
+    # Thuật toán Smart Anti-Duplicate: Xoay vòng điểm bắt đầu
+    key = f"{theme}_{orientation}"
+    start_offset = _LAST_USED_INDEX.get(key, 0)
+    _LAST_USED_INDEX[key] = (start_offset + 1) % len(video_info_list)
+
+    # Shuffle và dịch offset
+    shuffled = list(video_info_list)
+    random.seed(int(time.time() * 1000) + start_offset)
+    random.shuffle(shuffled)
+    if len(shuffled) > 1:
+        shuffled = shuffled[start_offset:] + shuffled[:start_offset]
+
     selected_clips = []
     current_acc_us = 0
     idx = 0
 
     while current_acc_us < total_duration_us:
-        clip = video_info_list[idx % len(video_info_list)]
+        clip = shuffled[idx % len(shuffled)]
         clip_dur = clip["duration_us"]
         needed = total_duration_us - current_acc_us
         
-        # Nếu clip dài hơn phần còn thiếu, cắt gọn đoạn cuối
         actual_dur = min(clip_dur, needed)
         selected_clips.append({
             "path": clip["path"],
@@ -143,17 +177,27 @@ def create_capcut_draft(
         current_acc_us += actual_dur
         idx += 1
 
-    # Tạo UUID và tên thư mục an toàn
+    # Cấu hình khung hình Canvas & Tên Project
     draft_id = str(uuid.uuid4()).upper()
     now_us = int(time.time() * 1_000_000)
     ascii_title = remove_accents(title)
     clean_title = re.sub(r'[^a-zA-Z0-9_ ]+', '', ascii_title).strip()
-    safe_folder_name = f"{project_id}_{clean_title[:30]}".replace(" ", "_")
+
+    if orientation == "doc":
+        canvas_ratio = "9:16"
+        canvas_w, canvas_h = 1080, 1920
+        platform_tag = "TikTok"
+        safe_folder_name = f"{project_id}_TikTok_{clean_title[:25]}".replace(" ", "_")
+        display_name = f"[TikTok] {project_id} - {title[:30]}"
+    else:
+        canvas_ratio = "16:9"
+        canvas_w, canvas_h = 1920, 1080
+        platform_tag = "YouTube"
+        safe_folder_name = f"{project_id}_YouTube_{clean_title[:25]}".replace(" ", "_")
+        display_name = f"[YouTube] {project_id} - {title[:30]}"
+
     draft_dir = os.path.join(CAPCUT_DRAFT_ROOT, safe_folder_name)
     os.makedirs(draft_dir, exist_ok=True)
-
-    # Tên hiển thị trên màn hình CapCut
-    display_name = f"{project_id} - {title[:35]}"
 
     # 1. Materials
     materials = {
@@ -194,7 +238,7 @@ def create_capcut_draft(
         "wave_points": []
     })
 
-    # Video materials & track segments
+    # Video materials & segments
     video_track_segments = []
     path_to_mat_id = {}
 
@@ -241,7 +285,6 @@ def create_capcut_draft(
         else:
             v_id = path_to_mat_id[p]
 
-        # Segment
         seg_id = str(uuid.uuid4()).upper()
         video_track_segments.append({
             "caption_info": None,
@@ -279,7 +322,7 @@ def create_capcut_draft(
             "track_render_index": 0,
             "uniform_scale": None,
             "visible": True,
-            "volume": 0.0 # Tắt tiếng video nền để giọng đọc rõ ràng 100%
+            "volume": 0.0
         })
 
     # Audio Segment
@@ -339,7 +382,7 @@ def create_capcut_draft(
 
     # 3. draft_content.json
     draft_content = {
-        "canvas_config": {"background": None, "height": 1920, "ratio": "9:16", "width": 1080},
+        "canvas_config": {"background": None, "height": canvas_h, "ratio": canvas_ratio, "width": canvas_w},
         "color_space": 0,
         "config": {
             "adjust_max_index": 1,
@@ -428,69 +471,113 @@ def create_capcut_draft(
         json.dump(draft_meta, f, ensure_ascii=False, indent=2)
 
     # 5. Cập nhật root_meta_info.json
-    root_meta_file = os.path.join(CAPCUT_DRAFT_ROOT, "root_meta_info.json")
-    if os.path.exists(root_meta_file):
-        try:
-            with open(root_meta_file, "r", encoding="utf-8") as f:
-                root_meta = json.load(f)
-            
-            draft_store = root_meta.get("all_draft_store", [])
-            # Lọc bỏ bản ghi cũ cùng folder
-            draft_store = [d for d in draft_store if d.get("draft_fold_path") != draft_dir.replace("\\", "/")]
-
-            # Thêm bản ghi mới lên đầu danh sách để hiển thị đầu tiên trên CapCut
-            draft_store.insert(0, {
-                "cloud_draft_cover": False,
-                "cloud_draft_sync": False,
-                "draft_cloud_last_action_download": False,
-                "draft_cloud_purchase_info": "",
-                "draft_cloud_template_id": "",
-                "draft_cloud_tutorial_info": "",
-                "draft_cloud_videocut_purchase_info": "",
-                "draft_cover": "",
-                "draft_fold_path": draft_dir.replace("\\", "/"),
-                "draft_id": draft_id,
-                "draft_is_ai_shorts": False,
-                "draft_is_cloud_temp_draft": False,
-                "draft_is_infinite_canvas_draft": False,
-                "draft_is_invisible": False,
-                "draft_is_pippit_draft": False,
-                "draft_is_web_article_video": False,
-                "draft_json_file": content_file.replace("\\", "/"),
-                "draft_name": display_name,
-                "draft_new_version": "164.0.0",
-                "draft_root_path": CAPCUT_DRAFT_ROOT.replace("\\", "/"),
-                "draft_timeline_materials_size": 0,
-                "draft_type": "",
-                "draft_web_article_video_enter_from": "",
-                "pippit_avatar_url": "",
-                "pippit_extra_info": "",
-                "pippit_id": "",
-                "pippit_user_name": "",
-                "streaming_edit_draft_ready": True,
-                "tm_draft_cloud_completed": "",
-                "tm_draft_cloud_entry_id": 0,
-                "tm_draft_cloud_modified": 0,
-                "tm_draft_cloud_parent_entry_id": 0,
-                "tm_draft_cloud_space_id": 0,
-                "tm_draft_cloud_user_id": 0,
-                "tm_draft_create": now_us,
-                "tm_draft_modified": now_us,
-                "tm_draft_removed": 0,
-                "tm_duration": total_duration_us
-            })
-            root_meta["all_draft_store"] = draft_store
-
-            with open(root_meta_file, "w", encoding="utf-8") as f:
-                json.dump(root_meta, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Lỗi cập nhật root_meta_info.json: {e}")
+    register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name, now_us, total_duration_us)
 
     return {
         "success": True,
         "draft_id": draft_id,
         "draft_name": display_name,
         "draft_dir": draft_dir,
+        "orientation": orientation,
+        "platform": platform_tag,
+        "ratio": canvas_ratio,
         "clips_count": len(selected_clips),
         "duration_sec": audio_dur_sec
     }
+
+def register_draft_in_root_meta(draft_dir, content_file, draft_id, display_name, now_us, total_duration_us):
+    """Ghi dự án mới vào root_meta_info.json để CapCut hiển thị ngay trên màn hình chính"""
+    root_meta_file = os.path.join(CAPCUT_DRAFT_ROOT, "root_meta_info.json")
+    if not os.path.exists(root_meta_file):
+        return
+    try:
+        with open(root_meta_file, "r", encoding="utf-8") as f:
+            root_meta = json.load(f)
+        
+        draft_store = root_meta.get("all_draft_store", [])
+        draft_store = [d for d in draft_store if d.get("draft_fold_path") != draft_dir.replace("\\", "/")]
+
+        draft_store.insert(0, {
+            "cloud_draft_cover": False,
+            "cloud_draft_sync": False,
+            "draft_cloud_last_action_download": False,
+            "draft_cloud_purchase_info": "",
+            "draft_cloud_template_id": "",
+            "draft_cloud_tutorial_info": "",
+            "draft_cloud_videocut_purchase_info": "",
+            "draft_cover": "",
+            "draft_fold_path": draft_dir.replace("\\", "/"),
+            "draft_id": draft_id,
+            "draft_is_ai_shorts": False,
+            "draft_is_cloud_temp_draft": False,
+            "draft_is_infinite_canvas_draft": False,
+            "draft_is_invisible": False,
+            "draft_is_pippit_draft": False,
+            "draft_is_web_article_video": False,
+            "draft_json_file": content_file.replace("\\", "/"),
+            "draft_name": display_name,
+            "draft_new_version": "164.0.0",
+            "draft_root_path": CAPCUT_DRAFT_ROOT.replace("\\", "/"),
+            "draft_timeline_materials_size": 0,
+            "draft_type": "",
+            "draft_web_article_video_enter_from": "",
+            "pippit_avatar_url": "",
+            "pippit_extra_info": "",
+            "pippit_id": "",
+            "pippit_user_name": "",
+            "streaming_edit_draft_ready": True,
+            "tm_draft_cloud_completed": "",
+            "tm_draft_cloud_entry_id": 0,
+            "tm_draft_cloud_modified": 0,
+            "tm_draft_cloud_parent_entry_id": 0,
+            "tm_draft_cloud_space_id": 0,
+            "tm_draft_cloud_user_id": 0,
+            "tm_draft_create": now_us,
+            "tm_draft_modified": now_us,
+            "tm_draft_removed": 0,
+            "tm_duration": total_duration_us
+        })
+        root_meta["all_draft_store"] = draft_store
+
+        with open(root_meta_file, "w", encoding="utf-8") as f:
+            json.dump(root_meta, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Lỗi cập nhật root_meta_info.json: {e}")
+
+def create_dual_capcut_drafts(
+    project_id: str,
+    title: str,
+    audio_path: str,
+    theme: str = "nau_an"
+) -> dict:
+    """
+    Tạo ĐỒNG THỜI 2 Dự án CapCut cho 1 kịch bản:
+    1. Bản Dọc (9:16) cho TikTok / Shorts / Reels từ backgrounds/{theme}/doc
+    2. Bản Ngang (16:9) cho YouTube từ backgrounds/{theme}/ngang
+    """
+    tiktok_res = create_single_capcut_draft(
+        project_id=project_id,
+        title=title,
+        audio_path=audio_path,
+        theme=theme,
+        orientation="doc"
+    )
+
+    youtube_res = create_single_capcut_draft(
+        project_id=project_id,
+        title=title,
+        audio_path=audio_path,
+        theme=theme,
+        orientation="ngang"
+    )
+
+    return {
+        "success": True,
+        "tiktok": tiktok_res,
+        "youtube": youtube_res,
+        "theme": theme,
+        "message": f"Đã tạo thành công 2 dự án: [TikTok 9:16] & [YouTube 16:9]"
+    }
+
+# Giữ tương thích ngược với code cũ
+create_capcut_draft = create_dual_capcut_drafts

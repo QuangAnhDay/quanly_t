@@ -19,13 +19,8 @@ import video_engine
 import thumbnail_engine
 import capcut_engine
 
-# Đảm bảo các thư mục tồn tại
-for d in [
-    "1_scripts", "2_audio_input", "3_video_output", "4_thumbnails",
-    "backgrounds", "backgrounds/nau_an", "backgrounds/handmade",
-    "data", "web"
-]:
-    os.makedirs(os.path.join(BASE_DIR, d), exist_ok=True)
+# Khởi tạo toàn bộ thư mục cần thiết
+capcut_engine.init_theme_folders()
 
 # Khởi tạo DB
 database.init_db()
@@ -69,26 +64,73 @@ def get_detected_chrome_profiles():
     return profiles
 
 def auto_sync_disk_files():
-    """Tự động kiểm tra thư mục 2_audio_input và 3_video_output để đồng bộ trạng thái nếu bạn lưu thủ công từ repo khác"""
+    """Tự động kiểm tra các thư mục đĩa để đồng bộ trạng thái Audio, Video Đa Kênh và Thumbnail"""
     audio_dir = os.path.join(BASE_DIR, "2_audio_input")
     video_dir = os.path.join(BASE_DIR, "3_video_output")
+    tiktok_dir = os.path.join(video_dir, "tiktok")
+    youtube_dir = os.path.join(video_dir, "youtube")
+    thumb_dir = os.path.join(BASE_DIR, "4_thumbnails")
     
     projects = database.get_all_projects()
     for p in projects:
         pid = p["id"]
-        # Kiểm tra file audio
-        if not p.get("audio_path") or p["status"] in ["1_cho_duyet", "2_cho_voice"]:
-            candidates = glob.glob(os.path.join(audio_dir, f"{pid}.*"))
-            for c in candidates:
-                if c.lower().endswith((".wav", ".mp3")):
-                    database.update_project(pid, audio_path=c, status="3_da_co_audio")
+        updates = {}
+        
+        # 1. Kiểm tra file audio
+        if not p.get("audio_path") or not os.path.exists(p["audio_path"]):
+            for ext in [".wav", ".mp3", ".m4a"]:
+                cand = os.path.join(audio_dir, f"{pid}{ext}")
+                if os.path.exists(cand):
+                    updates["audio_path"] = cand
+                    if p["status"] in ["1_cho_duyet", "2_cho_voice"]:
+                        updates["status"] = "3_da_co_audio"
                     break
         
-        # Kiểm tra file video thành phẩm từ CapCut
-        if not p.get("video_path") or p["status"] != "5_hoan_thanh":
-            v_cand = os.path.join(video_dir, f"{pid}.mp4")
-            if os.path.exists(v_cand):
-                database.update_project(pid, video_path=v_cand, status="5_hoan_thanh")
+        # 2. Kiểm tra Video TikTok
+        if not p.get("video_tiktok_path") or not os.path.exists(p["video_tiktok_path"]):
+            for ext in [".mp4", ".mov"]:
+                cand = os.path.join(tiktok_dir, f"{pid}{ext}")
+                if not os.path.exists(cand):
+                    cand = os.path.join(tiktok_dir, f"{pid}_tiktok{ext}")
+                if os.path.exists(cand):
+                    updates["video_tiktok_path"] = cand
+                    break
+                    
+        # 3. Kiểm tra Video YouTube
+        if not p.get("video_youtube_path") or not os.path.exists(p["video_youtube_path"]):
+            for ext in [".mp4", ".mov"]:
+                cand = os.path.join(youtube_dir, f"{pid}{ext}")
+                if not os.path.exists(cand):
+                    cand = os.path.join(youtube_dir, f"{pid}_youtube{ext}")
+                if os.path.exists(cand):
+                    updates["video_youtube_path"] = cand
+                    break
+                    
+        # 4. Kiểm tra Video chung
+        if not p.get("video_path") or not os.path.exists(p["video_path"]):
+            cand = os.path.join(video_dir, f"{pid}.mp4")
+            if os.path.exists(cand):
+                updates["video_path"] = cand
+            elif updates.get("video_tiktok_path"):
+                updates["video_path"] = updates["video_tiktok_path"]
+            elif updates.get("video_youtube_path"):
+                updates["video_path"] = updates["video_youtube_path"]
+
+        # Nếu có video đã xuất thì cập nhật hoàn thành
+        if (updates.get("video_tiktok_path") or updates.get("video_youtube_path") or updates.get("video_path")) and p["status"] != "5_hoan_thanh":
+            updates["status"] = "5_hoan_thanh"
+
+        # 5. Kiểm tra Thumbnail
+        if not p.get("has_thumbnail") or not p.get("thumbnail_path") or not os.path.exists(p.get("thumbnail_path", "")):
+            for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                cand = os.path.join(thumb_dir, f"{pid}{ext}")
+                if os.path.exists(cand):
+                    updates["has_thumbnail"] = 1
+                    updates["thumbnail_path"] = cand
+                    break
+
+        if updates:
+            database.update_project(pid, **updates)
 
 class ScriptPayload(BaseModel):
     title: str
@@ -114,6 +156,16 @@ class LaunchSelectedProfilesPayload(BaseModel):
 class CapCutDraftPayload(BaseModel):
     theme: Optional[str] = "nau_an"
 
+class BatchCapCutPayload(BaseModel):
+    project_ids: List[str]
+    theme: Optional[str] = "nau_an"
+
+class BatchDeletePayload(BaseModel):
+    project_ids: List[str]
+
+class OpenFilePayload(BaseModel):
+    file_path: str
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = os.path.join(BASE_DIR, "web", "index.html")
@@ -128,7 +180,7 @@ async def api_get_config():
 
 @app.get("/api/themes")
 async def api_get_themes():
-    """Lấy danh sách các chủ đề video nền và số lượng clip có trong kho"""
+    """Lấy số lượng clip trong kho chi tiết theo chủ đề và định dạng (dọc / ngang)"""
     return capcut_engine.get_theme_stats()
 
 @app.get("/api/chrome-profiles")
@@ -192,10 +244,29 @@ async def update_project_api(project_id: str, data: dict = Body(...)):
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     return proj
 
+@app.put("/api/projects/{project_id}/toggle-published")
+async def toggle_published_api(project_id: str):
+    proj = database.toggle_published(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    return {"success": True, "is_published": proj.get("is_published", 0), "project": proj}
+
+@app.put("/api/projects/{project_id}/toggle-thumbnail")
+async def toggle_thumbnail_api(project_id: str):
+    proj = database.toggle_thumbnail(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    return {"success": True, "has_thumbnail": proj.get("has_thumbnail", 0), "project": proj}
+
 @app.delete("/api/projects/{project_id}")
 async def delete_project_api(project_id: str):
     success = database.delete_project(project_id)
     return {"success": success}
+
+@app.post("/api/projects/batch-delete")
+async def batch_delete_projects_api(payload: BatchDeletePayload):
+    count = database.batch_delete(payload.project_ids)
+    return {"success": True, "deleted_count": count}
 
 @app.post("/api/projects/{project_id}/generate-audio")
 async def generate_audio_api(project_id: str, payload: AudioGenPayload):
@@ -224,7 +295,7 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")
 async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
-    """Tự động bốc ngẫu nhiên video theo chủ đề và tạo thẳng Project trên CapCut PC"""
+    """Tự động tạo ĐỒNG THỜI 2 Dự Án CapCut (TikTok 9:16 và YouTube 16:9) với video nền tự khớp"""
     proj = database.get_project(project_id)
     if not proj or not proj.get("audio_path"):
         raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
@@ -235,26 +306,78 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
 
     theme = payload.theme or "nau_an"
     try:
-        draft_res = capcut_engine.create_capcut_draft(
+        draft_res = capcut_engine.create_dual_capcut_drafts(
             project_id=project_id,
             title=proj["title"],
             audio_path=audio_path,
             theme=theme
         )
-        # Cập nhật trạng thái dự án
         theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
         theme_vn = theme_names.get(theme, theme)
-        notes = f"Đã tạo Project CapCut: {draft_res['draft_name']} (Chủ đề: {theme_vn})"
-        updated = database.update_project(project_id, notes=notes, status="4_da_render_video")
+        
+        tiktok_name = draft_res["tiktok"]["draft_name"]
+        youtube_name = draft_res["youtube"]["draft_name"]
+        notes = f"CapCut ({theme_vn}): TikTok & YouTube"
+        
+        updated = database.update_project(
+            project_id,
+            capcut_draft_tiktok=tiktok_name,
+            capcut_draft_youtube=youtube_name,
+            notes=notes,
+            status="4_da_render_video"
+        )
         
         return {
             "success": True,
-            "message": f"Đã tạo xong Project CapCut với {draft_res['clips_count']} clip nền!",
+            "message": f"Đã tạo xong 2 Dự Án CapCut: [TikTok 9:16 ({draft_res['tiktok']['clips_count']} clip)] & [YouTube 16:9 ({draft_res['youtube']['clips_count']} clip)]",
             "draft_info": draft_res,
             "project": updated
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/projects/batch-create-capcut")
+async def batch_create_capcut_api(payload: BatchCapCutPayload):
+    """Tạo hàng loạt 2 Dự Án CapCut (TikTok & YouTube) cho toàn bộ kịch bản đã chọn"""
+    theme = payload.theme or "nau_an"
+    theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
+    theme_vn = theme_names.get(theme, theme)
+    
+    results = []
+    success_count = 0
+    errors = []
+
+    for pid in payload.project_ids:
+        proj = database.get_project(pid)
+        if not proj or not proj.get("audio_path") or not os.path.exists(proj["audio_path"]):
+            errors.append(f"{pid}: Chưa có file audio")
+            continue
+        try:
+            draft_res = capcut_engine.create_dual_capcut_drafts(
+                project_id=pid,
+                title=proj["title"],
+                audio_path=proj["audio_path"],
+                theme=theme
+            )
+            notes = f"CapCut ({theme_vn}): TikTok & YouTube"
+            database.update_project(
+                pid,
+                capcut_draft_tiktok=draft_res["tiktok"]["draft_name"],
+                capcut_draft_youtube=draft_res["youtube"]["draft_name"],
+                notes=notes,
+                status="4_da_render_video"
+            )
+            results.append({"id": pid, "tiktok": draft_res["tiktok"]["draft_name"], "youtube": draft_res["youtube"]["draft_name"]})
+            success_count += 1
+        except Exception as e:
+            errors.append(f"{pid}: {str(e)}")
+
+    return {
+        "success": True,
+        "created_count": success_count,
+        "results": results,
+        "errors": errors
+    }
 
 @app.post("/api/open-capcut")
 async def open_capcut_app():
@@ -285,6 +408,7 @@ async def render_video_api(project_id: str, payload: RenderVideoPayload):
     updated = database.update_project(
         project_id,
         video_path=video_path,
+        video_tiktok_path=video_path,
         status="4_da_render_video"
     )
     return {"success": True, "video_path": video_path, "project": updated}
@@ -295,8 +419,8 @@ async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
-    prompt = payload.prompt or f"Cinematic illustration for story: {proj['title']}"
-    output_filename = f"{project_id}_thumb.jpg"
+    prompt = payload.prompt or f"Cinematic illustration for Vietnamese story: {proj['title']}"
+    output_filename = f"{project_id}.jpg"
     thumb_path = thumbnail_engine.generate_thumbnail(
         prompt=prompt,
         output_filename=output_filename,
@@ -305,6 +429,7 @@ async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
     
     updated = database.update_project(
         project_id,
+        has_thumbnail=1,
         thumbnail_path=thumb_path
     )
     return {"success": True, "thumbnail_path": thumb_path, "project": updated}
@@ -320,9 +445,10 @@ async def stream_audio(project_id: str):
 @app.get("/api/video/{project_id}")
 async def stream_video(project_id: str):
     proj = database.get_project(project_id)
-    if not proj or not proj.get("video_path") or not os.path.exists(proj["video_path"]):
+    target_path = proj.get("video_tiktok_path") or proj.get("video_youtube_path") or proj.get("video_path")
+    if not target_path or not os.path.exists(target_path):
         raise HTTPException(status_code=404, detail="File video không tồn tại")
-    return FileResponse(proj["video_path"], media_type="video/mp4")
+    return FileResponse(target_path, media_type="video/mp4")
 
 @app.get("/api/thumb/{project_id}")
 async def stream_thumb(project_id: str):
@@ -331,18 +457,37 @@ async def stream_thumb(project_id: str):
         raise HTTPException(status_code=404, detail="Ảnh thumbnail không tồn tại")
     return FileResponse(proj["thumbnail_path"], media_type="image/jpeg")
 
+@app.post("/api/open-file-in-explorer")
+async def open_file_in_explorer(payload: OpenFilePayload):
+    """Mở Windows Explorer và tự động Highlight file được chọn"""
+    target = os.path.abspath(payload.file_path)
+    if os.path.exists(target):
+        subprocess.Popen(f'explorer /select,"{target}"')
+        return {"success": True, "opened": target}
+    else:
+        # Nếu file chưa có thì mở thư mục cha
+        parent = os.path.dirname(target)
+        if os.path.exists(parent):
+            subprocess.Popen(f'explorer "{parent}"')
+            return {"success": True, "opened": parent}
+    raise HTTPException(status_code=404, detail="Không tìm thấy file hoặc thư mục")
+
 @app.post("/api/open-folder")
 async def open_folder(folder_name: str = Body(..., embed=True)):
-    """Mở thư mục trực tiếp trong Windows Explorer"""
+    """Mở nhanh thư mục trực tiếp trong Windows Explorer"""
     valid_folders = {
         "root": BASE_DIR,
         "scripts": os.path.join(BASE_DIR, "1_scripts"),
         "audios": os.path.join(BASE_DIR, "2_audio_input"),
         "videos": os.path.join(BASE_DIR, "3_video_output"),
+        "tiktok_videos": os.path.join(BASE_DIR, "3_video_output", "tiktok"),
+        "youtube_videos": os.path.join(BASE_DIR, "3_video_output", "youtube"),
         "thumbnails": os.path.join(BASE_DIR, "4_thumbnails"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
-        "bg_nau_an": os.path.join(BASE_DIR, "backgrounds", "nau_an"),
-        "bg_handmade": os.path.join(BASE_DIR, "backgrounds", "handmade"),
+        "bg_nau_an_doc": os.path.join(BASE_DIR, "backgrounds", "nau_an", "doc"),
+        "bg_nau_an_ngang": os.path.join(BASE_DIR, "backgrounds", "nau_an", "ngang"),
+        "bg_handmade_doc": os.path.join(BASE_DIR, "backgrounds", "handmade", "doc"),
+        "bg_handmade_ngang": os.path.join(BASE_DIR, "backgrounds", "handmade", "ngang"),
         "capcut_drafts": capcut_engine.CAPCUT_DRAFT_ROOT
     }
     target = valid_folders.get(folder_name, BASE_DIR)

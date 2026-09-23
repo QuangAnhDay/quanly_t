@@ -22,12 +22,39 @@ def init_db():
         pitch TEXT DEFAULT '+0Hz',
         audio_path TEXT,
         video_path TEXT,
+        video_tiktok_path TEXT,
+        video_youtube_path TEXT,
+        capcut_draft_tiktok TEXT,
+        capcut_draft_youtube TEXT,
+        has_thumbnail INTEGER DEFAULT 0,
         thumbnail_path TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        notes TEXT
+        notes TEXT,
+        is_published INTEGER DEFAULT 0
     )
     """)
+    
+    # Kiểm tra migration cho các cột mới
+    cursor.execute("PRAGMA table_info(projects)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    migrations = [
+        ("is_published", "INTEGER DEFAULT 0"),
+        ("video_tiktok_path", "TEXT"),
+        ("video_youtube_path", "TEXT"),
+        ("capcut_draft_tiktok", "TEXT"),
+        ("capcut_draft_youtube", "TEXT"),
+        ("has_thumbnail", "INTEGER DEFAULT 0"),
+    ]
+    
+    for col_name, col_type in migrations:
+        if col_name not in columns:
+            try:
+                cursor.execute(f"ALTER TABLE projects ADD COLUMN {col_name} {col_type}")
+            except Exception as e:
+                print(f"Migration notice ({col_name}): {e}")
+        
     conn.commit()
     conn.close()
 
@@ -53,10 +80,11 @@ def create_project(title: str, content: str, status: str = "1_cho_duyet", voice:
     kb_id = get_next_kb_id()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Also save raw text file to 1_scripts/KBxxx.txt for easy manual reading/backup
+    # Lưu file text dự phòng vào 1_scripts/KBxxx.txt
     scripts_dir = os.path.join(os.path.dirname(__file__), "1_scripts")
     os.makedirs(scripts_dir, exist_ok=True)
-    script_file = os.path.join(scripts_dir, f"{kb_id}_{re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:30]}.txt")
+    clean_sub_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:30]
+    script_file = os.path.join(scripts_dir, f"{kb_id}_{clean_sub_title}.txt")
     with open(script_file, "w", encoding="utf-8") as f:
         f.write(f"Tiêu đề: {title}\n")
         f.write(f"Mã kịch bản: {kb_id}\n")
@@ -67,8 +95,13 @@ def create_project(title: str, content: str, status: str = "1_cho_duyet", voice:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO projects (id, title, content, status, voice, rate, pitch, audio_path, video_path, thumbnail_path, created_at, updated_at, notes)
-    VALUES (?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, ?, ?, ?)
+    INSERT INTO projects (
+        id, title, content, status, voice, rate, pitch, 
+        audio_path, video_path, video_tiktok_path, video_youtube_path,
+        capcut_draft_tiktok, capcut_draft_youtube, has_thumbnail, thumbnail_path,
+        created_at, updated_at, notes, is_published
+    )
+    VALUES (?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, 0)
     """, (kb_id, title, content, status, voice, now, now, notes))
     conn.commit()
     conn.close()
@@ -115,6 +148,22 @@ def update_project(project_id: str, **kwargs) -> Optional[Dict[str, Any]]:
     conn.close()
     return get_project(project_id)
 
+def toggle_published(project_id: str) -> Optional[Dict[str, Any]]:
+    """Đảo trạng thái đã đăng / chưa đăng của kịch bản"""
+    p = get_project(project_id)
+    if not p:
+        return None
+    new_val = 0 if p.get("is_published", 0) else 1
+    return update_project(project_id, is_published=new_val)
+
+def toggle_thumbnail(project_id: str) -> Optional[Dict[str, Any]]:
+    """Đảo trạng thái đã có thumbnail hay chưa"""
+    p = get_project(project_id)
+    if not p:
+        return None
+    new_val = 0 if p.get("has_thumbnail", 0) else 1
+    return update_project(project_id, has_thumbnail=new_val)
+
 def delete_project(project_id: str) -> bool:
     init_db()
     conn = sqlite3.connect(DB_PATH)
@@ -124,3 +173,17 @@ def delete_project(project_id: str) -> bool:
     affected = cursor.rowcount
     conn.close()
     return affected > 0
+
+def batch_delete(project_ids: List[str]) -> int:
+    """Xóa hàng loạt kịch bản theo danh sách ID"""
+    init_db()
+    if not project_ids:
+        return 0
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    placeholders = ",".join(["?"] * len(project_ids))
+    cursor.execute(f"DELETE FROM projects WHERE id IN ({placeholders})", project_ids)
+    conn.commit()
+    count = cursor.rowcount
+    conn.close()
+    return count

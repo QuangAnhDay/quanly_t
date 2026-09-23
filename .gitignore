@@ -6,17 +6,17 @@ __pycache__/
 # Database
 data/*.db
 data/*.sqlite3
-!data/.gitkeep
+!data/**/.gitkeep
 
-# Output folders (ignored so media files are not uploaded to git)
+# Output folders (ignored so large media files are not uploaded to git)
 2_audio_input/*
-!2_audio_input/.gitkeep
+!2_audio_input/**/.gitkeep
 3_video_output/*
-!3_video_output/.gitkeep
+!3_video_output/**/.gitkeep
 4_thumbnails/*
-!4_thumbnails/.gitkeep
+!4_thumbnails/**/.gitkeep
 backgrounds/*
-!backgrounds/.gitkeep
+!backgrounds/**/.gitkeep
 
 # Virtual environment & IDE
 .venv/
