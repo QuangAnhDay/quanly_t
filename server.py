@@ -28,6 +28,20 @@ database.init_db()
 
 app = FastAPI(title="Xưởng Sản Xuất Video Audio - Truyện Automation")
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        import voicestudio_service
+        import task_logger
+        task_logger.add_log("system", "Hệ thống Web Dashboard đã khởi động thành công", "info")
+        vs_ready = voicestudio_service.ensure_voicestudio_running()
+        if vs_ready:
+            task_logger.add_log("system", "VoiceStudio API Server (Port 3900) đã sẵn sàng", "success")
+        else:
+            task_logger.add_log("system", "VoiceStudio Server chưa bật tại D:\\myProject\\voice", "warning")
+    except Exception as e:
+        print(f"[Startup] Lỗi kiểm tra VoiceStudio: {e}")
+
 # Cho phép CORS để Tampermonkey từ claude.ai gọi được
 app.add_middleware(
     CORSMiddleware,

@@ -25,12 +25,17 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [2/2] Dang khoi dong He thong va Web Dashboard...
+echo [2/3] Dang kiem tra & khoi dong VoiceStudio API Server (Port 3900)...
+if exist ".venv\Scripts\python.exe" (
+    start /b .venv\Scripts\python.exe -c "import voicestudio_service; voicestudio_service.ensure_voicestudio_running()" > nul 2>&1
+)
+
+echo [3/3] Dang khoi dong Web Dashboard (Port 8888)...
 echo.
 echo ======================================================================
 echo   HE THONG DANG HOAT DONG!
-echo   - Web Dashboard: http://localhost:8888 (Trinh duyet se tu dong mo)
-echo   - Nhap du lieu kịch ban va tao video thoai mai
+echo   - Web Dashboard: http://localhost:8888
+echo   - VoiceStudio API: http://localhost:3900
 echo   - Nhan Ctrl+C tai cua so nay de dung he thong khi xong viec.
 echo ======================================================================
 echo.
