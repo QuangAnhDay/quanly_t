@@ -9,6 +9,8 @@ import imageio_ffmpeg
 FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
 PROJECT_DIR = os.path.dirname(__file__)
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
+BG_DIR = os.path.join(PROJECT_DIR, "backgrounds")
+
 
 
 def get_audio_duration(file_path: str) -> float:
