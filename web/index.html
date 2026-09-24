@@ -216,6 +216,11 @@
       <i class="fa-solid fa-bolt"></i> Mở 5 Claude Chạy Kịch Bản Thô
     </button>
 
+    <!-- Batch Generate Audio Queue -->
+    <button onclick="batchGenerateAudioQueue()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+      <i class="fa-solid fa-microphone"></i> Tạo Audio Hàng Loạt
+    </button>
+
     <!-- Chủ đề nền -->
     <div class="flex items-center gap-1.5 text-xs text-slate-700">
       <span class="text-slate-500 font-medium">Kho nền:</span>
@@ -311,12 +316,12 @@
   <!-- Modal: Xem Chi Tiết / So Sánh 3 Phần -->
   <div id="view-script-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
-      <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <span id="view-modal-id" class="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-bold text-xs">KB001</span>
-          <h3 id="view-modal-title" class="font-bold text-slate-900 text-sm truncate max-w-md">Tiêu đề</h3>
+      <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 flex-1 max-w-xl">
+          <span id="view-modal-id" class="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-bold text-xs shrink-0">KB001</span>
+          <input id="view-modal-title-input" type="text" class="w-full px-2.5 py-1 text-xs font-bold text-slate-900 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none bg-slate-50 focus:bg-white transition" placeholder="Tiêu đề kịch bản..." title="Nhấn để sửa tiêu đề kịch bản">
         </div>
-        <button onclick="closeModal('view-script-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+        <button onclick="closeModal('view-script-modal')" class="text-slate-400 hover:text-slate-600 text-sm shrink-0"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <!-- Sub-Tabs -->
@@ -862,6 +867,42 @@
       }
     }
 
+    async function batchGenerateAudioQueue() {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) {
+        showToast("Vui lòng chọn ít nhất 1 kịch bản", "warning");
+        return;
+      }
+      showToast(`Bắt đầu tạo Audio hàng loạt cho ${ids.length} kịch bản...`, "info");
+      
+      let successCount = 0;
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const p = projectsData.find(item => item.id === id);
+        const voice = userVoiceSelections[id] || (p ? p.voice : null) || "vi-VN-HoaiMyNeural";
+        
+        showToast(`[${i + 1}/${ids.length}] Đang tạo Audio cho ${id}...`, "info");
+        try {
+          const res = await fetch(`/api/projects/${id}/generate-audio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voice })
+          });
+          const data = await res.json();
+          if (data.success) {
+            successCount++;
+            fetchProjects();
+          } else {
+            showToast(`❌ Lỗi [${id}]: ${data.detail || 'Thất bại'}`, "error");
+          }
+        } catch (e) {
+          showToast(`❌ Lỗi kết nối khi tạo audio cho [${id}]`, "error");
+        }
+      }
+      showToast(`✅ Hoàn tất tạo Audio cho ${successCount}/${ids.length} kịch bản!`, "success");
+      deselectAll();
+    }
+
     async function dispatchSingleToClaude(id) {
       let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
       showToast(`Đang mở Claude cho kịch bản [${id}]...`, "info");
@@ -1220,7 +1261,8 @@
       currentViewingProject = p;
 
       document.getElementById('view-modal-id').innerText = p.id;
-      document.getElementById('view-modal-title').innerText = p.title;
+      const titleInput = document.getElementById('view-modal-title-input');
+      if (titleInput) titleInput.value = p.title || '';
       document.getElementById('view-modal-content').value = p.content || p.raw_content || '';
       document.getElementById('view-modal-raw-content').value = p.raw_content || 'Không có bản thô gốc.';
       document.getElementById('view-modal-thumb-prompt').value = p.thumb_prompt || 'Chưa có prompt gợi ý từ Claude.';
@@ -1281,15 +1323,17 @@
 
     async function saveUpdatedScript() {
       if (!currentViewingProject) return;
+      const titleInput = document.getElementById('view-modal-title-input');
+      const newTitle = titleInput ? titleInput.value.trim() : currentViewingProject.title;
       const newContent = document.getElementById('view-modal-content').value;
       const newThumbPrompt = document.getElementById('view-modal-thumb-prompt').value;
       try {
         await fetch(`/api/projects/${currentViewingProject.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: newContent, thumb_prompt: newThumbPrompt })
+          body: JSON.stringify({ title: newTitle, content: newContent, thumb_prompt: newThumbPrompt })
         });
-        showToast("Đã lưu nội dung kịch bản", "success");
+        showToast("✅ Đã lưu thay đổi kịch bản thành công!", "success");
         closeModal('view-script-modal');
         fetchProjects();
       } catch (err) {
