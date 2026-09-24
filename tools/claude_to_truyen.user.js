@@ -131,8 +131,49 @@
     }
 
     function getClaudeResponses() {
-        const messages = Array.from(document.querySelectorAll('.font-claude-message, [data-is-streaming="false"], .grid-cols-1 .whitespace-pre-wrap'));
-        return messages.map(m => m.innerText.trim()).filter(t => t.length > 0);
+        // Prioritize specific Claude assistant message nodes
+        let nodes = Array.from(document.querySelectorAll('.font-claude-message'));
+        if (nodes.length === 0) {
+            nodes = Array.from(document.querySelectorAll('[data-is-streaming="false"] .whitespace-pre-wrap, div.grid-cols-1 .whitespace-pre-wrap'));
+        }
+        if (nodes.length === 0) {
+            nodes = Array.from(document.querySelectorAll('.whitespace-pre-wrap'));
+        }
+
+        const texts = [];
+        for (const node of nodes) {
+            // Exclude user inputs / ProseMirror editor elements / user messages
+            if (node.closest('[contenteditable="true"]') || node.closest('fieldset') || node.closest('[data-testid="user-message"]')) {
+                continue;
+            }
+
+            const text = node.innerText ? node.innerText.trim() : '';
+            if (!text) continue;
+
+            // Exclude user skill commands if captured accidentally
+            if (text.startsWith('/tao-kich-ban') || text.startsWith('/tieu-de-thumb')) {
+                continue;
+            }
+
+            if (!texts.includes(text)) {
+                // Avoid redundant nested duplicate text blocks
+                const isSubstring = texts.some(existing => existing.includes(text));
+                if (!isSubstring) {
+                    const existingIndex = texts.findIndex(existing => text.includes(existing));
+                    if (existingIndex !== -1) {
+                        texts[existingIndex] = text;
+                    } else {
+                        texts.push(text);
+                    }
+                }
+            }
+        }
+        return texts;
+    }
+
+    function getLatestClaudeResponse() {
+        const responses = getClaudeResponses();
+        return responses.length > 0 ? responses[responses.length - 1] : "";
     }
 
     async function runTwoSkillPipeline(project) {
@@ -152,7 +193,7 @@
             const rawContent = project.raw_content || project.content || "";
             if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
 
-            // 1. LƯỢT 1
+            // 1. LƯỢT 1: Tạo kịch bản chính
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
@@ -162,7 +203,11 @@
             const done1 = await waitForClaudeDone(300);
             if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian!");
 
-            // 2. LƯỢT 2
+            // Bắt câu trả lời lượt 1 NGAY TẠI ĐÂY (Trước khi gửi Lượt 2)
+            let fullScript = getLatestClaudeResponse();
+            console.log("--> [Lượt 1] Kịch bản chính (script):", fullScript.substring(0, 100) + "...");
+
+            // 2. LƯỢT 2: Xin Tiêu đề & Thumbnail
             updateStatusWidget(`[2/2] Đang xin Tiêu đề & Thumb [${project.id}]...`, "#3b82f6");
             await sleep(2000);
             const prompt2 = `${titleThumbSkill}\n\nHãy gợi ý 3 tiêu đề hấp dẫn và 1 đoạn prompt mô tả ảnh thumbnail (tiếng Anh và tiếng Việt) cho kịch bản vừa tạo ở trên.`;
@@ -173,10 +218,21 @@
             const done2 = await waitForClaudeDone(150);
             if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian!");
 
-            // 3. Bóc tách kết quả
-            const responses = getClaudeResponses();
-            const fullScript = responses[responses.length - 2] || responses[0] || "";
-            const titleThumbText = responses[responses.length - 1] || "";
+            // Bắt câu trả lời lượt 2 NGAY TẠI ĐÂY
+            let titleThumbText = getLatestClaudeResponse();
+            console.log("--> [Lượt 2] Tiêu đề & Thumb:", titleThumbText.substring(0, 100) + "...");
+
+            // Fallback safety nếu chẳng may fullScript bị trùng hoặc rỗng
+            if (!fullScript || fullScript === titleThumbText) {
+                console.warn("⚠️ Cảnh báo: fullScript trùng hoặc rỗng, dùng fallback bóc tách danh sách...");
+                const allResponses = getClaudeResponses();
+                if (allResponses.length >= 2) {
+                    fullScript = allResponses[0];
+                    titleThumbText = allResponses[allResponses.length - 1];
+                } else if (allResponses.length === 1) {
+                    fullScript = allResponses[0];
+                }
+            }
 
             let title = project.title || "";
             const titleLines = titleThumbText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
