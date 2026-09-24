@@ -68,14 +68,23 @@
         return null;
     }
 
-    async function waitForClaudeDone(maxWaitSeconds = 240) {
+    async function waitForClaudeDone(maxWaitSeconds = 1800, statusPrefix = "") {
         await sleep(3500);
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
             if (!isClaudeStreaming()) {
-                await sleep(2000);
+                await sleep(2500);
                 if (!isClaudeStreaming()) return true;
             }
+
+            const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+            if (elapsedSec > 10 && statusPrefix) {
+                const mins = Math.floor(elapsedSec / 60);
+                const secs = elapsedSec % 60;
+                const timeStr = mins > 0 ? `${mins}ph ${secs}s` : `${secs}s`;
+                updateStatusWidget(`${statusPrefix} (Đã chờ ${timeStr})...`, "#8b5cf6");
+            }
+
             await sleep(1000);
         }
         return false;
@@ -179,7 +188,8 @@
     async function runTwoSkillPipeline(project) {
         if (isAutoRunning) return;
         isAutoRunning = true;
-        updateStatusWidget(`⏳ Đang chạy [${project.id}]...`, "#eab308");
+        const p1Status = `[1/2] Đang viết kịch bản [${project.id}]`;
+        updateStatusWidget(`⏳ ${p1Status}...`, "#eab308");
 
         try {
             const skillConfig = await apiFetch('/api/claude-skill-config').catch(() => ({
@@ -193,30 +203,31 @@
             const rawContent = project.raw_content || project.content || "";
             if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
 
-            // 1. LƯỢT 1: Tạo kịch bản chính
+            // 1. LƯỢT 1: Tạo kịch bản chính (Cho phép tối đa 30 phút = 1800s cho Claude Extended Thinking)
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
             await sleep(800);
             await clickSend();
 
-            const done1 = await waitForClaudeDone(300);
-            if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian!");
+            const done1 = await waitForClaudeDone(1800, p1Status);
+            if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian (hơn 30 phút)!");
 
             // Bắt câu trả lời lượt 1 NGAY TẠI ĐÂY (Trước khi gửi Lượt 2)
             let fullScript = getLatestClaudeResponse();
             console.log("--> [Lượt 1] Kịch bản chính (script):", fullScript.substring(0, 100) + "...");
 
             // 2. LƯỢT 2: Xin Tiêu đề & Thumbnail
-            updateStatusWidget(`[2/2] Đang xin Tiêu đề & Thumb [${project.id}]...`, "#3b82f6");
+            const p2Status = `[2/2] Đang xin Tiêu đề & Thumb [${project.id}]`;
+            updateStatusWidget(`⏳ ${p2Status}...`, "#3b82f6");
             await sleep(2000);
             const prompt2 = `${titleThumbSkill}\n\nHãy gợi ý 3 tiêu đề hấp dẫn và 1 đoạn prompt mô tả ảnh thumbnail (tiếng Anh và tiếng Việt) cho kịch bản vừa tạo ở trên.`;
             await typeIntoChat(prompt2);
             await sleep(800);
             await clickSend();
 
-            const done2 = await waitForClaudeDone(150);
-            if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian!");
+            const done2 = await waitForClaudeDone(600, p2Status);
+            if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian (hơn 10 phút)!");
 
             // Bắt câu trả lời lượt 2 NGAY TẠI ĐÂY
             let titleThumbText = getLatestClaudeResponse();
