@@ -39,7 +39,7 @@ def textToSpeech(text: str, options: Optional[Dict[str, Any]] = None) -> bytes:
     endpoint_url = f"{base_url}/audio/speech"
     
     payload = {
-        "model": "VoiceStudio",
+        "model": "tts-1",
         "input": text,
         "voice": voice,
         "response_format": output_format
@@ -72,7 +72,7 @@ async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None)
     endpoint_url = f"{base_url}/audio/speech"
     
     payload = {
-        "model": "VoiceStudio",
+        "model": "tts-1",
         "input": text,
         "voice": voice,
         "response_format": output_format
