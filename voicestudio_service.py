@@ -16,49 +16,97 @@ def get_base_url() -> str:
     url = os.environ.get("VOICESTUDIO_API_URL", DEFAULT_BASE_URL).rstrip("/")
     return url
 
+import re
+
+MAX_CHUNK_CHARS = 2500
+
+def split_text_into_chunks(text: str, max_chars: int = MAX_CHUNK_CHARS) -> List[str]:
+    """
+    Chia văn bản dài thành các đoạn nhỏ dưới max_chars (mặc định 2500 ký tự) ngắt theo dòng và câu.
+    """
+    text = text.strip()
+    if not text:
+        return []
+    if len(text) <= max_chars:
+        return [text]
+
+    chunks = []
+    paragraphs = text.split("\n")
+    current_chunk = ""
+
+    for para in paragraphs:
+        para_str = para.strip()
+        if not para_str:
+            continue
+            
+        if len(para_str) > max_chars:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = ""
+            
+            sentences = re.split(r'(?<=[.!?;\n])\s+', para_str)
+            sub_chunk = ""
+            for sentence in sentences:
+                sentence_str = sentence.strip()
+                if not sentence_str:
+                    continue
+                if len(sub_chunk) + len(sentence_str) + 1 <= max_chars:
+                    sub_chunk = f"{sub_chunk} {sentence_str}".strip()
+                else:
+                    if sub_chunk:
+                        chunks.append(sub_chunk)
+                    while len(sentence_str) > max_chars:
+                        space_idx = sentence_str.rfind(' ', 0, max_chars)
+                        if space_idx > 0:
+                            chunks.append(sentence_str[:space_idx].strip())
+                            sentence_str = sentence_str[space_idx:].strip()
+                        else:
+                            chunks.append(sentence_str[:max_chars].strip())
+                            sentence_str = sentence_str[max_chars:].strip()
+                    sub_chunk = sentence_str
+            if sub_chunk:
+                chunks.append(sub_chunk)
+        else:
+            if len(current_chunk) + len(para_str) + 1 <= max_chars:
+                current_chunk = f"{current_chunk}\n{para_str}".strip() if current_chunk else para_str
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                current_chunk = para_str
+
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return [c for c in chunks if c.strip()]
+
+
 def textToSpeech(text: str, options: Optional[Dict[str, Any]] = None) -> bytes:
     """
     Hàm chuyển đổi Văn bản -> Âm thanh (Text-To-Speech) đồng bộ tương thích OpenAI Audio API.
-    
-    :param text: Đoạn văn bản cần chuyển thành giọng nói (bắt buộc).
-    :param options: Dictionary tùy chọn:
-           - voice: Tên cấu hình giọng nói (mặc định: "default")
-           - outputFormat: Định dạng file xuất ra ("mp3" hoặc "wav", mặc định "mp3")
-           - timeout: Thời gian tối đa đợi response (giây, mặc định 120)
-    :return: Dữ liệu âm thanh dạng bytes
     """
-    if not text or not text.strip():
-        raise ValueError("Nội dung văn bản (text) không được để trống!")
-        
-    options = options or {}
-    voice = options.get("voice", "default")
-    output_format = options.get("outputFormat") or options.get("output_format", "mp3")
-    timeout = options.get("timeout", 120)
-    
+    return asyncio.run(textToSpeechAsync(text, options))
+
+async def _raw_single_speech_async(text: str, voice: str, output_format: str, timeout: int, session: aiohttp.ClientSession) -> bytes:
     base_url = get_base_url()
     endpoint_url = f"{base_url}/audio/speech"
-    
     payload = {
         "model": "tts-1",
         "input": text,
         "voice": voice,
         "response_format": output_format
     }
-    
     headers = {
         "Content-Type": "application/json"
     }
-    
-    try:
-        response = requests.post(endpoint_url, json=payload, headers=headers, timeout=timeout)
-        response.raise_for_status()
-        return response.content
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Lỗi khi kết nối VoiceStudio API tại {endpoint_url}: {e}")
+    async with session.post(endpoint_url, json=payload, headers=headers) as resp:
+        if resp.status != 200:
+            err_text = await resp.text()
+            raise RuntimeError(f"VoiceStudio API trả về mã lỗi {resp.status}: {err_text}")
+        return await resp.read()
 
 async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None) -> bytes:
     """
-    Hàm chuyển đổi Văn bản -> Âm thanh (Text-To-Speech) bất đồng bộ (Async) cho FastAPI / asyncio.
+    Hàm chuyển đổi Văn bản -> Âm thanh (Text-To-Speech) bất đồng bộ với tự động chia nhỏ văn bản dài.
     """
     if not text or not text.strip():
         raise ValueError("Nội dung văn bản (text) không được để trống!")
@@ -66,32 +114,22 @@ async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None)
     options = options or {}
     voice = options.get("voice", "default")
     output_format = options.get("outputFormat") or options.get("output_format", "mp3")
-    timeout = options.get("timeout", 120)
+    timeout = options.get("timeout", 180)
     
-    base_url = get_base_url()
-    endpoint_url = f"{base_url}/audio/speech"
-    
-    payload = {
-        "model": "tts-1",
-        "input": text,
-        "voice": voice,
-        "response_format": output_format
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
+    chunks = split_text_into_chunks(text, max_chars=MAX_CHUNK_CHARS)
+    if not chunks:
+        raise ValueError("Nội dung kịch bản rỗng!")
+        
     client_timeout = aiohttp.ClientTimeout(total=timeout)
     async with aiohttp.ClientSession(timeout=client_timeout) as session:
-        try:
-            async with session.post(endpoint_url, json=payload, headers=headers) as resp:
-                if resp.status != 200:
-                    err_text = await resp.text()
-                    raise RuntimeError(f"VoiceStudio API trả về mã lỗi {resp.status}: {err_text}")
-                return await resp.read()
-        except Exception as e:
-            raise RuntimeError(f"Lỗi khi kết nối VoiceStudio API bất đồng bộ tại {endpoint_url}: {e}")
+        audio_parts = []
+        for i, chunk in enumerate(chunks):
+            try:
+                data = await _raw_single_speech_async(chunk, voice, output_format, timeout, session)
+                audio_parts.append(data)
+            except Exception as e:
+                raise RuntimeError(f"Lỗi khi kết nối VoiceStudio API tại đoạn {i+1}/{len(chunks)}: {e}")
+        return b"".join(audio_parts)
 
 def generate_voicestudio_file(text: str, output_path: str, voice: str = "default", output_format: str = "mp3") -> str:
     """
