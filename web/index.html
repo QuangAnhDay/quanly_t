@@ -586,9 +586,18 @@
                   <button onclick="playAudio('${p.id}')" class="text-emerald-600 hover:text-emerald-800 ml-1" title="Nghe thử"><i class="fa-solid fa-circle-play"></i></button>
                 </div>
               ` : `
-                <button onclick="generateAudioSingle('${p.id}')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold transition">
-                  <i class="fa-solid fa-microphone"></i> Tạo Voice
-                </button>
+                <div class="flex flex-col items-center gap-1">
+                  <select id="voice-sel-${p.id}" class="w-full text-[10px] bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:border-violet-400 max-w-[130px]">
+                    ${availableVoices.map(v => {
+                      const savedVoice = String(p.voice || 'vi-VN-HoaiMyNeural');
+                      const isSel = savedVoice === v.id;
+                      return `<option value="${v.id}"${isSel ? ' selected' : ''}>${v.name}</option>`;
+                    }).join('')}
+                  </select>
+                  <button onclick="generateAudioSingle('${p.id}', document.getElementById('voice-sel-${p.id}').value)" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-semibold transition w-full max-w-[130px]">
+                    <i class="fa-solid fa-microphone"></i> Tạo Voice
+                  </button>
+                </div>
               `)}
             </td>
 
@@ -875,13 +884,14 @@
       }
     }
 
-    async function generateAudioSingle(id) {
+    async function generateAudioSingle(id, voice) {
+      const voiceToUse = voice || "vi-VN-HoaiMyNeural";
       showToast(`Đang tạo Audio cho ${id}...`, "info");
       try {
         const res = await fetch(`/api/projects/${id}/generate-audio`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ voice: "vi-VN-HoaiMyNeural" })
+          body: JSON.stringify({ voice: voiceToUse })
         });
         const data = await res.json();
         if (data.success) {
@@ -1310,7 +1320,37 @@
       }, 3500);
     }
 
+    // === VOICE MANAGEMENT ===
+    let availableVoices = [
+      { id: "vi-VN-HoaiMyNeural", name: "Hoài My (Nữ - Edge-TTS)" },
+      { id: "vi-VN-NamMinhNeural", name: "Nam Minh (Nam - Edge-TTS)" }
+    ];
+
+    async function loadVoices() {
+      try {
+        const res = await fetch('/api/voices');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.voices && data.voices.length > 0) {
+          availableVoices = data.voices;
+          // Cập nhật select giọng trong modal "Thêm Kịch Bản"
+          const sel = document.getElementById('script-voice');
+          if (sel) {
+            const cur = sel.value;
+            sel.innerHTML = availableVoices.map(v =>
+              `<option value="${v.id}">${v.name}</option>`
+            ).join('');
+            if (availableVoices.some(v => v.id === cur)) sel.value = cur;
+          }
+        }
+      } catch (e) {
+        // Nếu lỗi, giữ nguyên danh sách mặc định, không làm crash trang
+        console.warn('[loadVoices] Không kết nối được /api/voices:', e.message);
+      }
+    }
+
     // Auto-load on start & auto-refresh
+    loadVoices();
     fetchProjects();
     setInterval(fetchProjects, 6000);
   </script>

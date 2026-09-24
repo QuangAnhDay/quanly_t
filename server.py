@@ -181,6 +181,29 @@ async def api_launch_chrome_selected(payload: LaunchSelectedProfilesPayload):
     
     return {"success": True, "launched": launched, "count": len(launched)}
 
+@app.get("/api/voices")
+async def api_get_voices():
+    """Trả về danh sách giọng đọc Edge-TTS + giọng clone cá nhân từ VoiceStudio"""
+    voices = [
+        {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ - Edge-TTS)", "type": "edge_tts"},
+        {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam - Edge-TTS)", "type": "edge_tts"},
+    ]
+    try:
+        import voicestudio_service
+        cloned = voicestudio_service.get_voicestudio_voices()
+        for v in cloned:
+            voice_id = v.get("voice_id") or v.get("id") or ""
+            voice_name = v.get("name") or voice_id
+            if voice_id:
+                voices.append({
+                    "id": f"voicestudio:{voice_id}",
+                    "name": f"🎙️ {voice_name} (Clone)",
+                    "type": "voicestudio"
+                })
+    except Exception as e:
+        print(f"[/api/voices] Không đọc được giọng VoiceStudio: {e}")
+    return {"voices": voices}
+
 @app.get("/api/projects")
 async def list_projects():
     auto_sync_disk_files()
