@@ -499,6 +499,8 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
         raise HTTPException(status_code=400, detail=f"Không tìm thấy file audio tại {audio_path}")
 
     theme = payload.theme or "nau_an"
+    import task_logger
+    task_logger.add_log("capcut", f"Đang tạo Dự Án CapCut 16:9 chống trùng lặp cho [{project_id}]...", "info", project_id)
     try:
         draft_res = capcut_engine.create_capcut_draft(
             project_id=project_id,
@@ -519,6 +521,7 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
             status="4_da_render_video"
         )
         
+        task_logger.add_log("capcut", f"🎬 Đã tạo CapCut 16:9 cho [{project_id}] ({draft_res['clips_count']} clip, lật ngang & đổi tốc độ vi mô chống lặp)", "success", project_id)
         return {
             "success": True,
             "message": f"Đã tạo xong Project CapCut: {draft_name} ({draft_res['clips_count']} clip nền)!",
@@ -526,6 +529,7 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
             "project": updated
         }
     except Exception as e:
+        task_logger.add_log("capcut", f"❌ Lỗi tạo CapCut cho [{project_id}]: {e}", "error", project_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/projects/batch-create-capcut")

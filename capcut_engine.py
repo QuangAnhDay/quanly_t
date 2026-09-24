@@ -164,13 +164,29 @@ def create_single_capcut_draft(
         needed = total_duration_us - current_acc_us
         
         actual_dur = min(clip_dur, needed)
+        
+        # 1. Random Horizontal Flip (50% cơ hội)
+        is_flip = random.choice([True, False])
+        
+        # 2. Micro Speed adjustment (0.95x - 1.05x)
+        speed = round(random.uniform(0.95, 1.05), 2)
+        
+        # 3. Micro Zoom / Crop Scale (103% - 106%)
+        scale = round(random.uniform(1.03, 1.06), 3)
+
+        source_dur = int(actual_dur * speed)
+
         selected_clips.append({
             "path": clip["path"],
             "width": clip["width"],
             "height": clip["height"],
             "source_start": 0,
             "duration": actual_dur,
-            "timeline_start": current_acc_us
+            "source_duration": source_dur,
+            "timeline_start": current_acc_us,
+            "flip_horizontal": is_flip,
+            "speed": speed,
+            "scale": scale
         })
         current_acc_us += actual_dur
         idx += 1
@@ -236,7 +252,7 @@ def create_single_capcut_draft(
         "wave_points": []
     })
 
-    # Video materials & segments
+    # Video materials & segments (Với biến đổi vi mô độc bản)
     video_track_segments = []
     path_to_mat_id = {}
 
@@ -283,11 +299,27 @@ def create_single_capcut_draft(
         else:
             v_id = path_to_mat_id[p]
 
+        # Tạo Speed Material riêng cho từng clip vi mô
+        clip_speed_id = str(uuid.uuid4()).upper()
+        materials["speeds"].append({
+            "curve_speed": None,
+            "id": clip_speed_id,
+            "mode": 0,
+            "speed": c["speed"],
+            "type": "speed"
+        })
+
         seg_id = str(uuid.uuid4()).upper()
         video_track_segments.append({
             "caption_info": None,
             "cartoon": False,
-            "clip": {"alpha": 1.0, "flip": {"horizontal": False, "vertical": False}, "rotation": 0.0, "scale": {"x": 1.0, "y": 1.0}, "transform": {"x": 0.0, "y": 0.0}},
+            "clip": {
+                "alpha": 1.0,
+                "flip": {"horizontal": c["flip_horizontal"], "vertical": False},
+                "rotation": 0.0,
+                "scale": {"x": c["scale"], "y": c["scale"]},
+                "transform": {"x": 0.0, "y": 0.0}
+            },
             "common_keyframes": [],
             "enable_adjust": True,
             "enable_color_curves": True,
@@ -311,9 +343,9 @@ def create_single_capcut_draft(
             "render_index": 0,
             "render_timerange": {"duration": 0, "start": 0},
             "reverse": False,
-            "source_timerange": {"duration": c["duration"], "start": c["source_start"]},
-            "speed": 1.0,
-            "speed_id": speed_normal_id,
+            "source_timerange": {"duration": c["source_duration"], "start": c["source_start"]},
+            "speed": c["speed"],
+            "speed_id": clip_speed_id,
             "state": 0,
             "target_timerange": {"duration": c["duration"], "start": c["timeline_start"]},
             "track_attribute": 0,
