@@ -204,6 +204,64 @@ async def api_get_voices():
         print(f"[/api/voices] Không đọc được giọng VoiceStudio: {e}")
     return {"voices": voices}
 
+@app.get("/api/system/health")
+async def api_system_health():
+    """Endpoint giám sát sức khỏe hệ thống: VoiceStudio, ổ đĩa, kho ảnh, kho video nền"""
+    import shutil
+    import time as _time
+
+    # 1. VoiceStudio
+    vs_info = {"online": False, "ready": False, "voice_count": 0, "voices": [], "latency_ms": None}
+    try:
+        import voicestudio_service
+        t0 = _time.perf_counter()
+        vs_online = voicestudio_service.is_voicestudio_available()
+        latency = round((_time.perf_counter() - t0) * 1000, 1)
+        vs_info["online"] = vs_online
+        vs_info["latency_ms"] = latency
+        if vs_online:
+            cloned = voicestudio_service.get_voicestudio_voices()
+            vs_info["ready"] = True
+            vs_info["voice_count"] = len(cloned)
+            vs_info["voices"] = [{"id": v.get("voice_id") or v.get("id", ""), "name": v.get("name", "")} for v in cloned]
+    except Exception as e:
+        vs_info["error"] = str(e)
+
+    # 2. Disk usage
+    try:
+        usage = shutil.disk_usage(BASE_DIR)
+        free_gb = round(usage.free / (1024**3), 2)
+        total_gb = round(usage.total / (1024**3), 2)
+        used_pct = round((usage.used / usage.total) * 100, 1)
+        disk_info = {
+            "free_gb": free_gb,
+            "total_gb": total_gb,
+            "used_percent": used_pct,
+            "low_space_warning": free_gb < 5
+        }
+    except Exception:
+        disk_info = {"free_gb": 0, "total_gb": 0, "used_percent": 0, "low_space_warning": True}
+
+    # 3. Thumbnail assets
+    thumb_dir = os.path.join(BASE_DIR, "thumb_assets")
+    thumb_count = 0
+    if os.path.isdir(thumb_dir):
+        thumb_count = len([f for f in os.listdir(thumb_dir) if os.path.isfile(os.path.join(thumb_dir, f))])
+
+    # 4. Background video stats
+    bg_stats = {}
+    try:
+        bg_stats = capcut_engine.get_theme_stats()
+    except Exception:
+        pass
+
+    return {
+        "voicestudio": vs_info,
+        "storage": disk_info,
+        "thumb_assets": {"count": thumb_count},
+        "background_videos": bg_stats
+    }
+
 @app.get("/api/projects")
 async def list_projects():
     auto_sync_disk_files()
