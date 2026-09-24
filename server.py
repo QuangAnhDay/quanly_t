@@ -262,6 +262,19 @@ async def api_system_health():
         "background_videos": bg_stats
     }
 
+@app.get("/api/system/activity-logs")
+async def get_activity_logs_api(limit: int = 100, since_id: int = 0, module: Optional[str] = None):
+    import task_logger
+    logs = task_logger.get_logs(limit=limit, since_id=since_id, module=module)
+    return {"logs": logs, "count": len(logs)}
+
+@app.delete("/api/system/activity-logs")
+async def clear_activity_logs_api():
+    import task_logger
+    task_logger.clear_logs()
+    task_logger.add_log("system", "Đã xóa sạch nhật ký hoạt động hệ thống", "info")
+    return {"success": True}
+
 @app.get("/api/projects")
 async def list_projects():
     auto_sync_disk_files()
@@ -432,23 +445,32 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
     os.makedirs(pkg_dir, exist_ok=True)
     pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
 
-    actual_path = await audio_engine.generate_speech(
-        text=proj["content"],
-        output_path=pkg_audio_path,
-        voice=payload.voice or proj.get("voice") or "vi-VN-HoaiMyNeural",
-        rate=payload.rate or "+0%",
-        pitch=payload.pitch or "+0Hz"
-    )
-    
-    updated = database.update_project(
-        project_id,
-        audio_path=actual_path,
-        voice=payload.voice,
-        rate=payload.rate,
-        pitch=payload.pitch,
-        status="3_da_co_audio"
-    )
-    return {"success": True, "audio_path": actual_path, "project": updated}
+    import task_logger
+    voice_used = payload.voice or proj.get("voice") or "vi-VN-HoaiMyNeural"
+    task_logger.add_log("audio", f"Bắt đầu tạo Voice Audio cho [{project_id}] ({voice_used})...", "info", project_id)
+
+    try:
+        actual_path = await audio_engine.generate_speech(
+            text=proj["content"],
+            output_path=pkg_audio_path,
+            voice=voice_used,
+            rate=payload.rate or "+0%",
+            pitch=payload.pitch or "+0Hz"
+        )
+        
+        updated = database.update_project(
+            project_id,
+            audio_path=actual_path,
+            voice=payload.voice,
+            rate=payload.rate,
+            pitch=payload.pitch,
+            status="3_da_co_audio"
+        )
+        task_logger.add_log("audio", f"✅ Đã tạo xong voice audio cho [{project_id}]!", "success", project_id)
+        return {"success": True, "audio_path": actual_path, "project": updated}
+    except Exception as e:
+        task_logger.add_log("audio", f"❌ Lỗi tạo voice audio cho [{project_id}]: {e}", "error", project_id)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")

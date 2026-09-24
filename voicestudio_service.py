@@ -125,9 +125,19 @@ async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None)
         audio_parts = []
         for i, chunk in enumerate(chunks):
             try:
+                try:
+                    import task_logger
+                    task_logger.add_log("audio", f"Đang tạo VoiceStudio đoạn {i+1}/{len(chunks)} ({len(chunk)} ký tự)...", "info")
+                except Exception:
+                    pass
                 data = await _raw_single_speech_async(chunk, voice, output_format, timeout, session)
                 audio_parts.append(data)
             except Exception as e:
+                try:
+                    import task_logger
+                    task_logger.add_log("audio", f"Lỗi tạo VoiceStudio đoạn {i+1}/{len(chunks)}: {e}", "error")
+                except Exception:
+                    pass
                 raise RuntimeError(f"Lỗi khi kết nối VoiceStudio API tại đoạn {i+1}/{len(chunks)}: {e}")
         return b"".join(audio_parts)
 

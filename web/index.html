@@ -52,6 +52,11 @@
           <span id="vs-status-text" class="text-[11px] font-medium">Đang kiểm tra...</span>
         </button>
 
+        <button id="logs-status-badge" onclick="openModal('logs-modal'); fetchActivityLogs();" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2 transition border border-slate-700 shadow-sm" title="Nhấn để mở Bảng Giám Sát Tiến Độ & Nhật Ký Real-time">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 health-dot-pulse"></span>
+          <span id="logs-badge-text" class="text-[11px] font-medium">📜 Nhật Ký Live</span>
+        </button>
+
         <button onclick="launchCapCutApp()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-film"></i>
           <span>Mở CapCut PC</span>
@@ -550,8 +555,59 @@
           <button onclick="closeModal('health-modal')" class="px-4 py-1.5 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-lg transition">Đóng</button>
         </div>
       </div>
+  <!-- Modal / Drawer: Nhật Ký & Giám Sát Tiến Độ Real-Time (Modern Card Style) -->
+  <div id="logs-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-50 hidden flex items-center justify-end p-2 sm:p-4">
+    <div class="bg-slate-900 rounded-2xl max-w-xl w-full h-[92vh] shadow-2xl border border-slate-800 overflow-hidden flex flex-col transform transition-all duration-300">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30 flex items-center justify-center text-sm font-bold">📜</span>
+          <div>
+            <h3 class="font-bold text-white text-sm flex items-center gap-2">
+              Giám Sát Tiến Độ Real-Time
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 health-dot-pulse"></span> Live Log
+              </span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Theo dõi hoạt động hệ thống: Voice Audio, CapCut, TikTok, Thumbnail...</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="clearActivityLogs()" class="px-2.5 py-1 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg border border-rose-500/20 transition flex items-center gap-1" title="Xóa toàn bộ nhật ký">
+            <i class="fa-solid fa-broom"></i> Xóa log
+          </button>
+          <button onclick="closeModal('logs-modal')" class="text-slate-400 hover:text-white p-1 text-lg transition"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <!-- Filter Modules -->
+      <div class="px-5 py-2.5 border-b border-slate-800/80 bg-slate-900/90 flex items-center gap-1.5 overflow-x-auto text-xs">
+        <button onclick="filterLogs('all')" id="log-filter-all" class="px-2.5 py-1 rounded-lg bg-violet-600 text-white font-semibold transition">Tất cả</button>
+        <button onclick="filterLogs('audio')" id="log-filter-audio" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition">🎙️ Audio</button>
+        <button onclick="filterLogs('capcut')" id="log-filter-capcut" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition">🎬 CapCut</button>
+        <button onclick="filterLogs('tiktok')" id="log-filter-tiktok" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition">📱 TikTok</button>
+        <button onclick="filterLogs('thumb')" id="log-filter-thumb" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition">🖼️ Thumb</button>
+        <button onclick="filterLogs('claude')" id="log-filter-claude" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition">🤖 Claude</button>
+      </div>
+
+      <!-- Modern Cards Container -->
+      <div id="logs-cards-container" class="p-4 space-y-2.5 overflow-y-auto custom-scroll flex-1 bg-slate-950/40">
+        <!-- Dynamic Cards rendered here -->
+      </div>
+
+      <!-- Footer controls -->
+      <div class="px-5 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span id="logs-count-info">Đang hiển thị 0 nhật ký</span>
+        <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+          <input type="checkbox" id="logs-autoscroll" checked class="rounded border-slate-700 bg-slate-800 text-violet-500 focus:ring-0">
+          <span>Tự động cuộn xuống</span>
+        </label>
+      </div>
     </div>
   </div>
+
+
 
   <!-- Toast Container -->
   <div id="toast" class="fixed bottom-5 right-5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl text-xs font-medium z-50 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2 flex items-center gap-2">
@@ -1676,12 +1732,120 @@
       }
     }
 
+    // === ACTIVITY LOG MONITORING (MODERN CARD STYLE) ===
+    let activeLogFilter = 'all';
+    let activityLogsData = [];
+
+    async function fetchActivityLogs() {
+      try {
+        const res = await fetch(`/api/system/activity-logs?limit=100&module=${activeLogFilter}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        activityLogsData = data.logs || [];
+        renderActivityLogsCards();
+      } catch (e) {
+        console.warn('[ActivityLogs] Lỗi kết nối:', e.message);
+      }
+    }
+
+    async function clearActivityLogs() {
+      if (!confirm('Bạn có chắc muốn xóa toàn bộ nhật ký hoạt động?')) return;
+      try {
+        await fetch('/api/system/activity-logs', { method: 'DELETE' });
+        showToast('Đã xóa sạch nhật ký hoạt động', 'info');
+        fetchActivityLogs();
+      } catch (e) {
+        showToast('Lỗi khi xóa nhật ký', 'error');
+      }
+    }
+
+    function filterLogs(module) {
+      activeLogFilter = module;
+      ['all', 'audio', 'capcut', 'tiktok', 'thumb', 'claude'].forEach(m => {
+        const btn = document.getElementById(`log-filter-${m}`);
+        if (btn) {
+          if (m === module) {
+            btn.className = "px-2.5 py-1 rounded-lg bg-violet-600 text-white font-semibold transition shadow-sm";
+          } else {
+            btn.className = "px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 font-medium transition";
+          }
+        }
+      });
+      fetchActivityLogs();
+    }
+
+    function renderActivityLogsCards() {
+      const container = document.getElementById('logs-cards-container');
+      const countInfo = document.getElementById('logs-count-info');
+      if (!container) return;
+
+      if (!activityLogsData || activityLogsData.length === 0) {
+        container.innerHTML = `
+          <div class="h-64 flex flex-col items-center justify-center text-slate-500 gap-2">
+            <i class="fa-solid fa-list-check text-2xl text-slate-600"></i>
+            <p class="text-xs">Chưa có nhật ký hoạt động nào</p>
+          </div>
+        `;
+        if (countInfo) countInfo.textContent = 'Đang hiển thị 0 nhật ký';
+        return;
+      }
+
+      if (countInfo) countInfo.textContent = `Đang hiển thị ${activityLogsData.length} nhật ký`;
+
+      const moduleStyles = {
+        audio: { badgeBg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", label: "🎙️ Voice Audio" },
+        capcut: { badgeBg: "bg-violet-500/10 text-violet-400 border-violet-500/20", label: "🎬 CapCut 16:9" },
+        tiktok: { badgeBg: "bg-pink-500/10 text-pink-400 border-pink-500/20", label: "📱 TikTok 9:16" },
+        thumb: { badgeBg: "bg-amber-500/10 text-amber-400 border-amber-500/20", label: "🖼️ Thumbnail AI" },
+        claude: { badgeBg: "bg-blue-500/10 text-blue-400 border-blue-500/20", label: "🤖 Claude AI" },
+        system: { badgeBg: "bg-slate-500/10 text-slate-300 border-slate-500/20", label: "⚙️ System" }
+      };
+
+      const levelStyles = {
+        success: "border-l-2 border-l-emerald-500 text-emerald-300",
+        error: "border-l-2 border-l-rose-500 text-rose-300 bg-rose-950/20",
+        warning: "border-l-2 border-l-amber-500 text-amber-300",
+        info: "border-l-2 border-l-blue-500 text-slate-200"
+      };
+
+      container.innerHTML = activityLogsData.map(log => {
+        const mod = moduleStyles[log.module] || moduleStyles.system;
+        const levelClass = levelStyles[log.level] || levelStyles.info;
+        const icon = log.icon || "📝";
+        const projBadge = log.project_id ? `<span class="font-mono font-bold text-violet-300 bg-violet-950/80 px-1.5 py-0.5 rounded text-[10px] border border-violet-700/40">${log.project_id}</span>` : '';
+
+        return `
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-sm hover:border-slate-700 transition ${levelClass}">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${mod.badgeBg}">
+                  ${icon} ${mod.label}
+                </span>
+                ${projBadge}
+              </div>
+              <span class="text-[10px] text-slate-500 font-mono"><i class="fa-regular fa-clock mr-1"></i>${log.timestamp}</span>
+            </div>
+            <p class="text-xs mt-2 font-sans leading-relaxed break-words">
+              ${log.message}
+            </p>
+          </div>
+        `;
+      }).join('');
+
+      const autoScroll = document.getElementById('logs-autoscroll');
+      if (autoScroll && autoScroll.checked) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
     // Auto-load on start & auto-refresh
     loadVoices();
     fetchProjects();
     fetchSystemHealth();
+    fetchActivityLogs();
     setInterval(fetchProjects, 6000);
     setInterval(fetchSystemHealth, 15000);
+    setInterval(fetchActivityLogs, 3000);
   </script>
 </body>
 </html>
