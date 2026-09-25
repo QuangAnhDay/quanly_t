@@ -181,7 +181,7 @@
             if (!text) continue;
 
             // Exclude user skill commands if captured accidentally
-            if (text.startsWith('/tao-kich-ban') || text.startsWith('/tieu-de-thumb')) {
+            if (text.startsWith('/')) {
                 continue;
             }
 
@@ -240,11 +240,11 @@
             let fullScript = getLatestClaudeResponse();
             console.log("--> [Lượt 1] Kịch bản chính (script):", fullScript.substring(0, 100) + "...");
 
-            // 2. LƯỢT 2: Xin Tiêu đề & Thumbnail
+            // 2. LƯỢT 2: Xin Tiêu đề & Thumbnail (Chỉ gửi duy nhất lệnh skill)
             const p2Status = `[2/2] Đang xin Tiêu đề & Thumb [${project.id}]`;
             updateStatusWidget(`⏳ ${p2Status}...`, "#3b82f6");
             await sleep(2000);
-            const prompt2 = `${titleThumbSkill}\n\nHãy gợi ý 3 tiêu đề hấp dẫn và 1 đoạn prompt mô tả ảnh thumbnail (tiếng Anh và tiếng Việt) cho kịch bản vừa tạo ở trên.`;
+            const prompt2 = titleThumbSkill;
             await typeIntoChat(prompt2);
             await sleep(800);
             await clickSend();
