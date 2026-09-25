@@ -104,7 +104,7 @@ async def _raw_single_speech_async(text: str, voice: str, output_format: str, ti
             raise RuntimeError(f"VoiceStudio API trả về mã lỗi {resp.status}: {err_text}")
         return await resp.read()
 
-async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None) -> bytes:
+async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None, on_progress=None) -> bytes:
     """
     Hàm chuyển đổi Văn bản -> Âm thanh (Text-To-Speech) bất đồng bộ với tự động chia nhỏ văn bản dài.
     """
@@ -124,21 +124,18 @@ async def textToSpeechAsync(text: str, options: Optional[Dict[str, Any]] = None)
     async with aiohttp.ClientSession(timeout=client_timeout) as session:
         audio_parts = []
         for i, chunk in enumerate(chunks):
+            if on_progress:
+                try:
+                    on_progress(i + 1, len(chunks))
+                except Exception:
+                    pass
             try:
-                try:
-                    import task_logger
-                    task_logger.add_log("audio", f"Đang tạo VoiceStudio đoạn {i+1}/{len(chunks)} ({len(chunk)} ký tự)...", "info")
-                except Exception:
-                    pass
-                data = await _raw_single_speech_async(chunk, voice, output_format, timeout, session)
-                audio_parts.append(data)
-            except Exception as e:
-                try:
-                    import task_logger
-                    task_logger.add_log("audio", f"Lỗi tạo VoiceStudio đoạn {i+1}/{len(chunks)}: {e}", "error")
-                except Exception:
-                    pass
-                raise RuntimeError(f"Lỗi khi kết nối VoiceStudio API tại đoạn {i+1}/{len(chunks)}: {e}")
+                import task_logger
+                task_logger.add_log("audio", f"Đang tạo VoiceStudio đoạn {i+1}/{len(chunks)} ({len(chunk)} ký tự)...", "info")
+            except Exception:
+                pass
+            data = await _raw_single_speech_async(chunk, voice, output_format, timeout, session)
+            audio_parts.append(data)
         return b"".join(audio_parts)
 
 def generate_voicestudio_file(text: str, output_path: str, voice: str = "default", output_format: str = "mp3") -> str:
@@ -151,11 +148,11 @@ def generate_voicestudio_file(text: str, output_path: str, voice: str = "default
         f.write(audio_bytes)
     return output_path
 
-async def generate_voicestudio_file_async(text: str, output_path: str, voice: str = "default", output_format: str = "mp3") -> str:
+async def generate_voicestudio_file_async(text: str, output_path: str, voice: str = "default", output_format: str = "mp3", on_progress=None) -> str:
     """
     Tạo giọng đọc từ VoiceStudio bất đồng bộ và ghi thẳng ra file đĩa.
     """
-    audio_bytes = await textToSpeechAsync(text, {"voice": voice, "outputFormat": output_format})
+    audio_bytes = await textToSpeechAsync(text, {"voice": voice, "outputFormat": output_format}, on_progress=on_progress)
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     with open(output_path, "wb") as f:
         f.write(audio_bytes)

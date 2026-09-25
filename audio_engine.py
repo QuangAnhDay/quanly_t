@@ -12,7 +12,8 @@ async def generate_speech(
     voice: str = DEFAULT_VOICE,
     rate: str = "+0%",
     pitch: str = "+0Hz",
-    output_path: Optional[str] = None
+    output_path: Optional[str] = None,
+    on_progress = None
 ) -> str:
     """
     Tạo file giọng đọc tiếng Việt bằng edge-tts hoặc VoiceStudio (giọng clone).
@@ -52,7 +53,8 @@ async def generate_speech(
         return await voicestudio_service.generate_voicestudio_file_async(
             text=text,
             output_path=output_path,
-            voice=clean_voice_id
+            voice=clean_voice_id,
+            on_progress=on_progress
         )
 
     # 2. Tạo bằng Edge-TTS nếu không phải giọng clone VoiceStudio

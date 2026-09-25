@@ -68,21 +68,42 @@
         return null;
     }
 
-    async function waitForClaudeDone(maxWaitSeconds = 1800, statusPrefix = "") {
-        await sleep(3500);
+    async function waitForClaudeStart(expectedMinResponses = 1, maxWaitSeconds = 45, statusPrefix = "") {
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitSeconds * 1000) {
+            const currentResponses = getClaudeResponses();
+            const streaming = isClaudeStreaming();
+            if (streaming || currentResponses.length >= expectedMinResponses) {
+                return true;
+            }
+            const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+            if (statusPrefix) {
+                updateStatusWidget(`${statusPrefix} (Đang chờ Claude bắt đầu ${elapsedSec}s)...`, "#8b5cf6");
+            }
+            await sleep(1000);
+        }
+        return false;
+    }
+
+    async function waitForClaudeDone(expectedMinResponses = 1, maxWaitSeconds = 1800, statusPrefix = "") {
+        // 1. Chờ Claude BẮT ĐẦU xử lý (tối đa 45s cho suy nghĩ ngầm / extended thinking)
+        await waitForClaudeStart(expectedMinResponses, 45, statusPrefix);
+        await sleep(2500);
+
+        // 2. Chờ Claude HOÀN TẤT viết
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
             if (!isClaudeStreaming()) {
-                await sleep(2500);
+                await sleep(3000);
                 if (!isClaudeStreaming()) return true;
             }
 
             const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
-            if (elapsedSec > 10 && statusPrefix) {
+            if (elapsedSec > 5 && statusPrefix) {
                 const mins = Math.floor(elapsedSec / 60);
                 const secs = elapsedSec % 60;
                 const timeStr = mins > 0 ? `${mins}ph ${secs}s` : `${secs}s`;
-                updateStatusWidget(`${statusPrefix} (Đã chờ ${timeStr})...`, "#8b5cf6");
+                updateStatusWidget(`${statusPrefix} (Đang xử lý ${timeStr})...`, "#8b5cf6");
             }
 
             await sleep(1000);
@@ -203,6 +224,8 @@
             const rawContent = project.raw_content || project.content || "";
             if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
 
+            const initialCount = getClaudeResponses().length;
+
             // 1. LƯỢT 1: Tạo kịch bản chính (Cho phép tối đa 30 phút = 1800s cho Claude Extended Thinking)
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
@@ -210,7 +233,7 @@
             await sleep(800);
             await clickSend();
 
-            const done1 = await waitForClaudeDone(1800, p1Status);
+            const done1 = await waitForClaudeDone(initialCount + 1, 1800, p1Status);
             if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian (hơn 30 phút)!");
 
             // Bắt câu trả lời lượt 1 NGAY TẠI ĐÂY (Trước khi gửi Lượt 2)
@@ -226,7 +249,7 @@
             await sleep(800);
             await clickSend();
 
-            const done2 = await waitForClaudeDone(600, p2Status);
+            const done2 = await waitForClaudeDone(initialCount + 2, 600, p2Status);
             if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian (hơn 10 phút)!");
 
             // Bắt câu trả lời lượt 2 NGAY TẠI ĐÂY

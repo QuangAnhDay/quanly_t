@@ -146,6 +146,28 @@
       </div>
     </div>
 
+    <!-- TASK QUEUE MONITOR WIDGET (LIGHT MODE MODERN) -->
+    <div id="queue-monitor-container" class="hidden bg-white rounded-2xl p-3.5 border-2 border-violet-200 shadow-md flex items-center justify-between transition-all duration-300">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-violet-100 border border-violet-300 flex items-center justify-center text-violet-700 text-sm font-bold shadow-2xs">
+          <i class="fa-solid fa-gear fa-spin"></i>
+        </div>
+        <div>
+          <div id="queue-running-info" class="text-xs font-bold text-slate-800 flex items-center gap-2">
+            Đang xử lý ngầm...
+          </div>
+          <div id="queue-queued-info" class="text-[11px] text-slate-500 font-medium mt-0.5">
+            0 tác vụ đang chờ
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearTaskQueue()" class="text-xs px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold transition flex items-center gap-1.5 shadow-2xs">
+          <i class="fa-solid fa-ban text-[11px]"></i> Hủy Hàng Đợi
+        </button>
+      </div>
+    </div>
+
     <!-- Filter & Action Controls -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       
@@ -1101,7 +1123,7 @@
     async function generateAudioSingle(id, voice) {
       const voiceToUse = voice || "vi-VN-HoaiMyNeural";
       userVoiceSelections[id] = voiceToUse;
-      showToast(`Đang tạo Audio cho ${id}...`, "info");
+      showToast(`Đang thêm ${id} vào Hàng Đợi Audio...`, "info");
       try {
         const res = await fetch(`/api/projects/${id}/generate-audio`, {
           method: 'POST',
@@ -1110,8 +1132,8 @@
         });
         const data = await res.json();
         if (data.success) {
-          showToast("✅ Đã tạo xong voice audio!", "success");
-          fetchProjects();
+          showToast(`📥 Đã thêm [${id}] vào Hàng Đợi Ngầm!`, "success");
+          fetchQueueStatus();
         } else {
           showToast(`❌ Lỗi tạo audio: ${data.detail || 'Thất bại'}`, "error");
         }
@@ -1851,14 +1873,92 @@
       }
     }
 
+    async function fetchQueueStatus() {
+      try {
+        const res = await fetch('/api/queue/status');
+        const data = await res.json();
+        updateQueueMonitorUI(data);
+      } catch (e) {}
+    }
+
+    function updateQueueMonitorUI(queueData) {
+      const container = document.getElementById('queue-monitor-container');
+      const runningEl = document.getElementById('queue-running-info');
+      const queuedEl = document.getElementById('queue-queued-info');
+      if (!container) return;
+
+      const running = queueData.running_task;
+      const queuedCount = queueData.stats.queued_count;
+
+      if (running || queuedCount > 0) {
+        container.classList.remove('hidden');
+        if (running) {
+          let detailStr = running.message;
+          if (running.type === 'audio' && running.chunk_total && running.chunk_total > 1) {
+            detailStr = `Đang tạo Audio cho <span class="text-violet-700 font-bold">[${running.project_id}]</span> (${running.chunk_current}/${running.chunk_total})`;
+          } else {
+            detailStr = `<span class="text-violet-700 font-bold">[${running.project_id}]</span> ${running.message} (${running.progress}%)`;
+          }
+          runningEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-violet-600"></i> ${detailStr}`;
+        } else {
+          runningEl.innerHTML = `<span class="text-slate-600 font-medium">⚡ Đang khởi động tiến trình ngầm...</span>`;
+        }
+        queuedEl.innerText = queuedCount > 0 ? `⏳ ${queuedCount} tác vụ đang chờ trong hàng đợi` : `Không có tác vụ chờ thêm`;
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    async function clearTaskQueue() {
+      if (!confirm("Bạn có chắc chắn muốn hủy tất cả các tác vụ đang chờ trong hàng đợi?")) return;
+      try {
+        await fetch('/api/queue/clear', { method: 'POST' });
+        showToast("🧹 Đã dọn dẹp tất cả hàng đợi ngầm", "success");
+        fetchQueueStatus();
+      } catch (e) {
+        showToast("Lỗi khi hủy hàng đợi", "error");
+      }
+    }
+
+    async function batchGenerateAudioQueue() {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) {
+        showToast("Vui lòng tích chọn ít nhất 1 kịch bản để tạo audio!", "error");
+        return;
+      }
+      showToast(`Đang thêm ${ids.length} kịch bản vào Hàng Đợi Ngầm...`, "info");
+      try {
+        const res = await fetch('/api/queue/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task_type: "audio",
+            project_ids: ids
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`📥 Đã thêm thành công ${ids.length} kịch bản vào Hàng Đợi Ngầm!`, "success");
+          deselectAll();
+          fetchQueueStatus();
+        } else {
+          showToast("❌ Lỗi khi thêm vào hàng đợi", "error");
+        }
+      } catch (e) {
+        showToast("Lỗi kết nối", "error");
+      }
+    }
+
     // Auto-load on start & auto-refresh
     loadVoices();
     fetchProjects();
     fetchSystemHealth();
     fetchActivityLogs();
-    setInterval(fetchProjects, 6000);
+    fetchQueueStatus();
+    setInterval(fetchProjects, 5000);
     setInterval(fetchSystemHealth, 15000);
     setInterval(fetchActivityLogs, 3000);
+    setInterval(fetchQueueStatus, 2500);
   </script>
 </body>
 </html>

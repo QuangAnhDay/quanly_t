@@ -30,12 +30,12 @@ if exist ".venv\Scripts\python.exe" (
     start /b .venv\Scripts\python.exe -c "import voicestudio_service; voicestudio_service.ensure_voicestudio_running()" > nul 2>&1
 )
 
-echo [3/3] Dang khoi dong Web Dashboard (Port 8888)...
+echo [3/3] Dang khoi dong Web Dashboard & Tu dong mo Trinh duyet...
 echo.
 echo ======================================================================
 echo   HE THONG DANG HOAT DONG!
-echo   - Web Dashboard: http://localhost:8888
-echo   - VoiceStudio API: http://localhost:3900
+echo   - Web Dashboard : http://localhost:8888 (Tu dong mo Trinh duyet)
+echo   - VoiceStudio API: http://127.0.0.1:3900 (Chay ngam)
 echo   - Nhan Ctrl+C tai cua so nay de dung he thong khi xong viec.
 echo ======================================================================
 echo.

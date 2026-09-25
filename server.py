@@ -18,6 +18,7 @@ import audio_engine
 import video_engine
 import thumbnail_engine
 import capcut_engine
+import task_queue
 
 # Khởi tạo toàn bộ thư mục cần thiết
 capcut_engine.init_theme_folders()
@@ -145,6 +146,35 @@ class DispatchClaudePayload(BaseModel):
     profiles: Optional[List[str]] = None
     project_ids: Optional[List[str]] = None
     profile_count: Optional[int] = 5
+
+class QueueTaskPayload(BaseModel):
+    task_type: str
+    project_id: Optional[str] = None
+    project_ids: Optional[List[str]] = None
+    payload: Optional[dict] = None
+
+@app.get("/api/queue/status")
+async def get_queue_status_api():
+    """Trả về trạng thái tiến trình các tác vụ trong Hàng Đợi Ngầm"""
+    return task_queue.get_queue_status()
+
+@app.post("/api/queue/add")
+async def add_queue_task_api(payload: QueueTaskPayload):
+    """Thêm 1 hoặc hàng loạt tác vụ vào Hàng Đợi Ngầm xử lý tuần tự"""
+    if payload.project_ids and len(payload.project_ids) > 0:
+        tasks = task_queue.add_batch_tasks(payload.task_type, payload.project_ids, payload.payload)
+        return {"success": True, "queued": True, "queued_count": len(tasks), "tasks": tasks}
+    elif payload.project_id:
+        t = task_queue.add_task(payload.task_type, payload.project_id, payload.payload)
+        return {"success": True, "queued": True, "task": t}
+    else:
+        raise HTTPException(status_code=400, detail="Vui lòng chọn kịch bản để thêm vào hàng đợi")
+
+@app.post("/api/queue/clear")
+async def clear_queue_api():
+    """Dọn dẹp danh sách các tác vụ đang chờ trong Hàng Đợi Ngầm"""
+    count = task_queue.clear_queued_tasks()
+    return {"success": True, "cleared_count": count}
 
 @app.get("/claude_to_truyen.user.js")
 async def get_userscript_file():
@@ -455,37 +485,17 @@ async def generate_audio_api(project_id: str, payload: AudioGenPayload):
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
-    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
-    os.makedirs(pkg_dir, exist_ok=True)
-    pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
-
-    import task_logger
-    voice_used = payload.voice or proj.get("voice") or "vi-VN-HoaiMyNeural"
-    task_logger.add_log("audio", f"Bắt đầu tạo Voice Audio cho [{project_id}] ({voice_used})...", "info", project_id)
-
-    try:
-        actual_path = await audio_engine.generate_speech(
-            text=proj["content"],
-            output_path=pkg_audio_path,
-            voice=voice_used,
-            rate=payload.rate or "+0%",
-            pitch=payload.pitch or "+0Hz"
-        )
-        
-        updated = database.update_project(
-            project_id,
-            audio_path=actual_path,
-            voice=payload.voice,
-            rate=payload.rate,
-            pitch=payload.pitch,
-            status="3_da_co_audio"
-        )
-        task_logger.add_log("audio", f"✅ Đã tạo xong voice audio cho [{project_id}]!", "success", project_id)
-        return {"success": True, "audio_path": actual_path, "project": updated}
-    except Exception as e:
-        task_logger.add_log("audio", f"❌ Lỗi tạo voice audio cho [{project_id}]: {e}", "error", project_id)
-        raise HTTPException(status_code=500, detail=str(e))
-
+    t = task_queue.add_task("audio", project_id, {
+        "voice": payload.voice,
+        "rate": payload.rate,
+        "pitch": payload.pitch
+    })
+    return {
+        "success": True,
+        "queued": True,
+        "message": f"Đã thêm [{project_id}] vào Hàng Đợi Tạo Voice ngầm!",
+        "task": t
+    }
 
 @app.post("/api/projects/{project_id}/create-capcut-draft")
 async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
@@ -494,130 +504,48 @@ async def create_capcut_draft_api(project_id: str, payload: CapCutDraftPayload):
     if not proj or not proj.get("audio_path"):
         raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
     
-    audio_path = proj["audio_path"]
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=400, detail=f"Không tìm thấy file audio tại {audio_path}")
-
-    theme = payload.theme or "nau_an"
-    import task_logger
-    task_logger.add_log("capcut", f"Đang tạo Dự Án CapCut 16:9 chống trùng lặp cho [{project_id}]...", "info", project_id)
-    try:
-        draft_res = capcut_engine.create_capcut_draft(
-            project_id=project_id,
-            title=proj["title"],
-            audio_path=audio_path,
-            theme=theme
-        )
-        theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
-        theme_vn = theme_names.get(theme, theme)
-        
-        draft_name = draft_res["draft_name"]
-        notes = f"CapCut ({theme_vn}): {draft_name}"
-        
-        updated = database.update_project(
-            project_id,
-            capcut_draft_youtube=draft_name,
-            notes=notes,
-            status="4_da_render_video"
-        )
-        
-        task_logger.add_log("capcut", f"🎬 Đã tạo CapCut 16:9 cho [{project_id}] ({draft_res['clips_count']} clip, lật ngang & đổi tốc độ vi mô chống lặp)", "success", project_id)
-        return {
-            "success": True,
-            "message": f"Đã tạo xong Project CapCut: {draft_name} ({draft_res['clips_count']} clip nền)!",
-            "draft_info": draft_res,
-            "project": updated
-        }
-    except Exception as e:
-        task_logger.add_log("capcut", f"❌ Lỗi tạo CapCut cho [{project_id}]: {e}", "error", project_id)
-        raise HTTPException(status_code=500, detail=str(e))
+    t = task_queue.add_task("capcut", project_id, {
+        "theme": payload.theme or "nau_an"
+    })
+    return {
+        "success": True,
+        "queued": True,
+        "message": f"Đã thêm [{project_id}] vào Hàng Đợi Tạo CapCut 16:9 ngầm!",
+        "task": t
+    }
 
 @app.post("/api/projects/batch-create-capcut")
 async def batch_create_capcut_api(payload: BatchCapCutPayload):
-    """Tạo hàng loạt Dự Án CapCut 16:9 cho toàn bộ kịch bản đã chọn"""
-    theme = payload.theme or "nau_an"
-    theme_names = {"nau_an": "Nấu ăn", "handmade": "Handmade"}
-    theme_vn = theme_names.get(theme, theme)
-    
-    results = []
-    success_count = 0
-    errors = []
-
-    for pid in payload.project_ids:
-        proj = database.get_project(pid)
-        if not proj or not proj.get("audio_path") or not os.path.exists(proj["audio_path"]):
-            errors.append(f"{pid}: Chưa có file audio")
-            continue
-        try:
-            draft_res = capcut_engine.create_capcut_draft(
-                project_id=pid,
-                title=proj["title"],
-                audio_path=proj["audio_path"],
-                theme=theme
-            )
-            notes = f"CapCut ({theme_vn}): {draft_res['draft_name']}"
-            database.update_project(
-                pid,
-                capcut_draft_youtube=draft_res["draft_name"],
-                notes=notes,
-                status="4_da_render_video"
-            )
-            results.append({"id": pid, "draft_name": draft_res["draft_name"], "clips": draft_res["clips_count"]})
-            success_count += 1
-        except Exception as e:
-            errors.append(f"{pid}: {str(e)}")
-
+    """Tạo hàng loạt Dự Án CapCut 16:9 cho toàn bộ kịch bản đã chọn qua Hàng Đợi Ngầm"""
+    tasks = task_queue.add_batch_tasks("capcut", payload.project_ids, {
+        "theme": payload.theme or "nau_an"
+    })
     return {
         "success": True,
-        "created_count": success_count,
-        "results": results,
-        "errors": errors
+        "queued": True,
+        "created_count": len(tasks),
+        "message": f"Đã thêm {len(tasks)} kịch bản vào Hàng Đợi Tạo CapCut ngầm!",
+        "tasks": tasks
     }
 
 @app.post("/api/projects/{project_id}/convert-to-tiktok")
 async def convert_to_tiktok_api(project_id: str, payload: Optional[ConvertTikTokPayload] = None):
     """
     Tự động chuyển đổi video ngang (YouTube 16:9) sang video dọc (TikTok 9:16) siêu tốc
-    bằng hiệu ứng nền mờ Cinematic (Blur Background) không cần render lại CapCut lần 2!
+    bằng hiệu ứng nền mờ Cinematic (Blur Background) qua Hàng Đợi Ngầm!
     """
     proj = database.get_project(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
     style = payload.style if payload else "blur"
-    
-    # Tìm file video nguồn 16:9
-    src_video = proj.get("video_youtube_path") or proj.get("video_path")
-    if not src_video or not os.path.exists(src_video):
-        pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
-        if os.path.exists(pkg_dir):
-            for f in os.listdir(pkg_dir):
-                if f.lower().endswith((".mp4", ".mov")) and "tiktok" not in f.lower() and "doc" not in f.lower():
-                    src_video = os.path.join(pkg_dir, f)
-                    break
-    
-    if not src_video or not os.path.exists(src_video):
-        raise HTTPException(status_code=400, detail="Chưa có video ngang (YouTube) để chuyển đổi! Vui lòng xuất video YouTube trước.")
-
-    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
-    os.makedirs(pkg_dir, exist_ok=True)
-    out_tiktok_path = os.path.join(pkg_dir, f"{project_id}_tiktok.mp4")
-
-    try:
-        video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style)
-        updated = database.update_project(
-            project_id,
-            video_tiktok_path=out_tiktok_path,
-            status="5_hoan_thanh"
-        )
-        return {
-            "success": True,
-            "message": "Đã chuyển đổi thành công sang bản dọc TikTok 9:16 (Nền mờ Cinematic)!",
-            "video_tiktok_path": out_tiktok_path,
-            "project": updated
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi chuyển đổi video: {str(e)}")
+    t = task_queue.add_task("tiktok", project_id, {"style": style})
+    return {
+        "success": True,
+        "queued": True,
+        "message": f"Đã thêm [{project_id}] vào Hàng Đợi Chuyển Đổi TikTok 9:16 ngầm!",
+        "task": t
+    }
 
 @app.post("/api/projects/{project_id}/split-parts")
 async def split_parts_api(project_id: str, payload: Optional[SplitPartsPayload] = None):
@@ -764,6 +692,21 @@ async def launch_chrome_profiles():
         subprocess.Popen(bat_path, shell=True)
         return {"success": True, "message": "Đã khởi chạy 5 cửa sổ Chrome"}
     return {"success": False, "message": "Không tìm thấy file bat"}
+
+@app.on_event("startup")
+async def startup_event():
+    import voicestudio_service
+    voicestudio_service.ensure_voicestudio_running()
+    
+    # Tự động mở trình duyệt web tới Web Dashboard
+    import webbrowser, threading, time
+    def _open_browser():
+        time.sleep(1.0)
+        try:
+            webbrowser.open("http://localhost:8888")
+        except Exception:
+            pass
+    threading.Thread(target=_open_browser, daemon=True).start()
 
 if __name__ == "__main__":
     import uvicorn
