@@ -357,10 +357,22 @@ class ClaudeSessionPayload(BaseModel):
 @app.post("/api/claude-session-key")
 async def api_set_claude_session_key(payload: ClaudeSessionPayload):
     cfg = get_config()
-    cfg["claude_session_key"] = payload.session_key.strip()
+    raw = payload.session_key.strip()
+    
+    found_keys = re.findall(r'sk-ant-sid01-[A-Za-z0-9_\-]+', raw)
+    if found_keys:
+        unique_keys = list(dict.fromkeys(found_keys))
+        cfg["claude_session_keys"] = unique_keys
+        cfg["claude_session_key"] = unique_keys[0]
+        msg = f"Đã lưu thành công {len(unique_keys)} Cookie sessionKey!"
+    else:
+        cfg["claude_session_key"] = raw
+        cfg["claude_session_keys"] = [raw]
+        msg = "Đã lưu Cookie sessionKey thành công!"
+
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
-    return {"success": True, "message": "Đã lưu Cookie sessionKey thành công!"}
+    return {"success": True, "count": len(found_keys) if found_keys else 1, "message": msg}
 
 @app.get("/api/projects/pending-raw")
 async def get_pending_raw():

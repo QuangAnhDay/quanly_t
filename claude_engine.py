@@ -131,14 +131,26 @@ async def run_claude_2skill_backend(
             user_data_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
             profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1", "Default"])
             
-            # Xử lý chuỗi sessionKey
-            session_key = cfg.get("claude_session_key") or os.environ.get("CLAUDE_SESSION_KEY")
-            if session_key:
-                session_key = session_key.strip()
-                if "sk-ant-sid01-" in session_key:
-                    m = re.search(r'sk-ant-sid01-[A-Za-z0-9_\-]+', session_key)
+            # Xử lý danh sách sessionKeys (Hỗ trợ 1 hoặc nhiều tài khoản Chrome)
+            session_keys = cfg.get("claude_session_keys") or []
+            if isinstance(session_keys, str):
+                session_keys = [session_keys]
+                
+            single_key = cfg.get("claude_session_key") or os.environ.get("CLAUDE_SESSION_KEY")
+            if single_key and single_key not in session_keys:
+                session_keys.insert(0, single_key)
+
+            clean_keys = []
+            for k in session_keys:
+                if k and "sk-ant-sid01-" in str(k):
+                    m = re.search(r'sk-ant-sid01-[A-Za-z0-9_\-]+', str(k))
                     if m:
-                        session_key = m.group(0)
+                        clean_keys.append(m.group(0))
+
+            session_key = None
+            if clean_keys:
+                import random
+                session_key = random.choice(clean_keys)
 
             context = None
             page = None
