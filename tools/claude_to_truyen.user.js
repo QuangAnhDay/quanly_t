@@ -85,6 +85,20 @@
         return false;
     }
 
+    function handleContinueIfPresent() {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const continueBtn = buttons.find(b => {
+            const text = (b.innerText || b.textContent || '').toLowerCase().trim();
+            return (text.includes('continue') || text.includes('tiếp tục')) && !b.closest('fieldset');
+        });
+        if (continueBtn && !continueBtn.disabled) {
+            console.log("--> 🔄 Thấy nút 'Tiếp tục / Continue', tự động bấm để Claude viết tiếp kịch bản dài...");
+            continueBtn.click();
+            return true;
+        }
+        return false;
+    }
+
     async function waitForClaudeDone(expectedMinResponses = 1, maxWaitSeconds = 1800, statusPrefix = "") {
         // 1. Chờ Claude BẮT ĐẦU xử lý (tối đa 45s cho suy nghĩ ngầm / extended thinking)
         await waitForClaudeStart(expectedMinResponses, 45, statusPrefix);
@@ -95,7 +109,15 @@
         while (Date.now() - startTime < maxWaitSeconds * 1000) {
             if (!isClaudeStreaming()) {
                 await sleep(3000);
-                if (!isClaudeStreaming()) return true;
+                if (!isClaudeStreaming()) {
+                    // Kiểm tra xem Claude có bị ngắt giữa chừng do hết token không (nút Continue/Tiếp tục)
+                    const continued = handleContinueIfPresent();
+                    if (continued) {
+                        await sleep(3000);
+                        continue;
+                    }
+                    return true;
+                }
             }
 
             const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
@@ -162,10 +184,7 @@
 
     function getClaudeResponses() {
         // Prioritize specific Claude assistant message nodes
-        let nodes = Array.from(document.querySelectorAll('.font-claude-message'));
-        if (nodes.length === 0) {
-            nodes = Array.from(document.querySelectorAll('[data-is-streaming="false"] .whitespace-pre-wrap, div.grid-cols-1 .whitespace-pre-wrap'));
-        }
+        let nodes = Array.from(document.querySelectorAll('.font-claude-message, [data-is-streaming], div.grid-cols-1, div.prose'));
         if (nodes.length === 0) {
             nodes = Array.from(document.querySelectorAll('.whitespace-pre-wrap'));
         }
@@ -206,6 +225,11 @@
         return responses.length > 0 ? responses[responses.length - 1] : "";
     }
 
+    function getWordCount(str) {
+        if (!str) return 0;
+        return str.trim().split(/\s+/).filter(Boolean).length;
+    }
+
     async function runTwoSkillPipeline(project) {
         if (isAutoRunning) return;
         isAutoRunning = true;
@@ -226,7 +250,7 @@
 
             const initialCount = getClaudeResponses().length;
 
-            // 1. LƯỢT 1: Tạo kịch bản chính (Cho phép tối đa 30 phút = 1800s cho Claude Extended Thinking)
+            // 1. LƯỢT 1: Tạo kịch bản chính (Cho phép tối đa 30 phút = 1800s cho Claude Extended Thinking & Kịch bản dài)
             updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
@@ -236,37 +260,58 @@
             const done1 = await waitForClaudeDone(initialCount + 1, 1800, p1Status);
             if (!done1) throw new Error("Claude xử lý kịch bản quá thời gian (hơn 30 phút)!");
 
-            // Bắt câu trả lời lượt 1 NGAY TẠI ĐÂY (Trước khi gửi Lượt 2)
-            let fullScript = getLatestClaudeResponse();
-            console.log("--> [Lượt 1] Kịch bản chính (script):", fullScript.substring(0, 100) + "...");
+            // Bóc tách tất cả các đoạn phản hồi của Lượt 1 (kể cả khi bấm Tiếp Tục nhiều lần)
+            const responsesAfterP1 = getClaudeResponses();
+            const p1Responses = responsesAfterP1.slice(initialCount);
+            let fullScript = p1Responses.join("\n\n").trim();
+            if (!fullScript) {
+                fullScript = getLatestClaudeResponse();
+            }
+
+            const wordCount1 = getWordCount(fullScript);
+            const charCount1 = fullScript ? fullScript.length : 0;
+            console.log(`--> [Lượt 1] Kịch bản chính (${wordCount1} từ, ${charCount1} ký tự):`, fullScript.substring(0, 100) + "...");
+
+            // Bắt buộc kiểm tra độ dài tối thiểu (đảm bảo không bị lấy rỗng hoặc câu trả lời bị cụt)
+            if (charCount1 < 300 || wordCount1 < 50) {
+                throw new Error(`Kịch bản Lượt 1 quá ngắn hoặc rỗng (${wordCount1} từ, ${charCount1} ký tự)! Vui lòng kiểm tra lại Claude.`);
+            }
+
+            // 💾 LƯU NGAY LƯỢT 1 VỀ HỆ THỐNG (Bảo vệ dữ liệu kịch bản trước khi chạy Lượt 2)
+            updateStatusWidget(`💾 Đã hoàn thành Kịch Bản (${wordCount1} từ). Đang lưu Lượt 1...`, "#6366f1");
+            await apiFetch(`/api/projects/${project.id}/ai-complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: project.title || `Kịch bản ${project.id}`,
+                    content: fullScript,
+                    thumb_prompt: "",
+                    notes: `Đã lưu Lượt 1 Kịch Bản (${wordCount1} từ, ${charCount1} ký tự)`
+                })
+            });
 
             // 2. LƯỢT 2: Xin Tiêu đề & Thumbnail (Chỉ gửi duy nhất lệnh skill)
+            const countBeforeP2 = getClaudeResponses().length;
             const p2Status = `[2/2] Đang xin Tiêu đề & Thumb [${project.id}]`;
             updateStatusWidget(`⏳ ${p2Status}...`, "#3b82f6");
-            await sleep(2000);
+            await sleep(3000);
+
             const prompt2 = titleThumbSkill;
             await typeIntoChat(prompt2);
             await sleep(800);
             await clickSend();
 
-            const done2 = await waitForClaudeDone(initialCount + 2, 600, p2Status);
+            const done2 = await waitForClaudeDone(countBeforeP2 + 1, 600, p2Status);
             if (!done2) throw new Error("Claude gợi ý tiêu đề/thumb quá thời gian (hơn 10 phút)!");
 
-            // Bắt câu trả lời lượt 2 NGAY TẠI ĐÂY
-            let titleThumbText = getLatestClaudeResponse();
-            console.log("--> [Lượt 2] Tiêu đề & Thumb:", titleThumbText.substring(0, 100) + "...");
-
-            // Fallback safety nếu chẳng may fullScript bị trùng hoặc rỗng
-            if (!fullScript || fullScript === titleThumbText) {
-                console.warn("⚠️ Cảnh báo: fullScript trùng hoặc rỗng, dùng fallback bóc tách danh sách...");
-                const allResponses = getClaudeResponses();
-                if (allResponses.length >= 2) {
-                    fullScript = allResponses[0];
-                    titleThumbText = allResponses[allResponses.length - 1];
-                } else if (allResponses.length === 1) {
-                    fullScript = allResponses[0];
-                }
+            // Bóc tách câu trả lời Lượt 2
+            const responsesAfterP2 = getClaudeResponses();
+            const p2Responses = responsesAfterP2.slice(countBeforeP2);
+            let titleThumbText = p2Responses.join("\n\n").trim();
+            if (!titleThumbText) {
+                titleThumbText = getLatestClaudeResponse();
             }
+            console.log("--> [Lượt 2] Tiêu đề & Thumb:", titleThumbText.substring(0, 100) + "...");
 
             let title = project.title || "";
             const titleLines = titleThumbText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -280,8 +325,8 @@
                 title = titleLines[0] ? titleLines[0].substring(0, 70) : `Kịch bản ${project.id}`;
             }
 
-            // 4. Gửi về xưởng
-            updateStatusWidget(`💾 Đang lưu [${project.id}] về Xưởng...`, "#6366f1");
+            // 💾 LƯU CẬP NHẬT TRỌN BỘ 2-SKILL VỀ HỆ THỐNG
+            updateStatusWidget(`💾 Đang cập nhật trọn bộ [${project.id}] về Xưởng...`, "#6366f1");
             await apiFetch(`/api/projects/${project.id}/ai-complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -289,11 +334,11 @@
                     title: title,
                     content: fullScript,
                     thumb_prompt: titleThumbText,
-                    notes: `Claude AI 2-Skill hoàn tất tự động`
+                    notes: `Claude AI 2-Skill hoàn tất trọn bộ (${wordCount1} từ)`
                 })
             });
 
-            updateStatusWidget(`✅ Đã xong [${project.id}]!`, "#22c55e");
+            updateStatusWidget(`✅ Đã xong trọn bộ [${project.id}] (${wordCount1} từ)!`, "#22c55e");
             setTimeout(refreshPendingList, 3000);
 
         } catch (err) {

@@ -948,41 +948,6 @@
       }
     }
 
-    async function batchGenerateAudioQueue() {
-      const ids = Array.from(selectedIds);
-      if (ids.length === 0) {
-        showToast("Vui lòng chọn ít nhất 1 kịch bản", "warning");
-        return;
-      }
-      showToast(`Bắt đầu tạo Audio hàng loạt cho ${ids.length} kịch bản...`, "info");
-      
-      let successCount = 0;
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const p = projectsData.find(item => item.id === id);
-        const voice = userVoiceSelections[id] || (p ? p.voice : null) || "vi-VN-HoaiMyNeural";
-        
-        showToast(`[${i + 1}/${ids.length}] Đang tạo Audio cho ${id}...`, "info");
-        try {
-          const res = await fetch(`/api/projects/${id}/generate-audio`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voice })
-          });
-          const data = await res.json();
-          if (data.success) {
-            successCount++;
-            fetchProjects();
-          } else {
-            showToast(`❌ Lỗi [${id}]: ${data.detail || 'Thất bại'}`, "error");
-          }
-        } catch (e) {
-          showToast(`❌ Lỗi kết nối khi tạo audio cho [${id}]`, "error");
-        }
-      }
-      showToast(`✅ Hoàn tất tạo Audio cho ${successCount}/${ids.length} kịch bản!`, "success");
-      deselectAll();
-    }
 
     async function dispatchSingleToClaude(id) {
       let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
@@ -1923,29 +1888,32 @@
     async function batchGenerateAudioQueue() {
       const ids = Array.from(selectedIds);
       if (ids.length === 0) {
-        showToast("Vui lòng tích chọn ít nhất 1 kịch bản để tạo audio!", "error");
+        showToast("Vui lòng tích chọn ít nhất 1 kịch bản để tạo audio!", "warning");
         return;
       }
       showToast(`Đang thêm ${ids.length} kịch bản vào Hàng Đợi Ngầm...`, "info");
       try {
-        const res = await fetch('/api/queue/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            task_type: "audio",
-            project_ids: ids
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`📥 Đã thêm thành công ${ids.length} kịch bản vào Hàng Đợi Ngầm!`, "success");
-          deselectAll();
-          fetchQueueStatus();
-        } else {
-          showToast("❌ Lỗi khi thêm vào hàng đợi", "error");
+        for (const id of ids) {
+          const p = projectsData.find(item => item.id === id);
+          const voiceSelectEl = document.getElementById(`voice-sel-${id}`);
+          const voiceToUse = (voiceSelectEl ? voiceSelectEl.value : null) || userVoiceSelections[id] || (p ? p.voice : null) || "vi-VN-HoaiMyNeural";
+          userVoiceSelections[id] = voiceToUse;
+
+          await fetch('/api/queue/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              task_type: "audio",
+              project_id: id,
+              payload: { voice: voiceToUse }
+            })
+          });
         }
+        showToast(`📥 Đã thêm thành công ${ids.length} kịch bản vào Hàng Đợi Ngầm!`, "success");
+        deselectAll();
+        fetchQueueStatus();
       } catch (e) {
-        showToast("Lỗi kết nối", "error");
+        showToast("Lỗi khi thêm vào hàng đợi", "error");
       }
     }
 
