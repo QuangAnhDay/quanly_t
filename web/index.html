@@ -244,9 +244,14 @@
     </button>
 
     <!-- Chạy Claude Ngầm (Python Engine - 0 Chrome UI) -->
-    <button onclick="batchEnqueueClaudeBackend()" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition shadow-sm" title="Cho kịch bản thô vào Hàng Đợi Ngầm sinh Kịch bản & Thumb bằng Python Engine (0 mở cửa sổ Chrome)">
-      <i class="fa-solid fa-robot"></i> Chạy Claude Ngầm
-    </button>
+    <div class="flex items-center gap-1">
+      <button onclick="batchEnqueueClaudeBackend()" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition shadow-sm" title="Cho kịch bản thô vào Hàng Đợi Ngầm sinh Kịch bản & Thumb bằng Python Engine (0 mở cửa sổ Chrome)">
+        <i class="fa-solid fa-robot"></i> Chạy Claude Ngầm
+      </button>
+      <button onclick="promptSaveClaudeSessionKey()" class="px-2 py-1.5 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl text-xs font-bold transition border border-purple-200" title="Nhập Cookie sessionKey từ Chrome để chạy ngầm 100% không bị văng login">
+        🔑 Cookie
+      </button>
+    </div>
 
     <!-- Batch Generate Audio Queue -->
     <button onclick="batchGenerateAudioQueue()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
@@ -2008,6 +2013,24 @@
         }
       } catch (e) {
         showToast("Lỗi kết nối", "error");
+      }
+    }
+
+    async function promptSaveClaudeSessionKey() {
+      const sk = prompt("Dán Cookie 'sessionKey' từ Chrome vào đây:\n(Lấy tại: F12 > Application > Cookies > claude.ai > sessionKey)", "");
+      if (!sk || !sk.trim()) return;
+      try {
+        const res = await fetch('/api/claude-session-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_key: sk.trim() })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("🔑 Đã lưu Cookie sessionKey thành công! Giờ bạn có thể Chạy Claude Ngầm 100%.", "success");
+        }
+      } catch (e) {
+        showToast("Lỗi khi lưu Cookie sessionKey", "error");
       }
     }
 

@@ -131,12 +131,40 @@ async def run_claude_2skill_backend(
             user_data_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
             profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1", "Default"])
             
+            # Xử lý chuỗi sessionKey
+            session_key = cfg.get("claude_session_key") or os.environ.get("CLAUDE_SESSION_KEY")
+            if session_key:
+                session_key = session_key.strip()
+                if "sk-ant-sid01-" in session_key:
+                    m = re.search(r'sk-ant-sid01-[A-Za-z0-9_\-]+', session_key)
+                    if m:
+                        session_key = m.group(0)
+
             context = None
             page = None
             used_mode = "playwright_headless"
 
-            # 2.1 Lần 1: Thử dùng Persistent Context với Profile Chrome đã đăng nhập sẵn trên máy
-            if os.path.exists(user_data_dir):
+            # 2.1 Ưu tiên 1: Dùng Cookie sessionKey nếu có (Hoạt động 100%, không bị khóa do Chrome đang chạy)
+            if session_key:
+                try:
+                    browser = await p.chromium.launch(headless=True)
+                    context = await browser.new_context()
+                    await context.add_cookies([{
+                        "name": "sessionKey",
+                        "value": session_key,
+                        "domain": ".claude.ai",
+                        "path": "/",
+                        "secure": True,
+                        "httpOnly": True
+                    }])
+                    page = await context.new_page()
+                    used_mode = "Playwright SessionKey Cookie"
+                except Exception as e_sk:
+                    logger.warning(f"Lỗi nạp sessionKey cookie: {e_sk}")
+                    context = None
+
+            # 2.2 Ưu tiên 2: Thử nạp Profile Chrome đã đăng nhập sẵn trên máy
+            if not context and os.path.exists(user_data_dir):
                 for prof in profiles:
                     prof_path = os.path.join(user_data_dir, prof)
                     if os.path.exists(prof_path):
@@ -154,27 +182,12 @@ async def run_claude_2skill_backend(
                             logger.warning(f"Không mở được profile {prof}: {e_prof}")
                             context = None
 
-            # 2.2 Lần 2: Nếu chưa dùng được Persistent Context, dùng Chromium chuẩn
+            # 2.3 Ưu tiên 3: Fallback dùng Chromium tiêu chuẩn
             if not context:
                 browser = await p.chromium.launch(headless=True)
                 context = await browser.new_context()
                 page = await context.new_page()
                 used_mode = "Playwright Standard Headless"
-
-            # 2.3 Nạp Cookie sessionKey nếu được cài đặt trong config.json hoặc biến môi trường
-            session_key = cfg.get("claude_session_key") or os.environ.get("CLAUDE_SESSION_KEY")
-            if session_key:
-                if not session_key.startswith("sk-ant-sid01-") and "sk-ant-sid01-" in session_key:
-                    m = re.search(r'sk-ant-sid01-[A-Za-z0-9_\-]+', session_key)
-                    if m:
-                        session_key = m.group(0)
-                        
-                await context.add_cookies([{
-                    "name": "sessionKey",
-                    "value": session_key,
-                    "domain": ".claude.ai",
-                    "path": "/"
-                }])
 
             write_raw_log("MODE", used_mode)
 
@@ -183,10 +196,11 @@ async def run_claude_2skill_backend(
             await page.wait_for_timeout(3000)
 
             # Kiểm tra xem có bị bắt đăng nhập không
-            if "login" in page.url:
+            if "login" in page.url or "auth" in page.url:
                 raise RuntimeError(
-                    "Trình duyệt chưa đăng nhập Claude! Vui lòng mở Chrome đăng nhập Claude.ai trước, "
-                    "hoặc dán sessionKey vào config.json ('claude_session_key': 'sk-ant-sid01-...')"
+                    "🔑 Chưa xác thực được tài khoản Claude! Vui lòng lấy cookie 'sessionKey' từ Chrome "
+                    "(bấm F12 > Application > Cookies > claude.ai) và dán vào config.json ('claude_session_key': 'sk-ant-sid01-...') "
+                    "hoặc bấm nút '🔑 Nhập SessionKey' trên Web Xưởng."
                 )
 
             # Đợi khung chat xuất hiện

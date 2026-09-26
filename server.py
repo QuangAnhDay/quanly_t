@@ -351,9 +351,16 @@ async def api_set_claude_skill_config(payload: ClaudeSkillConfigPayload):
         "script_skill_command": payload.script_skill_command.strip(),
         "title_thumb_skill_command": payload.title_thumb_skill_command.strip()
     }
+class ClaudeSessionPayload(BaseModel):
+    session_key: str
+
+@app.post("/api/claude-session-key")
+async def api_set_claude_session_key(payload: ClaudeSessionPayload):
+    cfg = get_config()
+    cfg["claude_session_key"] = payload.session_key.strip()
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
-    return {"success": True, "claude_skills": cfg["claude_skills"]}
+    return {"success": True, "message": "Đã lưu Cookie sessionKey thành công!"}
 
 @app.get("/api/projects/pending-raw")
 async def get_pending_raw():
