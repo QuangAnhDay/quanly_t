@@ -441,6 +441,23 @@ async def save_script_from_claude(payload: ScriptPayload):
     return {"success": True, "id": proj["id"], "project": proj}
 
 
+@app.get("/api/projects/{project_id}/claude-log")
+async def get_project_claude_log_api(project_id: str):
+    """Lấy nội dung nhật ký trả lời gốc của Claude ngầm cho kịch bản"""
+    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    raw_log_path = os.path.join(pkg_dir, f"{project_id}_claude_raw_log.txt")
+    if os.path.exists(raw_log_path):
+        with open(raw_log_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"success": True, "log": content, "exists": True}
+    
+    # Fallback nếu chưa có file log thô
+    proj = database.get_project(project_id)
+    if proj:
+        fallback_text = f"=== KỊCH BẢN [{project_id}] ===\n{proj.get('content') or ''}\n\n=== GỢI Ý THUMBNAIL ===\n{proj.get('thumb_prompt') or ''}"
+        return {"success": True, "log": fallback_text, "exists": False}
+    raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+
 @app.get("/api/projects/{project_id}")
 async def get_project_api(project_id: str):
     proj = database.get_project(project_id)

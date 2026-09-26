@@ -269,6 +269,45 @@ def _process_split_parts_task(task: Dict[str, Any]):
     task_logger.add_log("tiktok", f"✂️ [Hàng Đợi] Đã cắt thành công {len(parts)} tập ngắn cho [{project_id}]!", "success", project_id)
     return {"parts_count": len(parts), "parts": parts}
 
+def _process_claude_task(task: Dict[str, Any]):
+    project_id = task["project_id"]
+    payload = task["payload"] or {}
+    
+    proj = database.get_project(project_id)
+    if not proj:
+        raise ValueError(f"Không tìm thấy kịch bản {project_id}")
+        
+    raw_content = proj.get("raw_content") or proj.get("content")
+    if not raw_content:
+        raise ValueError(f"Kịch bản [{project_id}] chưa có nội dung thô!")
+        
+    def on_progress(msg: str, progress: int, word_count: int):
+        task["progress"] = progress
+        task["message"] = msg
+        if word_count > 0:
+            task["word_count"] = word_count
+            
+    task["message"] = "Đang chạy Claude Engine ngầm..."
+    task_logger.add_log("claude", f"🤖 [Hàng Đợi] Bắt đầu tự động hóa Claude ngầm cho [{project_id}]...", "info", project_id)
+    
+    import claude_engine
+    result = asyncio.run(claude_engine.run_claude_2skill_backend(
+        project_id=project_id,
+        raw_content=raw_content,
+        on_progress=on_progress
+    ))
+    
+    database.complete_raw_project(
+        project_id=project_id,
+        title=result["title"],
+        content=result["content"],
+        thumb_prompt=result.get("thumb_prompt", ""),
+        notes=f"Claude Engine ({result.get('mode', 'backend')}) hoàn tất ({result.get('word_count', 0)} từ)"
+    )
+    
+    task_logger.add_log("claude", f"✅ [Hàng Đợi] Đã sinh thành công Kịch bản & Thumb ngầm cho [{project_id}] ({result.get('word_count', 0)} từ)!", "success", project_id)
+    return result
+
 def _worker_loop():
     """Vòng lặp Worker chính chạy ngầm xử lý từng công việc tuần tự"""
     global _running_task, _finished_tasks
@@ -299,6 +338,8 @@ def _worker_loop():
                 res = _process_tiktok_task(task)
             elif task_type == "split_parts":
                 res = _process_split_parts_task(task)
+            elif task_type == "claude":
+                res = _process_claude_task(task)
             else:
                 raise ValueError(f"Loại công việc không hợp lệ: {task_type}")
                 

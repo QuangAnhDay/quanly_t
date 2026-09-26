@@ -238,9 +238,14 @@
 
     <div class="h-5 w-px bg-slate-200"></div>
 
-    <!-- Phân phối Claude -->
-    <button onclick="dispatchBatchToClaude()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
-      <i class="fa-solid fa-bolt"></i> Mở 5 Claude Chạy Kịch Bản Thô
+    <!-- Phân phối Claude Web (Mở Chrome) -->
+    <button onclick="dispatchBatchToClaude()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition" title="Mở các cửa sổ Chrome điều khiển qua Tampermonkey">
+      <i class="fa-solid fa-bolt"></i> Mở Chrome
+    </button>
+
+    <!-- Chạy Claude Ngầm (Python Engine - 0 Chrome UI) -->
+    <button onclick="batchEnqueueClaudeBackend()" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition shadow-sm" title="Cho kịch bản thô vào Hàng Đợi Ngầm sinh Kịch bản & Thumb bằng Python Engine (0 mở cửa sổ Chrome)">
+      <i class="fa-solid fa-robot"></i> Chạy Claude Ngầm
     </button>
 
     <!-- Batch Generate Audio Queue -->
@@ -634,6 +639,36 @@
 
 
 
+  <!-- Modal Xem Nhật Ký / Copy Claude Response (Safety Net) -->
+  <div id="claude-log-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] shadow-2xl border border-slate-200 overflow-hidden flex flex-col transform transition-all duration-300">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center text-sm font-bold">🤖</span>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm" id="claude-log-title">Nhật Ký Trả Lời Gốc của Claude AI</h3>
+            <p class="text-[11px] text-slate-500" id="claude-log-subtitle">Toàn bộ câu trả lời ngầm không qua chỉnh sửa</p>
+          </div>
+        </div>
+        <button onclick="closeModal('claude-log-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll flex-1">
+        <textarea id="claude-log-textarea" readonly rows="16" class="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none custom-scroll"></textarea>
+      </div>
+
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+        <span class="text-xs text-slate-500 font-medium" id="claude-log-status"></span>
+        <div class="flex gap-2">
+          <button onclick="copyClaudeLogToClipboard()" class="px-4 py-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition flex items-center gap-1.5">
+            <i class="fa-solid fa-copy"></i> Copy 1-Click
+          </button>
+          <button onclick="closeModal('claude-log-modal')" class="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-lg transition">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast" class="fixed bottom-5 right-5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl text-xs font-medium z-50 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2 flex items-center gap-2">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
@@ -753,8 +788,11 @@
                 ` : (p.raw_content ? `
                   <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200">✨ AI Xong</span>
                 ` : '')}
-                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[220px]" title="${p.title}">
+                <button onclick="openViewModal('${p.id}')" class="text-left font-semibold text-slate-800 hover:text-violet-600 transition truncate max-w-[200px]" title="${p.title}">
                   ${p.title}
+                </button>
+                <button onclick="openClaudeLogModal('${p.id}')" class="p-1 text-purple-600 hover:text-purple-800 text-xs transition" title="👁️ Xem Nhật Ký Trả Lời Gốc Claude & Copy 1-Click">
+                  <i class="fa-solid fa-robot"></i>
                 </button>
               </div>
               <div class="text-[10px] text-slate-400 truncate max-w-[240px] mt-0.5">${p.created_at || ''}</div>
@@ -1914,6 +1952,62 @@
         fetchQueueStatus();
       } catch (e) {
         showToast("Lỗi khi thêm vào hàng đợi", "error");
+      }
+    }
+
+    async function openClaudeLogModal(id) {
+      openModal('claude-log-modal');
+      document.getElementById('claude-log-title').innerText = `Nhật Ký Trả Lời Gốc Claude [${id}]`;
+      document.getElementById('claude-log-textarea').value = "Đang tải nhật ký trả lời gốc từ hệ thống...";
+      document.getElementById('claude-log-status').innerText = "";
+      try {
+        const res = await fetch(`/api/projects/${id}/claude-log`);
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('claude-log-textarea').value = data.log;
+          const wordCount = data.log.trim().split(/\s+/).filter(Boolean).length;
+          document.getElementById('claude-log-status').innerText = `Tổng dung lượng: ${data.log.length} ký tự (~${wordCount} từ)`;
+        } else {
+          document.getElementById('claude-log-textarea').value = "Không tìm thấy nhật ký trả lời cho kịch bản này.";
+        }
+      } catch (e) {
+        document.getElementById('claude-log-textarea').value = "Lỗi kết nối khi tải nhật ký.";
+      }
+    }
+
+    function copyClaudeLogToClipboard() {
+      const txt = document.getElementById('claude-log-textarea').value;
+      if (!txt) return;
+      navigator.clipboard.writeText(txt);
+      showToast("📋 Đã copy toàn bộ nhật ký trả lời vào Clipboard!", "success");
+    }
+
+    async function batchEnqueueClaudeBackend() {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) {
+        showToast("Vui lòng tích chọn ít nhất 1 kịch bản thô", "warning");
+        return;
+      }
+      showToast(`Đang thêm ${ids.length} kịch bản thô vào Hàng Đợi Claude Ngầm...`, "info");
+      try {
+        const res = await fetch('/api/queue/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task_type: "claude",
+            project_ids: ids
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`📥 Đã thêm ${ids.length} kịch bản thô vào Hàng Đợi Ngầm!`, "success");
+          deselectAll();
+          fetchQueueStatus();
+        } else {
+          showToast("Lỗi khi thêm vào hàng đợi", "error");
+        }
+      } catch (e) {
+        showToast("Lỗi kết nối", "error");
       }
     }
 
