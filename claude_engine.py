@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import time
 import asyncio
@@ -33,7 +34,8 @@ async def run_claude_2skill_backend(
 ) -> Dict[str, Any]:
     """
     Thực thi 2-Skill Claude ngầm bằng Python Engine.
-    Lưu nhật ký gốc vào outputs/{project_id}/claude_raw_log.txt
+    Hỗ trợ Anthropic Official API, Chrome Persistent Context (Profile đã đăng nhập), và SessionKey Cookie.
+    Lưu nhật ký thô vào outputs/{project_id}/{project_id}_claude_raw_log.txt
     """
     cfg = get_config()
     api_key = cfg.get("anthropic_api_key") or os.environ.get("ANTHROPIC_API_KEY")
@@ -48,7 +50,7 @@ async def run_claude_2skill_backend(
             f.write(f"\n=== [{now_str}] {section_title} ===\n")
             f.write(content.strip() + "\n")
 
-    # 1. Nếu có Anthropic API Key -> Chạy bằng Anthropic API SDK chính thức
+    # 1. Ưu tiên: Nếu có Anthropic API Key -> Chạy bằng Anthropic API chính thức
     if api_key:
         try:
             import httpx
@@ -119,65 +121,175 @@ async def run_claude_2skill_backend(
             logger.error(f"Lỗi Anthropic API: {e}")
             write_raw_log("LỖI API", str(e))
 
-    # 2. Fallback: Dùng Playwright Headless Browser (Chạy hoàn toàn ẩn ngầm 100%, 0 mở cửa sổ GUI)
+    # 2. Fallback: Dùng Playwright Headless Browser với Profile Chrome đã đăng nhập hoặc Cookie SessionKey
     try:
         from playwright.async_api import async_playwright
         if on_progress:
-            on_progress("Đang khởi động tiến trình Claude Headless ngầm...", 15, 0)
+            on_progress("Đang khởi động trình duyệt Claude Headless ngầm...", 15, 0)
 
         async with async_playwright() as p:
-            # Launch invisible Chrome
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
-
-            write_raw_log("MODE", "Playwright Headless Ngầm")
+            user_data_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+            profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1", "Default"])
             
-            # Navigate to claude.ai
+            context = None
+            page = None
+            used_mode = "playwright_headless"
+
+            # 2.1 Lần 1: Thử dùng Persistent Context với Profile Chrome đã đăng nhập sẵn trên máy
+            if os.path.exists(user_data_dir):
+                for prof in profiles:
+                    prof_path = os.path.join(user_data_dir, prof)
+                    if os.path.exists(prof_path):
+                        try:
+                            context = await p.chromium.launch_persistent_context(
+                                user_data_dir=user_data_dir,
+                                channel="chrome",
+                                headless=True,
+                                args=[f"--profile-directory={prof}"]
+                            )
+                            page = context.pages[0] if context.pages else await context.new_page()
+                            used_mode = f"Playwright Persistent Chrome ({prof})"
+                            break
+                        except Exception as e_prof:
+                            logger.warning(f"Không mở được profile {prof}: {e_prof}")
+                            context = None
+
+            # 2.2 Lần 2: Nếu chưa dùng được Persistent Context, dùng Chromium chuẩn
+            if not context:
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context()
+                page = await context.new_page()
+                used_mode = "Playwright Standard Headless"
+
+            # 2.3 Nạp Cookie sessionKey nếu được cài đặt trong config.json hoặc biến môi trường
+            session_key = cfg.get("claude_session_key") or os.environ.get("CLAUDE_SESSION_KEY")
+            if session_key:
+                if not session_key.startswith("sk-ant-sid01-") and "sk-ant-sid01-" in session_key:
+                    m = re.search(r'sk-ant-sid01-[A-Za-z0-9_\-]+', session_key)
+                    if m:
+                        session_key = m.group(0)
+                        
+                await context.add_cookies([{
+                    "name": "sessionKey",
+                    "value": session_key,
+                    "domain": ".claude.ai",
+                    "path": "/"
+                }])
+
+            write_raw_log("MODE", used_mode)
+
+            # Mở trang Claude.ai/new
             await page.goto("https://claude.ai/new", timeout=60000)
             await page.wait_for_timeout(3000)
 
-            # Check if chat box present
-            input_selector = 'div.ProseMirror[contenteditable="true"], div[contenteditable="true"]'
-            await page.wait_for_selector(input_selector, timeout=15000)
+            # Kiểm tra xem có bị bắt đăng nhập không
+            if "login" in page.url:
+                raise RuntimeError(
+                    "Trình duyệt chưa đăng nhập Claude! Vui lòng mở Chrome đăng nhập Claude.ai trước, "
+                    "hoặc dán sessionKey vào config.json ('claude_session_key': 'sk-ant-sid01-...')"
+                )
 
+            # Đợi khung chat xuất hiện
+            input_selector = 'div.ProseMirror[contenteditable="true"], div[contenteditable="true"]'
+            try:
+                await page.wait_for_selector(input_selector, timeout=25000)
+            except Exception:
+                raise RuntimeError("Không tìm thấy khung chat Claude.ai (Có thể chưa đăng nhập tài khoản).")
+
+            # 2.4 Gửi Prompt 1 (Tạo Kịch Bản)
             prompt1 = f"{script_skill}\n\n{raw_content}"
-            await page.fill(input_selector, prompt1)
+            await page.click(input_selector)
+            await page.keyboard.insert_text(prompt1)
+            await page.wait_for_timeout(500)
             await page.keyboard.press("Enter")
 
             if on_progress:
-                on_progress("Đang gửi Prompt 1 và chờ Claude ngầm trả lời...", 30, 0)
+                on_progress("Đang gửi Prompt 1 và chờ Claude ngầm viết kịch bản...", 30, 0)
 
-            # Wait for generation done
-            await page.wait_for_selector('[data-is-streaming="false"]', timeout=300000)
-            await page.wait_for_timeout(3000)
+            # Chờ hoàn thành + tự động bấm Continue nếu kịch bản siêu dài
+            max_wait_p1 = 1800 # 30 phút
+            start_wait = time.time()
+            while time.time() - start_wait < max_wait_p1:
+                await page.wait_for_timeout(3000)
+                is_streaming = await page.evaluate('''() => {
+                    const stopBtn = document.querySelector('button[aria-label*="Stop"], button[aria-label*="Dừng"]');
+                    const streamingEl = document.querySelector('[data-is-streaming="true"]');
+                    return !!(stopBtn || streamingEl);
+                }''')
 
-            # Extract response 1
-            messages = await page.eval_on_selector_all(
+                if not is_streaming:
+                    # Kiểm tra nút Continue / Tiếp tục
+                    btn_clicked = await page.evaluate('''() => {
+                        const buttons = Array.from(document.querySelectorAll('button'));
+                        const cont = buttons.find(b => {
+                            const t = (b.innerText || '').toLowerCase();
+                            return (t.includes('continue') || t.includes('tiếp tục')) && !b.closest('fieldset');
+                        });
+                        if (cont && !cont.disabled) {
+                            cont.click();
+                            return true;
+                        }
+                        return false;
+                    }''')
+                    if btn_clicked:
+                        logger.info("Tự động bấm nút 'Tiếp tục' trên Playwright...")
+                        await page.wait_for_timeout(3000)
+                        continue
+                    break
+
+            # Lấy tất cả tin nhắn phản hồi của Claude
+            messages1 = await page.eval_on_selector_all(
                 '.font-claude-message, [data-is-streaming="false"]',
-                'nodes => nodes.map(n => n.innerText)'
+                '''nodes => nodes
+                    .filter(n => !n.closest('[contenteditable="true"]') && !n.closest('fieldset') && !n.closest('[data-testid="user-message"]'))
+                    .map(n => n.innerText)
+                    .filter(t => t && !t.startsWith('/'))'''
             )
-            script_text = messages[-1] if messages else ""
+
+            script_text = "\n\n".join(messages1).strip() if messages1 else ""
             words1 = count_words(script_text)
             write_raw_log("LƯỢT 1: KỊCH BẢN CHÍNH (Headless)", script_text)
+
+            if words1 < 50:
+                raise ValueError(f"Kịch bản Lượt 1 ngầm trả về quá ngắn ({words1} từ)!")
 
             if on_progress:
                 on_progress(f"Đã hoàn thành Kịch Bản ngầm ({words1} từ). Đang gửi Lượt 2...", 65, words1)
 
-            # Lượt 2
-            await page.fill(input_selector, title_thumb_skill)
+            # 2.5 Gửi Prompt 2 (Tiêu đề & Thumb)
+            await page.click(input_selector)
+            await page.keyboard.insert_text(title_thumb_skill)
+            await page.wait_for_timeout(500)
             await page.keyboard.press("Enter")
-            await page.wait_for_selector('[data-is-streaming="false"]', timeout=180000)
-            await page.wait_for_timeout(3000)
+
+            # Chờ Lượt 2 hoàn thành
+            start_wait_p2 = time.time()
+            while time.time() - start_wait_p2 < 300:
+                await page.wait_for_timeout(3000)
+                is_streaming2 = await page.evaluate('''() => {
+                    const stopBtn = document.querySelector('button[aria-label*="Stop"], button[aria-label*="Dừng"]');
+                    const streamingEl = document.querySelector('[data-is-streaming="true"]');
+                    return !!(stopBtn || streamingEl);
+                }''')
+                if not is_streaming2:
+                    break
 
             messages2 = await page.eval_on_selector_all(
                 '.font-claude-message, [data-is-streaming="false"]',
-                'nodes => nodes.map(n => n.innerText)'
+                '''nodes => nodes
+                    .filter(n => !n.closest('[contenteditable="true"]') && !n.closest('fieldset') && !n.closest('[data-testid="user-message"]'))
+                    .map(n => n.innerText)
+                    .filter(t => t && !t.startsWith('/'))'''
             )
+
             title_thumb_text = messages2[-1] if messages2 else ""
             write_raw_log("LƯỢT 2: TIÊU ĐỀ & THUMB (Headless)", title_thumb_text)
 
-            await browser.close()
+            try:
+                if context:
+                    await context.close()
+            except Exception:
+                pass
 
             title = ""
             for line in title_thumb_text.splitlines():
@@ -195,7 +307,7 @@ async def run_claude_2skill_backend(
                 "thumb_prompt": title_thumb_text,
                 "word_count": words1,
                 "raw_log_path": raw_log_path,
-                "mode": "headless_browser"
+                "mode": used_mode
             }
     except Exception as err:
         logger.error(f"Lỗi Claude Engine Headless: {err}")
