@@ -25,6 +25,79 @@ def count_words(text: str) -> int:
         return 0
     return len(text.strip().split())
 
+async def send_playwright_chat_message(page, text: str):
+    """Hàm gửi tin nhắn chuẩn trong Playwright cho ProseMirror editor của Claude"""
+    input_selector = 'div.ProseMirror[contenteditable="true"], div[contenteditable="true"]'
+    await page.wait_for_selector(input_selector, timeout=20000)
+
+    # 1. Xóa sạch ô nhập liệu trước khi gõ
+    await page.evaluate('''sel => {
+        const el = document.querySelector(sel);
+        if (el) {
+            el.focus();
+            el.innerHTML = '<p></p>';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }''', input_selector)
+    await page.wait_for_timeout(300)
+
+    # 2. Focus & Nhập text
+    await page.click(input_selector)
+    await page.keyboard.insert_text(text)
+    await page.wait_for_timeout(800)
+
+    # 3. Kích hoạt nút Gửi (Send Button)
+    sent = await page.evaluate('''() => {
+        const btn = document.querySelector('button[aria-label*="Send"], button[aria-label*="Gửi"], button[type="submit"]');
+        if (btn && !btn.disabled) {
+            btn.click();
+            return true;
+        }
+        return false;
+    }''')
+
+    if not sent:
+        await page.keyboard.press("Enter")
+    await page.wait_for_timeout(1000)
+
+async def extract_assistant_responses(page):
+    """Trích xuất chính xác danh sách các câu trả lời của Claude (loại bỏ prompt người dùng)"""
+    return await page.evaluate('''() => {
+        // Tìm các node câu trả lời của Assistant
+        let nodes = Array.from(document.querySelectorAll('div[data-message-author-role="assistant"], div.font-claude-message, div.grid-cols-1'));
+        if (nodes.length === 0) {
+            nodes = Array.from(document.querySelectorAll('.prose'));
+        }
+
+        const results = [];
+        for (const node of nodes) {
+            // Loại bỏ khung nhập liệu / prompt người dùng / fieldset
+            if (node.closest('[contenteditable="true"]') || 
+                node.closest('fieldset') || 
+                node.closest('[data-testid="user-message"]') ||
+                node.closest('.font-user-message')) {
+                continue;
+            }
+
+            const text = node.innerText ? node.innerText.trim() : '';
+            if (!text || text.startsWith('/')) continue;
+
+            // Đảm bảo không trùng lặp các node lồng nhau
+            if (!results.includes(text)) {
+                const isSub = results.some(r => r.includes(text));
+                if (!isSub) {
+                    const existingIdx = results.findIndex(r => text.includes(r));
+                    if (existingIdx !== -1) {
+                        results[existingIdx] = text;
+                    } else {
+                        results.push(text);
+                    }
+                }
+            }
+        }
+        return results;
+    }''')
+
 async def run_claude_2skill_backend(
     project_id: str,
     raw_content: str,
@@ -34,8 +107,7 @@ async def run_claude_2skill_backend(
 ) -> Dict[str, Any]:
     """
     Thực thi 2-Skill Claude ngầm bằng Python Engine.
-    Hỗ trợ Anthropic Official API, Chrome Persistent Context (Profile đã đăng nhập), và SessionKey Cookie.
-    Lưu nhật ký thô vào outputs/{project_id}/{project_id}_claude_raw_log.txt
+    Hỗ trợ Anthropic Official API, Chrome Persistent Context, và SessionKey Cookie.
     """
     cfg = get_config()
     api_key = cfg.get("anthropic_api_key") or os.environ.get("ANTHROPIC_API_KEY")
@@ -121,7 +193,7 @@ async def run_claude_2skill_backend(
             logger.error(f"Lỗi Anthropic API: {e}")
             write_raw_log("LỖI API", str(e))
 
-    # 2. Fallback: Dùng Playwright Headless Browser với Profile Chrome đã đăng nhập hoặc Cookie SessionKey
+    # 2. Fallback: Dùng Playwright Headless Browser với Cookie SessionKey hoặc Profile Chrome
     try:
         from playwright.async_api import async_playwright
         if on_progress:
@@ -131,7 +203,7 @@ async def run_claude_2skill_backend(
             user_data_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
             profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1", "Default"])
             
-            # Xử lý danh sách sessionKeys (Hỗ trợ 1 hoặc nhiều tài khoản Chrome)
+            # Xử lý danh sách sessionKeys
             session_keys = cfg.get("claude_session_keys") or []
             if isinstance(session_keys, str):
                 session_keys = [session_keys]
@@ -156,7 +228,7 @@ async def run_claude_2skill_backend(
             page = None
             used_mode = "playwright_headless"
 
-            # 2.1 Ưu tiên 1: Dùng Cookie sessionKey nếu có (Hoạt động 100%, không bị khóa do Chrome đang chạy)
+            # 2.1 Ưu tiên 1: Dùng Cookie sessionKey nếu có
             if session_key:
                 try:
                     browser = await p.chromium.launch(headless=True)
@@ -207,32 +279,19 @@ async def run_claude_2skill_backend(
             await page.goto("https://claude.ai/new", timeout=60000)
             await page.wait_for_timeout(3000)
 
-            # Kiểm tra xem có bị bắt đăng nhập không
             if "login" in page.url or "auth" in page.url:
                 raise RuntimeError(
-                    "🔑 Chưa xác thực được tài khoản Claude! Vui lòng lấy cookie 'sessionKey' từ Chrome "
-                    "(bấm F12 > Application > Cookies > claude.ai) và dán vào config.json ('claude_session_key': 'sk-ant-sid01-...') "
-                    "hoặc bấm nút '🔑 Nhập SessionKey' trên Web Xưởng."
+                    "🔑 Chưa xác thực được tài khoản Claude! Vui lòng bấm nút '🔑 Cookie' trên Web Xưởng dán sessionKey từ Chrome."
                 )
 
-            # Đợi khung chat xuất hiện
-            input_selector = 'div.ProseMirror[contenteditable="true"], div[contenteditable="true"]'
-            try:
-                await page.wait_for_selector(input_selector, timeout=25000)
-            except Exception:
-                raise RuntimeError("Không tìm thấy khung chat Claude.ai (Có thể chưa đăng nhập tài khoản).")
-
-            # 2.4 Gửi Prompt 1 (Tạo Kịch Bản)
+            # 2.4 GỬI PROMPT 1: Tạo Kịch Bản
             prompt1 = f"{script_skill}\n\n{raw_content}"
-            await page.click(input_selector)
-            await page.keyboard.insert_text(prompt1)
-            await page.wait_for_timeout(500)
-            await page.keyboard.press("Enter")
+            await send_playwright_chat_message(page, prompt1)
 
             if on_progress:
                 on_progress("Đang gửi Prompt 1 và chờ Claude ngầm viết kịch bản...", 30, 0)
 
-            # Chờ hoàn thành + tự động bấm Continue nếu kịch bản siêu dài
+            # Chờ Lượt 1 hoàn thành + Tự động bấm Continue nếu kịch bản siêu dài
             max_wait_p1 = 1800 # 30 phút
             start_wait = time.time()
             while time.time() - start_wait < max_wait_p1:
@@ -263,30 +322,23 @@ async def run_claude_2skill_backend(
                         continue
                     break
 
-            # Lấy tất cả tin nhắn phản hồi của Claude
-            messages1 = await page.eval_on_selector_all(
-                '.font-claude-message, [data-is-streaming="false"]',
-                '''nodes => nodes
-                    .filter(n => !n.closest('[contenteditable="true"]') && !n.closest('fieldset') && !n.closest('[data-testid="user-message"]'))
-                    .map(n => n.innerText)
-                    .filter(t => t && !t.startsWith('/'))'''
-            )
-
+            # Bóc tách tất cả các đoạn phản hồi của Lượt 1
+            messages1 = await extract_assistant_responses(page)
             script_text = "\n\n".join(messages1).strip() if messages1 else ""
             words1 = count_words(script_text)
+            count_after_p1 = len(messages1)
+
             write_raw_log("LƯỢT 1: KỊCH BẢN CHÍNH (Headless)", script_text)
 
             if words1 < 50:
-                raise ValueError(f"Kịch bản Lượt 1 ngầm trả về quá ngắn ({words1} từ)!")
+                raise ValueError(f"Kịch bản Lượt 1 ngầm trả về quá ngắn ({words1} từ)! Vui lòng kiểm tra lại Claude.")
 
             if on_progress:
                 on_progress(f"Đã hoàn thành Kịch Bản ngầm ({words1} từ). Đang gửi Lượt 2...", 65, words1)
 
-            # 2.5 Gửi Prompt 2 (Tiêu đề & Thumb)
-            await page.click(input_selector)
-            await page.keyboard.insert_text(title_thumb_skill)
-            await page.wait_for_timeout(500)
-            await page.keyboard.press("Enter")
+            # 2.5 GỬI PROMPT 2: Xin Tiêu đề & Thumb
+            await sleep_async(2)
+            await send_playwright_chat_message(page, title_thumb_skill)
 
             # Chờ Lượt 2 hoàn thành
             start_wait_p2 = time.time()
@@ -300,15 +352,10 @@ async def run_claude_2skill_backend(
                 if not is_streaming2:
                     break
 
-            messages2 = await page.eval_on_selector_all(
-                '.font-claude-message, [data-is-streaming="false"]',
-                '''nodes => nodes
-                    .filter(n => !n.closest('[contenteditable="true"]') && !n.closest('fieldset') && !n.closest('[data-testid="user-message"]'))
-                    .map(n => n.innerText)
-                    .filter(t => t && !t.startsWith('/'))'''
-            )
-
-            title_thumb_text = messages2[-1] if messages2 else ""
+            # Bóc tách câu trả lời của Lượt 2
+            messages2 = await extract_assistant_responses(page)
+            p2_responses = messages2[count_after_p1:] if len(messages2) > count_after_p1 else messages2
+            title_thumb_text = "\n\n".join(p2_responses).strip() if p2_responses else (messages2[-1] if messages2 else "")
             write_raw_log("LƯỢT 2: TIÊU ĐỀ & THUMB (Headless)", title_thumb_text)
 
             try:
@@ -339,3 +386,6 @@ async def run_claude_2skill_backend(
         logger.error(f"Lỗi Claude Engine Headless: {err}")
         write_raw_log("LỖI ENGINE HEADLESS", str(err))
         raise RuntimeError(f"Claude Engine thất bại: {err}")
+
+async def sleep_async(sec: float):
+    await asyncio.sleep(sec)
