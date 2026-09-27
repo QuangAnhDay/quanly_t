@@ -176,3 +176,74 @@ def render_video(
 
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return output_path
+
+def render_full_video_auto(
+    project_id: str,
+    audio_path: str,
+    output_video_path: str,
+    theme: str = "nau_an",
+    aspect_ratio: str = "16:9"
+) -> str:
+    """
+    Render video MP4 hoàn chỉnh tự động:
+    - Tự cắt im lặng ở cuối audio.
+    - Áp dụng các hiệu ứng vi mô chống trùng lặp (Micro-Zoom 104%, Micro-Flip 50% hflip).
+    - Render trực tiếp ra file MP4 chất lượng cao.
+    """
+    import audio_engine
+    audio_path = audio_engine.trim_trailing_silence(audio_path)
+    
+    duration = get_audio_duration(audio_path)
+    width, height = (1920, 1080) if aspect_ratio == "16:9" else (1080, 1920)
+    orientation = "ngang" if aspect_ratio == "16:9" else "doc"
+
+    import capcut_engine
+    bg_candidates = capcut_engine.get_theme_videos(theme, orientation)
+    
+    os.makedirs(os.path.dirname(os.path.abspath(output_video_path)), exist_ok=True)
+
+    use_hflip = random.choice([True, False])
+    vf_chain = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop=iw*0.96:ih*0.96,scale={width}:{height}"
+    if use_hflip:
+        vf_chain += ",hflip"
+
+    if bg_candidates:
+        bg_file = random.choice(bg_candidates)
+        cmd = [
+            FFMPEG_PATH, "-y",
+            "-stream_loop", "-1",
+            "-i", bg_file,
+            "-i", audio_path,
+            "-t", str(duration),
+            "-vf", vf_chain,
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "22",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            output_video_path
+        ]
+    else:
+        filter_complex = (
+            f"[1:a]showwaves=s={width}x300:mode=p2p:colors=#8b5cf6:scale=sqrt[wave]; "
+            f"color=c=#0f172a:s={width}x{height}:d={duration}[bg]; "
+            f"[bg][wave]overlay=(W-w)/2:(H-h)/2[v]"
+        )
+        cmd = [
+            FFMPEG_PATH, "-y",
+            "-f", "lavfi", "-i", f"color=c=#0f172a:s={width}x{height}:d={duration}",
+            "-i", audio_path,
+            "-filter_complex", filter_complex,
+            "-map", "[v]",
+            "-map", "1:a",
+            "-t", str(duration),
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            output_video_path
+        ]
+
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_video_path

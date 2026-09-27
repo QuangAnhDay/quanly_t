@@ -269,6 +269,44 @@ def _process_split_parts_task(task: Dict[str, Any]):
     task_logger.add_log("tiktok", f"✂️ [Hàng Đợi] Đã cắt thành công {len(parts)} tập ngắn cho [{project_id}]!", "success", project_id)
     return {"parts_count": len(parts), "parts": parts}
 
+def _process_auto_render_task(task: Dict[str, Any]):
+    project_id = task["project_id"]
+    payload = task["payload"] or {}
+    
+    proj = database.get_project(project_id)
+    if not proj:
+        raise ValueError(f"Không tìm thấy kịch bản {project_id}")
+        
+    audio_path = proj.get("audio_path")
+    if not audio_path or not os.path.exists(audio_path):
+        raise ValueError(f"Kịch bản [{project_id}] chưa có file Audio! Vui lòng tạo Voice trước.")
+        
+    theme = payload.get("theme", "nau_an")
+    aspect_ratio = payload.get("aspect_ratio", "16:9")
+    
+    pkg_dir = database.get_package_dir(project_id)
+    filename = f"{project_id}_youtube.mp4" if aspect_ratio == "16:9" else f"{project_id}_tiktok.mp4"
+    out_path = os.path.join(pkg_dir, filename)
+    
+    task["message"] = f"Đang tự động render video MP4 ({aspect_ratio})..."
+    task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đang tự động render video MP4 cho [{project_id}] ({aspect_ratio})...", "info", project_id)
+    
+    rendered_path = video_engine.render_full_video_auto(
+        project_id=project_id,
+        audio_path=audio_path,
+        output_video_path=out_path,
+        theme=theme,
+        aspect_ratio=aspect_ratio
+    )
+    
+    if aspect_ratio == "16:9":
+        database.update_project(project_id, video_youtube_path=rendered_path, video_path=rendered_path, status="5_hoan_thanh")
+    else:
+        database.update_project(project_id, video_tiktok_path=rendered_path, status="5_hoan_thanh")
+        
+    task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đã tự động xuất xong Video MP4 cho [{project_id}]!", "success", project_id)
+    return {"rendered_path": rendered_path}
+
 def _worker_loop():
     """Vòng lặp Worker chính chạy ngầm xử lý từng công việc tuần tự"""
     global _running_task, _finished_tasks
@@ -299,6 +337,8 @@ def _worker_loop():
                 res = _process_tiktok_task(task)
             elif task_type == "split_parts":
                 res = _process_split_parts_task(task)
+            elif task_type == "auto_render":
+                res = _process_auto_render_task(task)
             else:
                 raise ValueError(f"Loại công việc không hợp lệ: {task_type}")
                 

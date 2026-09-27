@@ -112,6 +112,15 @@ class BatchCapCutPayload(BaseModel):
     project_ids: List[str]
     theme: Optional[str] = "nau_an"
 
+class AutoRenderPayload(BaseModel):
+    theme: Optional[str] = "nau_an"
+    aspect_ratio: Optional[str] = "16:9"
+
+class BatchAutoRenderPayload(BaseModel):
+    project_ids: List[str]
+    theme: Optional[str] = "nau_an"
+    aspect_ratio: Optional[str] = "16:9"
+
 class RawScriptPayload(BaseModel):
     raw_content: str
     title: Optional[str] = None
@@ -525,6 +534,41 @@ async def batch_create_capcut_api(payload: BatchCapCutPayload):
         "queued": True,
         "created_count": len(tasks),
         "message": f"Đã thêm {len(tasks)} kịch bản vào Hàng Đợi Tạo CapCut ngầm!",
+        "tasks": tasks
+    }
+
+@app.post("/api/projects/{project_id}/auto-render")
+async def auto_render_video_api(project_id: str, payload: Optional[AutoRenderPayload] = None):
+    """Tự động cắt khoảng lặng thừa audio & Render Video MP4 trực tiếp qua Hàng Đợi Ngầm"""
+    proj = database.get_project(project_id)
+    if not proj or not proj.get("audio_path"):
+        raise HTTPException(status_code=400, detail="Chưa có file Audio. Vui lòng tạo Audio trước!")
+    
+    theme = payload.theme if payload else "nau_an"
+    aspect_ratio = payload.aspect_ratio if payload else "16:9"
+    t = task_queue.add_task("auto_render", project_id, {
+        "theme": theme,
+        "aspect_ratio": aspect_ratio
+    })
+    return {
+        "success": True,
+        "queued": True,
+        "message": f"Đã thêm [{project_id}] vào Hàng Đợi Xuất Video MP4 ngầm!",
+        "task": t
+    }
+
+@app.post("/api/projects/batch-auto-render")
+async def batch_auto_render_api(payload: BatchAutoRenderPayload):
+    """Xuất hàng loạt Video MP4 cho các kịch bản đã chọn qua Hàng Đợi Ngầm"""
+    tasks = task_queue.add_batch_tasks("auto_render", payload.project_ids, {
+        "theme": payload.theme or "nau_an",
+        "aspect_ratio": payload.aspect_ratio or "16:9"
+    })
+    return {
+        "success": True,
+        "queued": True,
+        "created_count": len(tasks),
+        "message": f"Đã thêm {len(tasks)} kịch bản vào Hàng Đợi Xuất Video MP4 ngầm!",
         "tasks": tasks
     }
 
