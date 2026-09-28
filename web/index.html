@@ -272,6 +272,7 @@
           <button onclick="setFilter('need_youtube')" id="tab-need_youtube" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">▶️ Chờ YouTube (<span id="cnt-need_youtube">0</span>)</button>
           <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
           <button onclick="setFilter('need_thumb')" id="tab-need_thumb" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🖼️ Thiếu Thumb (<span id="cnt-need_thumb">0</span>)</button>
+          <button onclick="setFilter('not_published')" id="tab-not_published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⏳ Chưa Đăng (<span id="cnt-not_published">0</span>)</button>
           <button onclick="setFilter('published')" id="tab-published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⭐ Đã Đăng (<span id="cnt-published">0</span>)</button>
         </div>
 
@@ -884,6 +885,7 @@
       document.getElementById('cnt-need_youtube').innerText = projectsData.filter(p => p.status !== '0_ban_tho' && !p.video_youtube_path && !p.video_path).length;
       document.getElementById('cnt-need_tiktok').innerText = projectsData.filter(p => p.status !== '0_ban_tho' && !p.video_tiktok_path).length;
       document.getElementById('cnt-need_thumb').innerText = total - doneThumb;
+      document.getElementById('cnt-not_published').innerText = total - published;
       document.getElementById('cnt-published').innerText = published;
     }
 
@@ -912,6 +914,7 @@
         if (currentFilter === 'need_youtube') return p.status !== '0_ban_tho' && !p.video_youtube_path && !p.video_path;
         if (currentFilter === 'need_tiktok') return p.status !== '0_ban_tho' && !p.video_tiktok_path;
         if (currentFilter === 'need_thumb') return !p.has_thumbnail && !p.thumbnail_path;
+        if (currentFilter === 'not_published') return p.is_published !== 1;
         if (currentFilter === 'published') return p.is_published === 1;
         return true;
       });
