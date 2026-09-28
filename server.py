@@ -413,13 +413,26 @@ async def batch_create_raw_api(payload: BatchRawScriptPayload):
     projs = database.batch_create_raw_projects(payload.raw_scripts)
     return {"success": True, "count": len(projs), "projects": projs}
 
+def clean_script_content(content: str) -> str:
+    if not content:
+        return ""
+    text = content.strip()
+    match = re.search(r'<(?:kich_ban|script)>(.*?)</(?:kich_ban|script)>', text, re.DOTALL | re.IGNORECASE)
+    if match and len(match.group(1).strip()) > 30:
+        return match.group(1).strip()
+    open_match = re.search(r'<(?:kich_ban|script)>(.*)$', text, re.DOTALL | re.IGNORECASE)
+    if open_match and len(open_match.group(1).strip()) > 30:
+        return open_match.group(1).strip()
+    return re.sub(r'</?(?:kich_ban|script)>', '', text, flags=re.IGNORECASE).strip()
+
 @app.post("/api/projects/{project_id}/ai-complete")
 async def complete_raw_by_ai(project_id: str, payload: AICompletePayload):
     """Cập nhật kịch bản sau khi Claude chạy xong 2 Skill"""
+    clean_content = clean_script_content(payload.content)
     proj = database.complete_raw_project(
         project_id=project_id,
         title=payload.title,
-        content=payload.content,
+        content=clean_content,
         thumb_prompt=payload.thumb_prompt or "",
         notes=payload.notes or ""
     )

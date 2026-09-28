@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Claude to Truyen Auto Producer (2-Skill Automation)
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Tự động hóa 2 Skill Claude (Tạo Kịch Bản + Gợi Ý Tiêu Đề/Thumb) và gửi dữ liệu về xưởng tại localhost:8888
 // @author       Antigravity
 // @match        https://claude.ai/*
@@ -17,6 +17,36 @@
     let isAutoRunning = false;
 
     const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+    function extractCleanScript(rawText) {
+        if (!rawText) return "";
+        let text = rawText.trim();
+        // 1. Ưu tiên bóc tách nội dung giữa thẻ <kich_ban>...</kich_ban> hoặc <script>...</script>
+        const tagMatch = text.match(/<(?:kich_ban|script)>([\s\S]*?)<\/(?:kich_ban|script)>/i);
+        if (tagMatch && tagMatch[1] && tagMatch[1].trim().length > 30) {
+            return tagMatch[1].trim();
+        }
+        // 2. Dự phòng: Có thẻ mở nhưng chưa đóng
+        const openTagMatch = text.match(/<(?:kich_ban|script)>([\s\S]*)$/i);
+        if (openTagMatch && openTagMatch[1] && openTagMatch[1].trim().length > 30) {
+            return openTagMatch[1].trim();
+        }
+        // 3. Fallback: Lọc câu chào hỏi mở đầu nếu có
+        const lines = text.split('\n');
+        let startIdx = 0;
+        while (startIdx < lines.length && startIdx < 4) {
+            const line = lines[startIdx].trim().toLowerCase();
+            if (line.startsWith('chào') || line.startsWith('dưới đây là') || line.startsWith('đây là') || line.startsWith('sure') || line.startsWith('here is') || line.startsWith('tôi đã tạo')) {
+                startIdx++;
+            } else {
+                break;
+            }
+        }
+        if (startIdx > 0 && startIdx < lines.length) {
+            text = lines.slice(startIdx).join('\n').trim();
+        }
+        return text.replace(/^<(?:kich_ban|script)>/i, '').replace(/<\/(?:kich_ban|script)>$/i, '').trim();
+    }
 
     async function apiFetch(endpoint, options = {}) {
         const url = `${SERVER_URL}${endpoint}`;
@@ -289,9 +319,15 @@
             // Bóc tách tất cả các đoạn phản hồi của Lượt 1 (kể cả khi bấm Tiếp Tục nhiều lần)
             const responsesAfterP1 = getClaudeResponses();
             const p1Responses = responsesAfterP1.slice(initialCount);
-            let fullScript = p1Responses.join("\n\n").trim();
+            let rawScript = p1Responses.join("\n\n").trim();
+            if (!rawScript) {
+                rawScript = getLatestClaudeResponse();
+            }
+
+            // Làm sạch: Bóc tách phần nằm giữa <kich_ban>...</kich_ban> hoặc <script>...</script>
+            let fullScript = extractCleanScript(rawScript);
             if (!fullScript) {
-                fullScript = getLatestClaudeResponse();
+                fullScript = rawScript;
             }
 
             const wordCount1 = getWordCount(fullScript);
@@ -299,7 +335,7 @@
             console.log(`--> [Lượt 1] Kịch bản chính (${wordCount1} từ, ${charCount1} ký tự):`, fullScript.substring(0, 100) + "...");
 
             // Bắt buộc kiểm tra độ dài tối thiểu (đảm bảo không bị lấy rỗng hoặc câu trả lời bị cụt)
-            if (charCount1 < 300 || wordCount1 < 50) {
+            if (charCount1 < 100 || wordCount1 < 20) {
                 throw new Error(`Kịch bản Lượt 1 quá ngắn hoặc rỗng (${wordCount1} từ, ${charCount1} ký tự)! Vui lòng kiểm tra lại Claude.`);
             }
 
