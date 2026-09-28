@@ -183,8 +183,8 @@
     }
 
     function getClaudeResponses() {
-        // Prioritize specific Claude assistant message nodes
-        let nodes = Array.from(document.querySelectorAll('.font-claude-message, [data-is-streaming], div.grid-cols-1, div.prose'));
+        // Target assistant message containers specifically
+        let nodes = Array.from(document.querySelectorAll('div[data-message-author-role="assistant"], div.font-claude-message, [data-testid="assistant-message"], div.prose'));
         if (nodes.length === 0) {
             nodes = Array.from(document.querySelectorAll('.whitespace-pre-wrap'));
         }
@@ -192,15 +192,19 @@
         const texts = [];
         for (const node of nodes) {
             // Exclude user inputs / ProseMirror editor elements / user messages
-            if (node.closest('[contenteditable="true"]') || node.closest('fieldset') || node.closest('[data-testid="user-message"]')) {
+            if (node.closest('[contenteditable="true"]') || 
+                node.closest('fieldset') || 
+                node.closest('[data-testid="user-message"]') ||
+                node.closest('.font-user-message') ||
+                node.closest('div[data-message-author-role="user"]')) {
                 continue;
             }
 
             const text = node.innerText ? node.innerText.trim() : '';
             if (!text) continue;
 
-            // Exclude user skill commands if captured accidentally
-            if (text.startsWith('/')) {
+            // Exclude user skill commands if matched
+            if (text.startsWith('/') && text.length < 80) {
                 continue;
             }
 
