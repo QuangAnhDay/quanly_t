@@ -142,17 +142,26 @@ def create_single_capcut_draft(
             "height": vh
         })
 
-    # Thuật toán Smart Anti-Duplicate: Xoay vòng điểm bắt đầu
-    key = f"{theme}_{orientation}"
-    start_offset = _LAST_USED_INDEX.get(key, 0)
-    _LAST_USED_INDEX[key] = (start_offset + 1) % len(video_info_list)
+    # Thuật toán Smart Anti-Duplicate: Sử dụng bg_manager để bốc clip mở đầu ít dùng nhất
+    import bg_manager
+    first_path, first_meta = bg_manager.select_smart_background(
+        candidates=[v["path"] for v in video_info_list],
+        theme=theme,
+        orientation=orientation,
+        project_id=project_id
+    )
 
-    # Shuffle và dịch offset
-    shuffled = list(video_info_list)
-    random.seed(int(time.time() * 1000) + start_offset)
-    random.shuffle(shuffled)
-    if len(shuffled) > 1:
-        shuffled = shuffled[start_offset:] + shuffled[:start_offset]
+    first_clip_info = next((v for v in video_info_list if v["path"] == first_path), None)
+    other_clips = [v for v in video_info_list if v["path"] != first_path]
+    random.shuffle(other_clips)
+    shuffled = [first_clip_info] + other_clips if first_clip_info else video_info_list
+
+    if project_id and first_meta:
+        try:
+            import database
+            database.update_project(project_id, bg_video=first_meta.get("filename", ""), bg_theme=theme)
+        except Exception as e:
+            print(f"[CapCutEngine] Lỗi lưu bg_video vào DB: {e}")
 
     selected_clips = []
     current_acc_us = 0

@@ -200,6 +200,7 @@ def render_full_video_auto(
     orientation = "ngang" if aspect_ratio == "16:9" else "doc"
 
     import capcut_engine
+    import bg_manager
     bg_candidates = capcut_engine.get_theme_videos(theme, orientation)
     
     os.makedirs(os.path.dirname(os.path.abspath(output_video_path)), exist_ok=True)
@@ -209,8 +210,21 @@ def render_full_video_auto(
     if use_hflip:
         vf_chain += ",hflip"
 
+    bg_meta = {}
     if bg_candidates:
-        bg_file = random.choice(bg_candidates)
+        bg_file, bg_meta = bg_manager.select_smart_background(
+            candidates=bg_candidates,
+            theme=theme,
+            orientation=orientation,
+            project_id=project_id
+        )
+        if project_id and bg_meta:
+            try:
+                import database
+                database.update_project(project_id, bg_video=bg_meta.get("filename", ""), bg_theme=theme)
+            except Exception as e:
+                print(f"[VideoEngine] Lỗi lưu bg_video vào DB: {e}")
+
         cmd = [
             FFMPEG_PATH, "-y",
             "-stream_loop", "-1",

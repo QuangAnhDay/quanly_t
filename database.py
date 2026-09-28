@@ -55,6 +55,8 @@ def init_db():
         ("package_dir", "TEXT"),
         ("raw_content", "TEXT"),
         ("thumb_prompt", "TEXT"),
+        ("bg_video", "TEXT"),
+        ("bg_theme", "TEXT"),
     ]
     
     for col_name, col_type in migrations:

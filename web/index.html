@@ -961,7 +961,14 @@
                   <i class="fa-solid fa-robot"></i>
                 </button>
               </div>
-              <div class="text-[10px] text-slate-400 truncate max-w-[240px] mt-0.5">${p.created_at || ''}</div>
+              <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span class="text-[10px] text-slate-400 font-mono">${p.created_at || ''}</span>
+                ${p.bg_video ? `
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200" title="Video nền thông minh: ${p.bg_video} (Theme: ${p.bg_theme || 'nau_an'})">
+                    🍳 Nền: ${p.bg_video}
+                  </span>
+                ` : ''}
+              </div>
             </td>
 
             <!-- 1. Voice Audio -->
