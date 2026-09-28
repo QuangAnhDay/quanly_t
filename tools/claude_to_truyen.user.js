@@ -21,6 +21,10 @@
     function extractCleanScript(rawText) {
         if (!rawText) return "";
         let text = rawText.trim();
+
+        // 0. Xóa triệt để các nhãn hệ thống của Claude (Project Knowledge / Memory / Tool call badges)
+        text = text.replace(/(?:Read a file,?\s*added to memory|added to memory|read a file)/gi, '').trim();
+
         // 1. Ưu tiên bóc tách nội dung giữa thẻ <kich_ban>...</kich_ban> hoặc <script>...</script>
         const tagMatch = text.match(/<(?:kich_ban|script)>([\s\S]*?)<\/(?:kich_ban|script)>/i);
         if (tagMatch && tagMatch[1] && tagMatch[1].trim().length > 30) {

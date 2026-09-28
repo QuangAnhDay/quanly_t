@@ -417,6 +417,8 @@ def clean_script_content(content: str) -> str:
     if not content:
         return ""
     text = content.strip()
+    # Xóa sạch các nhãn bộ nhớ Claude Projects nếu có
+    text = re.sub(r'(?:Read a file,?\s*added to memory|added to memory|read a file)', '', text, flags=re.IGNORECASE).strip()
     match = re.search(r'<(?:kich_ban|script)>(.*?)</(?:kich_ban|script)>', text, re.DOTALL | re.IGNORECASE)
     if match and len(match.group(1).strip()) > 30:
         return match.group(1).strip()
