@@ -94,7 +94,7 @@ def create_project(
     title: str,
     content: str,
     status: str = "1_cho_duyet",
-    voice: str = "vi-VN-HoaiMyNeural",
+    voice: str = "voicestudio:dda59bfa",
     notes: str = "",
     raw_content: str = "",
     thumb_prompt: str = ""

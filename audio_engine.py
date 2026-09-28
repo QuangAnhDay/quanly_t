@@ -3,7 +3,7 @@ import asyncio
 import edge_tts
 from typing import Optional
 
-DEFAULT_VOICE = "vi-VN-HoaiMyNeural"
+DEFAULT_VOICE = "voicestudio:dda59bfa"
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), "2_audio_input")
 
 async def generate_speech(
@@ -27,11 +27,15 @@ async def generate_speech(
     
     # 1. Kiểm tra xem voice có thuộc VoiceStudio (tiền tố 'voicestudio:' hoặc ID clone)
     is_vs_voice = False
-    clean_voice_id = voice
+    clean_voice_id = voice or DEFAULT_VOICE
     
-    if voice and voice.startswith("voicestudio:"):
+    # Hỗ trợ tự động nhận diện tên "ngoc huyen ngot ngao" hoặc ID "dda59bfa"
+    if clean_voice_id and ("ngoc huyen ngot ngao" in clean_voice_id.lower() or "dda59bfa" in clean_voice_id.lower()):
         is_vs_voice = True
-        clean_voice_id = voice.replace("voicestudio:", "")
+        clean_voice_id = "dda59bfa"
+    elif clean_voice_id and clean_voice_id.startswith("voicestudio:"):
+        is_vs_voice = True
+        clean_voice_id = clean_voice_id.replace("voicestudio:", "")
     else:
         # Nếu không có tiền tố, thử đối chiếu danh sách voice clone từ VoiceStudio
         try:
@@ -40,7 +44,8 @@ async def generate_speech(
                 vs_voices = voicestudio_service.get_voicestudio_voices()
                 for v in vs_voices:
                     vid = v.get("voice_id") or v.get("id")
-                    if vid and vid == voice:
+                    vname = v.get("name") or ""
+                    if (vid and vid == clean_voice_id) or (vname and vname.lower() == clean_voice_id.lower()):
                         is_vs_voice = True
                         clean_voice_id = vid
                         break

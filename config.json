@@ -10,10 +10,11 @@
     "Profile 1"
   ],
   "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "default_voice": "vi-VN-HoaiMyNeural",
+  "default_voice": "voicestudio:dda59bfa",
+  "auto_pipeline": true,
   "voicestudio_output_dir": "C:\\voicestudio\\outputs",
   "claude_skills": {
-    "script_skill_command": "/kichban-audio-hocduong",
+    "script_skill_command": "/kichban-audio-bancungphong",
     "title_thumb_skill_command": "/tieu-de-thumb-audio-hoc-duong"
   }
 }
