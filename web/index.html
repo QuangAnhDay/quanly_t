@@ -21,35 +21,35 @@
     .health-bar-fill { transition: width 0.6s ease-out; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased h-screen overflow-hidden">
 
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+  <!-- Slim Top Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs flex-shrink-0">
+    <div class="w-full px-4 py-2.5 flex items-center justify-between gap-4">
       
       <!-- Brand & Title -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-xl shadow-md shadow-indigo-100">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-lg shadow-sm">
           <i class="fa-solid fa-clapperboard"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold text-slate-900 leading-tight">Xưởng Sản Xuất Video Truyện</h1>
+            <h1 class="text-sm font-bold text-slate-900 leading-tight">Xưởng Sản Xuất Video Truyện</h1>
             <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded border border-violet-200">YouTube & TikTok</span>
           </div>
-          <p class="text-xs text-slate-500 flex items-center gap-2">
+          <p class="text-[11px] text-slate-500 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            Tạo CapCut 16:9 $\cdot$ Tự Động Sinh TikTok 9:16 (10s) $\cdot$ Gói <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
+            Tạo CapCut 16:9 · Auto TikTok 9:16 · Gói <span class="font-mono text-slate-700 font-semibold">outputs/KBxxx/</span>
           </p>
         </div>
       </div>
 
-      <!-- Quick Action Buttons -->
+      <!-- Header Quick Badges & Controls -->
       <div class="flex items-center gap-2 flex-wrap">
         <!-- VoiceStudio Status Badge -->
-        <button id="vs-status-badge" onclick="openHealthModal()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-2 transition border border-slate-200" title="Nhấn để xem chi tiết trạng thái hệ thống">
-          <span id="vs-dot" class="w-2.5 h-2.5 rounded-full bg-slate-400 health-dot-pulse"></span>
-          <span id="vs-status-text" class="text-[11px] font-medium">Đang kiểm tra...</span>
+        <button id="vs-status-badge" onclick="openHealthModal()" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-2 transition border border-slate-200" title="Nhấn để xem chi tiết trạng thái hệ thống">
+          <span id="vs-dot" class="w-2 h-2 rounded-full bg-slate-400 health-dot-pulse"></span>
+          <span id="vs-status-text" class="text-[11px] font-medium">VoiceStudio API</span>
         </button>
 
         <div class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center gap-1.5 shadow-2xs cursor-default" title="Dây Chuyền 1-Click đang BẬT: Claude xong -> Tự tạo Voice (Ngọc Huyền Ngọt Ngào) -> Tự Render MP4">
@@ -57,43 +57,17 @@
           <span class="text-[11px] font-bold">1-Click Pipeline: BẬT</span>
         </div>
 
-        <button id="logs-status-badge" onclick="openModal('logs-modal'); fetchActivityLogs();" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 transition border border-slate-200 shadow-sm" title="Mở Bảng Giám Sát Tiến Độ & Nhật Ký Real-time">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 health-dot-pulse"></span>
-          <span id="logs-badge-text" class="text-[11px] font-bold">📜 Nhật Ký Live</span>
-        </button>
-
-        <button onclick="launchCapCutApp()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 transition">
+        <button onclick="launchCapCutApp()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-film"></i>
-          <span>Mở CapCut PC</span>
+          <span>CapCut PC</span>
         </button>
 
-        <button onclick="openChromeModal()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1.5 transition">
+        <button onclick="openChromeModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-brands fa-chrome"></i>
-          <span>Quản Lý Profile Claude</span>
+          <span>Profile Claude</span>
         </button>
 
-        <!-- Dropdown Mở Thư Mục -->
-        <div class="relative group">
-          <button class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition">
-            <i class="fa-regular fa-folder-open"></i>
-            <span>Mở Thư Mục</span>
-            <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
-          </button>
-          <div class="absolute right-0 top-full pt-1 hidden group-hover:block z-50">
-            <div class="w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1">
-              <button onclick="openFolder('outputs')" class="w-full text-left px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold"><i class="fa-solid fa-box-archive text-amber-500"></i> Gói Kịch Bản (outputs/)</button>
-              <div class="border-t border-slate-100 my-1"></div>
-              <button onclick="openFolder('bg_nau_an_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-youtube text-red-500"></i> Kho Nền Nấu Ăn (16:9)</button>
-              <button onclick="openFolder('bg_handmade_ngang')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-scissors text-pink-500"></i> Kho Nền Handmade (16:9)</button>
-              <button onclick="openFolder('bg_nau_an_doc')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-brands fa-tiktok text-slate-600"></i> Kho Nền Dọc (9:16)</button>
-              <div class="border-t border-slate-100 my-1"></div>
-              <button onclick="openFolder('capcut_drafts')" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-diagram-project text-cyan-600"></i> Thư Mục CapCut Drafts</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nút Thêm Kịch Bản Mới -->
-        <button onclick="openNewScriptModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm flex items-center gap-1.5 transition">
+        <button onclick="openNewScriptModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-plus"></i>
           <span>Thêm Kịch Bản</span>
         </button>
@@ -102,137 +76,302 @@
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex flex-col gap-4">
-    
-    <!-- Stats Bar -->
-    <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">Tổng kịch bản</p>
-          <p id="stat-total" class="text-lg font-bold text-slate-900 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600"><i class="fa-regular fa-folder"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">Cần Voice</p>
-          <p id="stat-need-audio" class="text-lg font-bold text-amber-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><i class="fa-solid fa-microphone"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">Cần CapCut</p>
-          <p id="stat-need-capcut" class="text-lg font-bold text-blue-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600"><i class="fa-solid fa-scissors"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">YouTube Xong</p>
-          <p id="stat-done-youtube" class="text-lg font-bold text-red-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600"><i class="fa-brands fa-youtube"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">TikTok Xong</p>
-          <p id="stat-done-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-brands fa-tiktok"></i></div>
-      </div>
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-[11px] font-medium text-slate-500">Đã Đăng</p>
-          <p id="stat-published" class="text-lg font-bold text-violet-600 mt-0.5">0</p>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600"><i class="fa-solid fa-circle-check"></i></div>
-      </div>
-    </div>
+  <!-- 3-COLUMN WORKSPACE WRAPPER -->
+  <div class="flex-1 flex overflow-hidden w-full">
 
-    <!-- TASK QUEUE MONITOR WIDGET (LIGHT MODE MODERN) -->
-    <div id="queue-monitor-container" class="hidden bg-white rounded-2xl p-3.5 border-2 border-violet-200 shadow-md flex items-center justify-between transition-all duration-300">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-violet-100 border border-violet-300 flex items-center justify-center text-violet-700 text-sm font-bold shadow-2xs">
-          <i class="fa-solid fa-gear fa-spin"></i>
-        </div>
-        <div>
-          <div id="queue-running-info" class="text-xs font-bold text-slate-800 flex items-center gap-2">
-            Đang xử lý ngầm...
-          </div>
-          <div id="queue-queued-info" class="text-[11px] text-slate-500 font-medium mt-0.5">
-            0 tác vụ đang chờ
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button onclick="clearTaskQueue()" class="text-xs px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold transition flex items-center gap-1.5 shadow-2xs">
-          <i class="fa-solid fa-ban text-[11px]"></i> Hủy Hàng Đợi
-        </button>
-      </div>
-    </div>
-
-    <!-- Filter & Action Controls -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <!-- CỘT TRÁI: THANH ĐIỀU KHIỂN & TÁC VỤ (w-64 đến w-72) -->
+    <aside class="w-64 xl:w-72 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-20 overflow-y-auto custom-scroll p-3.5 gap-3.5 shadow-xs select-none">
       
-      <!-- Smart Filter Tabs -->
-      <div class="flex items-center flex-wrap gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-xs font-semibold">
-        <button onclick="setFilter('all')" id="tab-all" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white transition shadow-sm">Tất cả (<span id="cnt-all">0</span>)</button>
-        <button onclick="setFilter('raw')" id="tab-raw" class="px-3 py-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition">📝 Bản Thô (<span id="cnt-raw">0</span>)</button>
-        <button onclick="setFilter('need_audio')" id="tab-need_audio" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🔴 Cần Voice (<span id="cnt-need_audio">0</span>)</button>
-        <button onclick="setFilter('need_capcut')" id="tab-need_capcut" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🟡 Cần CapCut (<span id="cnt-need_capcut">0</span>)</button>
-        <button onclick="setFilter('need_youtube')" id="tab-need_youtube" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">▶️ Chờ YouTube (<span id="cnt-need_youtube">0</span>)</button>
-        <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
-        <button onclick="setFilter('need_thumb')" id="tab-need_thumb" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🖼️ Thiếu Thumb (<span id="cnt-need_thumb">0</span>)</button>
-        <button onclick="setFilter('published')" id="tab-published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⭐ Đã Đăng (<span id="cnt-published">0</span>)</button>
-      </div>
-
-
-      <!-- Search & Refresh -->
-      <div class="flex items-center gap-2">
-        <div class="relative w-64">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-          <input type="text" id="search-input" oninput="renderTable()" placeholder="Tìm theo mã KB, tiêu đề..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white">
+      <!-- Khối tác vụ hàng loạt -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-violet-600"></i> Tác Vụ Điều Khiển
+          </span>
+          <span id="sidebar-batch-count-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200">
+            Đã chọn: <span id="sidebar-batch-count">0</span>
+          </span>
         </div>
 
-        <button onclick="fetchProjects()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition shadow-sm">
-          <i class="fa-solid fa-rotate-right"></i>
-          <span>Làm mới</span>
+        <!-- Mở Chrome Claude -->
+        <button onclick="dispatchBatchToClaude()" class="w-full text-left px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition" title="Mở các cửa sổ Chrome điều khiển qua Tampermonkey">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-bolt"></i> Mở Chrome Claude</span>
+          <i class="fa-solid fa-chevron-right text-[10px] opacity-70"></i>
+        </button>
+
+        <!-- Claude Ngầm + Cookie -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="batchEnqueueClaudeBackend()" class="flex-1 text-left px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition" title="Cho kịch bản thô vào Hàng Đợi Ngầm sinh Kịch bản & Thumb bằng Python Engine">
+            <i class="fa-solid fa-robot"></i> Claude Ngầm
+          </button>
+          <button onclick="promptSaveClaudeSessionKey()" class="px-2.5 py-2 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl text-xs font-bold transition border border-purple-200" title="Nhập Cookie sessionKey">
+            🔑
+          </button>
+        </div>
+
+        <!-- Tạo Voice Audio -->
+        <button onclick="batchGenerateAudioQueue()" class="w-full text-left px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-microphone"></i> Tạo Audio Hàng Loạt</span>
+          <span class="text-[10px] bg-emerald-700/60 px-1.5 py-0.5 rounded">TTS</span>
+        </button>
+
+        <!-- Kho video nền -->
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase flex items-center justify-between">
+            <span>Kho Video Nền:</span>
+            <i class="fa-solid fa-clapperboard text-slate-400"></i>
+          </label>
+          <select id="batch-theme-select" class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 text-xs font-semibold focus:outline-none focus:border-violet-500">
+            <option value="nau_an">🍳 Nấu ăn (16:9)</option>
+            <option value="handmade">✂️ Handmade (16:9)</option>
+          </select>
+        </div>
+
+        <!-- Xuất MP4 Tự Động -->
+        <button onclick="batchAutoRenderQueue()" class="w-full text-left px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video"></i> Xuất MP4 Tự Động</span>
+          <span class="text-[10px] bg-indigo-700/60 px-1.5 py-0.5 rounded">16:9 & 9:16</span>
+        </button>
+
+        <!-- Tạo CapCut Drafts -->
+        <button onclick="batchCreateCapCutSingle()" class="w-full text-left px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo CapCut Hàng Loạt</span>
+        </button>
+
+        <!-- Xóa Kịch Bản Đã Chọn -->
+        <button onclick="batchDeleteSelected()" class="w-full text-left px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 transition flex items-center gap-2">
+          <i class="fa-solid fa-trash-can"></i> Xóa Kịch Bản Đã Chọn
         </button>
       </div>
 
-    </div>
+      <div class="border-t border-slate-200 my-1"></div>
 
-    <!-- HIGH-DENSITY PROGRESS MATRIX TABLE -->
-    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex-1 flex flex-col">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[11px] font-bold tracking-wider select-none">
-              <th class="p-3 w-10 text-center">
-                <input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-violet-600 focus:ring-0 cursor-pointer">
-              </th>
-              <th class="p-3 w-20">Mã KB</th>
-              <th class="p-3 min-w-[220px]">Tiêu đề Kịch bản</th>
-              <th class="p-3 w-28 text-center">1. Voice Audio</th>
-              <th class="p-3 w-36 text-center">2. Dự Án CapCut</th>
-              <th class="p-3 min-w-[240px] text-center">3. Video Xuất (YouTube & TikTok)</th>
-              <th class="p-3 w-28 text-center">4. Thumbnail</th>
-              <th class="p-3 w-28 text-center">5. Trạng Thái</th>
-              <th class="p-3 w-36 text-center">Quản Lý Gói KB</th>
-            </tr>
-          </thead>
-          <tbody id="projects-table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
-            <tr>
-              <td colspan="9" class="p-8 text-center text-slate-400">Đang tải danh sách kịch bản...</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- TÍNH NĂNG MỞ RỘNG (FACEBOOK & SHOPEE AFFILIATE) -->
+      <div class="flex flex-col gap-2">
+        <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-share-nodes text-blue-600"></i> Phân Phối & Tiếp Thị
+        </span>
+
+        <button onclick="showToast('Tính năng Đăng Facebook Reels đang được kết nối!', 'info')" class="w-full text-left px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center justify-between transition">
+          <span class="flex items-center gap-2"><i class="fa-brands fa-facebook"></i> Đăng Facebook Reels</span>
+          <span class="text-[9px] bg-blue-200/70 text-blue-800 px-1.5 py-0.5 rounded uppercase font-bold">Auto</span>
+        </button>
+
+        <button onclick="showToast('Kho Link Shopee Affiliate theo chủ đề chuẩn bị ra mắt!', 'info')" class="w-full text-left px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold flex items-center justify-between transition">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping"></i> Kho Link Shopee</span>
+          <span class="text-[9px] bg-amber-200/70 text-amber-800 px-1.5 py-0.5 rounded uppercase font-bold">Tag-based</span>
+        </button>
       </div>
-    </div>
 
-  </main>
+      <div class="border-t border-slate-200 my-1"></div>
+
+      <!-- MỞ THƯ MỤC HỆ THỐNG -->
+      <div class="flex flex-col gap-1.5 text-xs">
+        <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+          <i class="fa-regular fa-folder-open text-amber-500"></i> Kho Thư Mục
+        </span>
+        <button onclick="openFolder('outputs')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
+          <i class="fa-solid fa-box-archive text-amber-500 text-xs"></i> Gói outputs/ (Kịch bản)
+        </button>
+        <button onclick="openFolder('bg_nau_an_ngang')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
+          <i class="fa-brands fa-youtube text-red-500 text-xs"></i> Nền Nấu Ăn (16:9)
+        </button>
+        <button onclick="openFolder('bg_handmade_ngang')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
+          <i class="fa-solid fa-scissors text-pink-500 text-xs"></i> Nền Handmade (16:9)
+        </button>
+        <button onclick="openFolder('bg_nau_an_doc')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
+          <i class="fa-brands fa-tiktok text-slate-600 text-xs"></i> Nền Dọc (9:16)
+        </button>
+        <button onclick="openFolder('capcut_drafts')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
+          <i class="fa-solid fa-diagram-project text-cyan-600 text-xs"></i> CapCut Drafts
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- CỘT GIỮA: KHU VỰC LÀM VIỆC CHÍNH (flex-1) -->
+    <main class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-5 flex flex-col gap-4 bg-slate-50/70">
+      
+      <!-- Stats Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">Tổng kịch bản</p>
+            <p id="stat-total" class="text-lg font-bold text-slate-900 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600"><i class="fa-regular fa-folder"></i></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">Cần Voice</p>
+            <p id="stat-need-audio" class="text-lg font-bold text-amber-600 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><i class="fa-solid fa-microphone"></i></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">Cần CapCut</p>
+            <p id="stat-need-capcut" class="text-lg font-bold text-blue-600 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600"><i class="fa-solid fa-scissors"></i></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">YouTube Xong</p>
+            <p id="stat-done-youtube" class="text-lg font-bold text-red-600 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600"><i class="fa-brands fa-youtube"></i></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">TikTok Xong</p>
+            <p id="stat-done-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-brands fa-tiktok"></i></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-medium text-slate-500">Đã Đăng</p>
+            <p id="stat-published" class="text-lg font-bold text-violet-600 mt-0.5">0</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+      </div>
+
+      <!-- TASK QUEUE MONITOR WIDGET -->
+      <div id="queue-monitor-container" class="hidden bg-white rounded-2xl p-3.5 border-2 border-violet-200 shadow-sm flex items-center justify-between transition-all duration-300">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-violet-100 border border-violet-300 flex items-center justify-center text-violet-700 text-sm font-bold shadow-2xs">
+            <i class="fa-solid fa-gear fa-spin"></i>
+          </div>
+          <div>
+            <div id="queue-running-info" class="text-xs font-bold text-slate-800 flex items-center gap-2">
+              Đang xử lý ngầm...
+            </div>
+            <div id="queue-queued-info" class="text-[11px] text-slate-500 font-medium mt-0.5">
+              0 tác vụ đang chờ
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="clearTaskQueue()" class="text-xs px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold transition flex items-center gap-1.5 shadow-2xs">
+            <i class="fa-solid fa-ban text-[11px]"></i> Hủy Hàng Đợi
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter & Action Controls -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        
+        <!-- Smart Filter Tabs -->
+        <div class="flex items-center flex-wrap gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs text-xs font-semibold">
+          <button onclick="setFilter('all')" id="tab-all" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white transition shadow-sm">Tất cả (<span id="cnt-all">0</span>)</button>
+          <button onclick="setFilter('raw')" id="tab-raw" class="px-3 py-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition">📝 Bản Thô (<span id="cnt-raw">0</span>)</button>
+          <button onclick="setFilter('need_audio')" id="tab-need_audio" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🔴 Cần Voice (<span id="cnt-need_audio">0</span>)</button>
+          <button onclick="setFilter('need_capcut')" id="tab-need_capcut" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🟡 Cần CapCut (<span id="cnt-need_capcut">0</span>)</button>
+          <button onclick="setFilter('need_youtube')" id="tab-need_youtube" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">▶️ Chờ YouTube (<span id="cnt-need_youtube">0</span>)</button>
+          <button onclick="setFilter('need_tiktok')" id="tab-need_tiktok" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📱 Chờ TikTok (<span id="cnt-need_tiktok">0</span>)</button>
+          <button onclick="setFilter('need_thumb')" id="tab-need_thumb" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🖼️ Thiếu Thumb (<span id="cnt-need_thumb">0</span>)</button>
+          <button onclick="setFilter('published')" id="tab-published" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">⭐ Đã Đăng (<span id="cnt-published">0</span>)</button>
+        </div>
+
+        <!-- Search & Refresh -->
+        <div class="flex items-center gap-2">
+          <div class="relative w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" id="search-input" oninput="renderTable()" placeholder="Tìm theo mã KB, tiêu đề..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white shadow-2xs">
+          </div>
+
+          <button onclick="fetchProjects()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition shadow-2xs">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>Làm mới</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- HIGH-DENSITY PROGRESS MATRIX TABLE -->
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs flex-1 flex flex-col">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[11px] font-bold tracking-wider select-none">
+                <th class="p-3 w-10 text-center">
+                  <input type="checkbox" id="check-all" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-violet-600 focus:ring-0 cursor-pointer">
+                </th>
+                <th class="p-3 w-20">Mã KB</th>
+                <th class="p-3 min-w-[220px]">Tiêu đề Kịch bản</th>
+                <th class="p-3 w-28 text-center">1. Voice Audio</th>
+                <th class="p-3 w-36 text-center">2. Dự Án CapCut</th>
+                <th class="p-3 min-w-[240px] text-center">3. Video Xuất (YouTube & TikTok)</th>
+                <th class="p-3 w-28 text-center">4. Thumbnail</th>
+                <th class="p-3 w-28 text-center">5. Trạng Thái</th>
+                <th class="p-3 w-36 text-center">Quản Lý Gói KB</th>
+              </tr>
+            </thead>
+            <tbody id="projects-table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
+              <tr>
+                <td colspan="9" class="p-8 text-center text-slate-400">Đang tải danh sách kịch bản...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- CỘT PHẢI: KHUNG LOG HỆ THỐNG TRỰC TIẾP (w-80 đến w-96) -->
+    <aside class="w-80 xl:w-92 bg-white border-l border-slate-200 flex flex-col flex-shrink-0 z-20 overflow-hidden shadow-xs">
+      
+      <!-- Header của Live Log -->
+      <div class="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 health-dot-pulse"></span>
+          <span class="text-xs font-bold text-slate-800">Nhật Ký Hệ Thống (Live)</span>
+          <span id="sidebar-logs-count" class="text-[10px] text-slate-400 font-mono">(0)</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="fetchActivityLogs()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 text-xs transition" title="Làm mới log">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+          <button onclick="clearActivityLogs()" class="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 text-xs transition" title="Xóa lịch sử log">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter tabs cho Live Log -->
+      <div class="px-3 py-2 border-b border-slate-100 flex items-center gap-1 overflow-x-auto custom-scroll text-[11px] font-semibold bg-white">
+        <button onclick="filterLogs('all')" id="sidebar-log-filter-all" class="px-2 py-0.5 rounded-md bg-violet-600 text-white shadow-xs">Tất cả</button>
+        <button onclick="filterLogs('audio')" id="sidebar-log-filter-audio" class="px-2 py-0.5 rounded-md text-slate-600 hover:bg-slate-100">🎙️ Voice</button>
+        <button onclick="filterLogs('capcut')" id="sidebar-log-filter-capcut" class="px-2 py-0.5 rounded-md text-slate-600 hover:bg-slate-100">🎬 MP4</button>
+        <button onclick="filterLogs('claude')" id="sidebar-log-filter-claude" class="px-2 py-0.5 rounded-md text-slate-600 hover:bg-slate-100">🤖 Claude</button>
+        <button onclick="filterLogs('tiktok')" id="sidebar-log-filter-tiktok" class="px-2 py-0.5 rounded-md text-slate-600 hover:bg-slate-100">📱 TikTok</button>
+      </div>
+
+      <!-- Container danh sách thẻ Log Real-time -->
+      <div id="sidebar-live-logs-container" class="flex-1 overflow-y-auto custom-scroll p-3 flex flex-col gap-2 bg-slate-50/40">
+        <div class="h-48 flex flex-col items-center justify-center text-slate-400 gap-2">
+          <i class="fa-solid fa-satellite-dish text-xl text-slate-300"></i>
+          <p class="text-[11px] font-medium">Hệ thống đang chờ tác vụ...</p>
+        </div>
+      </div>
+
+      <!-- Footer Live Log: Trạng thái kết nối ngầm -->
+      <div class="p-2.5 border-t border-slate-200 bg-white text-[11px] text-slate-500 flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Dây chuyền tự động</span>
+        </div>
+        <label class="flex items-center gap-1 cursor-pointer select-none text-[10px] text-slate-400 hover:text-slate-600">
+          <input type="checkbox" id="sidebar-logs-autoscroll" checked class="rounded border-slate-300 text-violet-600 focus:ring-0">
+          <span>Cuộn tự động</span>
+        </label>
+      </div>
+
+    </aside>
+
+  </div>
 
   <!-- FLOATING BATCH ACTION TOOLBAR -->
   <div id="batch-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border-2 border-violet-500 rounded-2xl px-6 py-3 shadow-xl flex items-center gap-4 z-50 transition-all duration-300 transform translate-y-24 opacity-0 pointer-events-none">
@@ -985,12 +1124,27 @@
       const bar = document.getElementById('batch-bar');
       const countEl = document.getElementById('batch-count');
       const count = selectedIds.size;
-      countEl.innerText = count;
+      if (countEl) countEl.innerText = count;
 
-      if (count > 0) {
-        bar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
-      } else {
-        bar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+      const sidebarCountEl = document.getElementById('sidebar-batch-count');
+      const sidebarBadge = document.getElementById('sidebar-batch-count-badge');
+      if (sidebarCountEl) sidebarCountEl.innerText = count;
+      if (sidebarBadge) {
+        if (count > 0) {
+          sidebarBadge.classList.remove('hidden');
+          sidebarBadge.classList.add('inline-flex');
+        } else {
+          sidebarBadge.classList.add('hidden');
+          sidebarBadge.classList.remove('inline-flex');
+        }
+      }
+
+      if (bar) {
+        if (count > 0) {
+          bar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+        } else {
+          bar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+        }
       }
     }
 
@@ -1924,6 +2078,14 @@
             btn.className = "px-2.5 py-1 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition";
           }
         }
+        const sBtn = document.getElementById(`sidebar-log-filter-${m}`);
+        if (sBtn) {
+          if (m === module) {
+            sBtn.className = "px-2 py-0.5 rounded-md bg-violet-600 text-white shadow-xs font-bold";
+          } else {
+            sBtn.className = "px-2 py-0.5 rounded-md text-slate-600 hover:bg-slate-100 font-medium";
+          }
+        }
       });
       fetchActivityLogs();
     }
@@ -1989,6 +2151,51 @@
       const autoScroll = document.getElementById('logs-autoscroll');
       if (autoScroll && autoScroll.checked) {
         container.scrollTop = container.scrollHeight;
+      }
+
+      // === Render vào Cột Phải (Live Log Stream) ===
+      const sidebarContainer = document.getElementById('sidebar-live-logs-container');
+      const sidebarCount = document.getElementById('sidebar-logs-count');
+      if (sidebarCount) sidebarCount.textContent = `(${activityLogsData.length})`;
+
+      if (sidebarContainer) {
+        if (!activityLogsData || activityLogsData.length === 0) {
+          sidebarContainer.innerHTML = `
+            <div class="h-48 flex flex-col items-center justify-center text-slate-400 gap-2">
+              <i class="fa-solid fa-satellite-dish text-xl text-slate-300"></i>
+              <p class="text-[11px] font-medium">Hệ thống đang chờ tác vụ...</p>
+            </div>
+          `;
+        } else {
+          sidebarContainer.innerHTML = activityLogsData.map(log => {
+            const mod = moduleStyles[log.module] || moduleStyles.system;
+            const levelClass = levelStyles[log.level] || levelStyles.info;
+            const icon = log.icon || "📝";
+            const projBadge = log.project_id ? `<span class="font-mono font-bold text-violet-700 bg-violet-50 px-1 py-0.2 rounded text-[9px] border border-violet-200">${log.project_id}</span>` : '';
+
+            return `
+              <div class="border border-slate-200/90 hover:border-slate-300 rounded-xl p-2.5 shadow-2xs transition ${levelClass} bg-white">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${mod.badgeBg}">
+                      ${icon} ${mod.label}
+                    </span>
+                    ${projBadge}
+                  </div>
+                  <span class="text-[9px] text-slate-400 font-mono flex-shrink-0">${log.timestamp}</span>
+                </div>
+                <p class="text-[11px] text-slate-800 font-medium leading-snug break-words">
+                  ${log.message}
+                </p>
+              </div>
+            `;
+          }).join('');
+
+          const sidebarAutoScroll = document.getElementById('sidebar-logs-autoscroll');
+          if (sidebarAutoScroll && sidebarAutoScroll.checked) {
+            sidebarContainer.scrollTop = sidebarContainer.scrollHeight;
+          }
+        }
       }
     }
 
