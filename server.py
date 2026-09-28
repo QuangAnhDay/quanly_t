@@ -447,6 +447,35 @@ async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
         "message": f"Đã mở {len(launched)} Profile Chrome với kịch bản thô được gán tự động"
     }
 
+@app.post("/api/dispatch-userscript-update")
+async def dispatch_userscript_update_api(payload: Optional[LaunchSelectedProfilesPayload] = None):
+    """Mở tất cả các profile Chrome đã chọn với trang cài đặt Userscript Tampermonkey để cập nhật hàng loạt 1-click"""
+    cfg = get_config()
+    if payload and payload.profiles and len(payload.profiles) > 0:
+        selected_profiles = payload.profiles
+    else:
+        selected_profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"])
+
+    chrome_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    if not os.path.exists(chrome_path):
+        chrome_path = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+    if not os.path.exists(chrome_path):
+        chrome_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
+
+    target_url = "http://localhost:8888/claude_to_truyen.user.js"
+    launched = []
+    for pid in selected_profiles:
+        cmd = f'"{chrome_path}" --profile-directory="{pid}" "{target_url}"'
+        subprocess.Popen(cmd, shell=True)
+        launched.append(pid)
+
+    return {
+        "success": True,
+        "launched": launched,
+        "count": len(launched),
+        "message": f"Đã mở {len(launched)} Profile Chrome trang Cập Nhật Userscript"
+    }
+
 
 @app.post("/api/save-script")
 async def save_script_from_claude(payload: ScriptPayload):

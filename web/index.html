@@ -450,9 +450,14 @@
               <p class="text-[11px] text-violet-700">Tự động gõ lệnh 2 Skill, chờ AI viết và bắn dữ liệu về xưởng</p>
             </div>
           </div>
-          <a href="/claude_to_truyen.user.js" target="_blank" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition whitespace-nowrap">
-            <i class="fa-solid fa-download"></i> Cài/Cập Nhật Script
-          </a>
+          <div class="flex items-center gap-1.5">
+            <button onclick="updateUserscriptBatch()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition whitespace-nowrap" title="Mở trang cài đặt/cập nhật Userscript trên tất cả các Profile Chrome đã chọn">
+              <i class="fa-solid fa-arrows-rotate"></i> Cập Nhật Script Hàng Loạt
+            </button>
+            <a href="/claude_to_truyen.user.js" target="_blank" class="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-violet-700 border border-violet-200 text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition whitespace-nowrap" title="Xem file Userscript">
+              <i class="fa-solid fa-download"></i> Xem Script
+            </a>
+          </div>
         </div>
 
         <!-- Cài đặt lệnh Skill -->
@@ -991,6 +996,24 @@
         }
       } catch (err) {
         showToast("Lỗi mở Claude", "error");
+      }
+    }
+
+    async function updateUserscriptBatch() {
+      let savedSelected = JSON.parse(localStorage.getItem('selectedChromeProfiles') || '[]');
+      showToast("Đang mở trang Cập Nhật Script trên các Chrome Profile...", "info");
+      try {
+        const res = await fetch('/api/dispatch-userscript-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profiles: savedSelected.length > 0 ? savedSelected : null })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🚀 ${data.message}!`, "success");
+        }
+      } catch (err) {
+        showToast("Lỗi mở trang cập nhật script", "error");
       }
     }
 
