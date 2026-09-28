@@ -183,7 +183,18 @@
     }
 
     function getClaudeResponses() {
-        // Target assistant message containers specifically
+        // 1. Quét các khối Artifact / Code block / Document file nếu Claude đóng gói kịch bản vào Artifact
+        const artifactNodes = Array.from(document.querySelectorAll('[data-testid="artifact-content"], div.artifact-content, pre code, pre, div.font-mono, [class*="artifact"]'));
+        const artifactTexts = [];
+        for (const node of artifactNodes) {
+            if (node.closest('[contenteditable="true"]') || node.closest('fieldset')) continue;
+            const text = node.innerText ? node.innerText.trim() : '';
+            if (text && text.length > 100 && !text.startsWith('/')) {
+                artifactTexts.push(text);
+            }
+        }
+
+        // 2. Target assistant message containers specifically
         let nodes = Array.from(document.querySelectorAll('div[data-message-author-role="assistant"], div.font-claude-message, [data-testid="assistant-message"], div.prose'));
         if (nodes.length === 0) {
             nodes = Array.from(document.querySelectorAll('.whitespace-pre-wrap'));
@@ -221,6 +232,17 @@
                 }
             }
         }
+
+        // 3. Nếu có nội dung trong Artifact dài hơn, ưu tiên lấy Artifact hoặc thay thế câu lời dẫn ngắn
+        for (const artText of artifactTexts) {
+            const existingIdx = texts.findIndex(t => artText.length > t.length && (artText.includes(t) || t.includes(artText.substring(0, 50))));
+            if (existingIdx !== -1) {
+                texts[existingIdx] = artText;
+            } else if (!texts.some(t => t.includes(artText) || artText.includes(t))) {
+                texts.push(artText);
+            }
+        }
+
         return texts;
     }
 
