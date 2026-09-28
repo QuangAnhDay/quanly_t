@@ -236,11 +236,11 @@ async def api_launch_chrome_selected(payload: LaunchSelectedProfilesPayload):
 
 @app.get("/api/voices")
 async def api_get_voices():
-    """Trả về danh sách giọng đọc Edge-TTS + giọng clone cá nhân từ VoiceStudio"""
-    voices = [
-        {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ - Edge-TTS)", "type": "edge_tts"},
-        {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam - Edge-TTS)", "type": "edge_tts"},
-    ]
+    """Trả về danh sách giọng đọc: ưu tiên giọng clone mặc định từ VoiceStudio, kế tiếp là Edge-TTS"""
+    cfg = get_config()
+    def_voice = cfg.get("default_voice", "voicestudio:dda59bfa")
+    
+    vs_voices = []
     try:
         import voicestudio_service
         cloned = voicestudio_service.get_voicestudio_voices()
@@ -248,14 +248,25 @@ async def api_get_voices():
             voice_id = v.get("voice_id") or v.get("id") or ""
             voice_name = v.get("name") or voice_id
             if voice_id:
-                voices.append({
+                vs_item = {
                     "id": f"voicestudio:{voice_id}",
                     "name": f"🎙️ {voice_name} (Clone)",
                     "type": "voicestudio"
-                })
+                }
+                # Nếu là giọng mặc định (ngọc huyền ngọt ngào), đưa lên vị trí đầu tiên
+                if voice_id == "dda59bfa" or f"voicestudio:{voice_id}" == def_voice or "ngoc huyen ngot ngao" in voice_name.lower():
+                    vs_voices.insert(0, vs_item)
+                else:
+                    vs_voices.append(vs_item)
     except Exception as e:
         print(f"[/api/voices] Không đọc được giọng VoiceStudio: {e}")
-    return {"voices": voices}
+
+    edge_voices = [
+        {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ - Edge-TTS)", "type": "edge_tts"},
+        {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam - Edge-TTS)", "type": "edge_tts"},
+    ]
+    
+    return {"voices": vs_voices + edge_voices}
 
 @app.get("/api/system/health")
 async def api_system_health():
@@ -414,6 +425,18 @@ async def complete_raw_by_ai(project_id: str, payload: AICompletePayload):
     )
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+
+    # 🚀 DÂY CHUYỀN 1-CLICK (AUTO-PIPELINE): Tự động đẩy sang Hàng Đợi tạo Voice Audio ngầm
+    cfg = get_config()
+    if cfg.get("auto_pipeline", True) and payload.content and len(payload.content.strip()) > 30:
+        default_voice = cfg.get("default_voice", "voicestudio:dda59bfa")
+        task_queue.add_task("audio", project_id, {
+            "voice": default_voice,
+            "auto_chain": True
+        })
+        import task_logger
+        task_logger.add_log("pipeline", f"🚀 [Dây Chuyền 1-Click] Kịch bản [{project_id}] đã xong! Tự động xếp hàng tạo Voice ({default_voice}) & Render MP4...", "info", project_id)
+
     return {"success": True, "project": proj}
 
 @app.post("/api/dispatch-claude-batch")

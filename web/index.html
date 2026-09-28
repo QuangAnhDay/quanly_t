@@ -52,6 +52,11 @@
           <span id="vs-status-text" class="text-[11px] font-medium">Đang kiểm tra...</span>
         </button>
 
+        <div class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center gap-1.5 shadow-2xs cursor-default" title="Dây Chuyền 1-Click đang BẬT: Claude xong -> Tự tạo Voice (Ngọc Huyền Ngọt Ngào) -> Tự Render MP4">
+          <i class="fa-solid fa-bolt text-emerald-600"></i>
+          <span class="text-[11px] font-bold">1-Click Pipeline: BẬT</span>
+        </div>
+
         <button id="logs-status-badge" onclick="openModal('logs-modal'); fetchActivityLogs();" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 transition border border-slate-200 shadow-sm" title="Mở Bảng Giám Sát Tiến Độ & Nhật Ký Real-time">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 health-dot-pulse"></span>
           <span id="logs-badge-text" class="text-[11px] font-bold">📜 Nhật Ký Live</span>
@@ -326,6 +331,7 @@
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Giọng đọc dự kiến</label>
           <select id="script-voice" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none bg-white">
+            <option value="voicestudio:dda59bfa" selected>🎙️ ngoc huyen ngot ngao (Clone)</option>
             <option value="vi-VN-HoaiMyNeural">Hoài My (Nữ miền Bắc - Truyền cảm, truyện dài/ngôn tình)</option>
             <option value="vi-VN-NamMinhNeural">Nam Minh (Nam miền Bắc - Trầm ấm, truyện ma, bí ẩn)</option>
           </select>
@@ -831,7 +837,7 @@
                   <div class="flex items-center gap-1 w-full max-w-[130px]">
                     <select id="voice-sel-${p.id}" onchange="userVoiceSelections['${p.id}'] = this.value" class="w-full text-[10px] bg-white border border-slate-300 rounded px-1 py-0.5 text-slate-700 focus:outline-none focus:border-violet-400">
                       ${availableVoices.map(v => {
-                        const savedVoice = userVoiceSelections[p.id] || String(p.voice || 'vi-VN-HoaiMyNeural');
+                        const savedVoice = userVoiceSelections[p.id] || String(p.voice || 'voicestudio:dda59bfa');
                         const isSel = savedVoice === v.id;
                         return `<option value="${v.id}"${isSel ? ' selected' : ''}>${v.name}</option>`;
                       }).join('')}
@@ -845,7 +851,7 @@
                 <div class="flex flex-col items-center gap-1">
                   <select id="voice-sel-${p.id}" onchange="userVoiceSelections['${p.id}'] = this.value" class="w-full text-[10px] bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:border-violet-400 max-w-[130px]">
                     ${availableVoices.map(v => {
-                      const savedVoice = userVoiceSelections[p.id] || String(p.voice || 'vi-VN-HoaiMyNeural');
+                      const savedVoice = userVoiceSelections[p.id] || String(p.voice || 'voicestudio:dda59bfa');
                       const isSel = savedVoice === v.id;
                       return `<option value="${v.id}"${isSel ? ' selected' : ''}>${v.name}</option>`;
                     }).join('')}
@@ -1212,7 +1218,7 @@
     }
 
     async function generateAudioSingle(id, voice) {
-      const voiceToUse = voice || "vi-VN-HoaiMyNeural";
+      const voiceToUse = voice || "voicestudio:dda59bfa";
       userVoiceSelections[id] = voiceToUse;
       showToast(`Đang thêm ${id} vào Hàng Đợi Audio...`, "info");
       try {
@@ -1685,6 +1691,7 @@
     // === VOICE MANAGEMENT ===
     const userVoiceSelections = {};
     let availableVoices = [
+      { id: "voicestudio:dda59bfa", name: "🎙️ ngoc huyen ngot ngao (Clone)" },
       { id: "vi-VN-HoaiMyNeural", name: "Hoài My (Nữ - Edge-TTS)" },
       { id: "vi-VN-NamMinhNeural", name: "Nam Minh (Nam - Edge-TTS)" }
     ];
@@ -2043,7 +2050,7 @@
         for (const id of ids) {
           const p = projectsData.find(item => item.id === id);
           const voiceSelectEl = document.getElementById(`voice-sel-${id}`);
-          const voiceToUse = (voiceSelectEl ? voiceSelectEl.value : null) || userVoiceSelections[id] || (p ? p.voice : null) || "vi-VN-HoaiMyNeural";
+          const voiceToUse = (voiceSelectEl ? voiceSelectEl.value : null) || userVoiceSelections[id] || (p ? p.voice : null) || "voicestudio:dda59bfa";
           userVoiceSelections[id] = voiceToUse;
 
           await fetch('/api/queue/add', {
