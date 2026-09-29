@@ -89,6 +89,7 @@ class ScriptPayload(BaseModel):
     content: str
     voice: Optional[str] = "vi-VN-HoaiMyNeural"
     notes: Optional[str] = ""
+    theme: Optional[str] = "nau_an"
 
 class AudioGenPayload(BaseModel):
     voice: Optional[str] = "vi-VN-HoaiMyNeural"
@@ -125,9 +126,25 @@ class RawScriptPayload(BaseModel):
     raw_content: str
     title: Optional[str] = None
     notes: Optional[str] = ""
+    theme: Optional[str] = "nau_an"
 
 class BatchRawScriptPayload(BaseModel):
     raw_scripts: List[str]
+    theme: Optional[str] = "nau_an"
+
+class AffiliateBatchAddPayload(BaseModel):
+    theme: str = "nau_an"
+    raw_text: str
+
+class AffiliateSinglePayload(BaseModel):
+    theme: str = "nau_an"
+    comment: str
+    link: str
+    link_id: Optional[str] = None
+
+class AffiliateDeletePayload(BaseModel):
+    theme: str = "nau_an"
+    link_id: str
 
 class AICompletePayload(BaseModel):
     title: str
@@ -351,7 +368,8 @@ async def create_project_api(payload: ScriptPayload):
         content=payload.content,
         status="1_cho_duyet",
         voice=payload.voice,
-        notes=payload.notes
+        notes=payload.notes,
+        theme=payload.theme or "nau_an"
     )
     return proj
 
@@ -404,13 +422,17 @@ async def create_raw_project_api(payload: RawScriptPayload):
     proj = database.create_raw_project(
         raw_content=payload.raw_content,
         title=payload.title,
-        notes=payload.notes
+        notes=payload.notes,
+        theme=payload.theme or "nau_an"
     )
     return proj
 
 @app.post("/api/projects/batch-create-raw")
 async def batch_create_raw_api(payload: BatchRawScriptPayload):
-    projs = database.batch_create_raw_projects(payload.raw_scripts)
+    projs = database.batch_create_raw_projects(
+        payload.raw_scripts,
+        theme=payload.theme or "nau_an"
+    )
     return {"success": True, "count": len(projs), "projects": projs}
 
 def clean_script_content(content: str) -> str:
@@ -522,6 +544,49 @@ async def dispatch_userscript_update_api(payload: Optional[LaunchSelectedProfile
         "count": len(launched),
         "message": f"Đã mở {len(launched)} Profile Chrome trang Cập Nhật Userscript"
     }
+
+
+# ==================== SHOPEE AFFILIATE APIS ====================
+import affiliate_manager
+
+@app.get("/api/affiliate/links")
+async def get_affiliate_links_api(theme: Optional[str] = "nau_an"):
+    """Lấy danh sách link affiliate theo chủ đề (2 cột: comment + link)"""
+    links = affiliate_manager.get_links_by_theme(theme or "nau_an")
+    return {"success": True, "theme": theme, "links": links, "count": len(links)}
+
+@app.post("/api/affiliate/batch-add")
+async def batch_add_affiliate_links_api(payload: AffiliateBatchAddPayload):
+    """
+    Dán hàng loạt theo định dạng: Mỗi dòng 1 sản phẩm:
+    'Nội dung comment | Link Shopee'
+    Tự động lọc bỏ link trùng lặp!
+    """
+    res = affiliate_manager.batch_add_links(payload.theme or "nau_an", payload.raw_text)
+    return res
+
+@app.post("/api/affiliate/link")
+async def update_or_add_affiliate_link_api(payload: AffiliateSinglePayload):
+    """Thêm mới hoặc sửa 1 dòng trong kho affiliate"""
+    res = affiliate_manager.update_or_add_single_link(
+        theme=payload.theme or "nau_an",
+        comment=payload.comment,
+        link=payload.link,
+        link_id=payload.link_id
+    )
+    return res
+
+@app.post("/api/affiliate/delete")
+async def delete_affiliate_link_api(payload: AffiliateDeletePayload):
+    """Xóa 1 link khỏi kho affiliate"""
+    ok = affiliate_manager.delete_link(payload.theme or "nau_an", payload.link_id)
+    return {"success": ok}
+
+@app.get("/api/affiliate/pick")
+async def pick_affiliate_link_api(theme: Optional[str] = "nau_an", project_id: Optional[str] = None):
+    """Bốc 1 link affiliate theo tag chủ đề (xoay tua ít dùng nhất)"""
+    picked = affiliate_manager.pick_affiliate_link(theme or "nau_an", project_id)
+    return {"success": bool(picked), "item": picked}
 
 
 @app.post("/api/save-script")

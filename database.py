@@ -57,6 +57,9 @@ def init_db():
         ("thumb_prompt", "TEXT"),
         ("bg_video", "TEXT"),
         ("bg_theme", "TEXT"),
+        ("theme", "TEXT DEFAULT 'nau_an'"),
+        ("affiliate_comment", "TEXT"),
+        ("affiliate_link", "TEXT"),
     ]
     
     for col_name, col_type in migrations:
@@ -99,7 +102,8 @@ def create_project(
     voice: str = "voicestudio:dda59bfa",
     notes: str = "",
     raw_content: str = "",
-    thumb_prompt: str = ""
+    thumb_prompt: str = "",
+    theme: str = "nau_an"
 ) -> Dict[str, Any]:
     init_db()
     kb_id = get_next_kb_id()
@@ -125,16 +129,16 @@ def create_project(
         id, title, content, raw_content, thumb_prompt, status, voice, rate, pitch, 
         audio_path, video_path, video_tiktok_path, video_youtube_path,
         capcut_draft_tiktok, capcut_draft_youtube, has_thumbnail, thumbnail_path,
-        package_dir, created_at, updated_at, notes, is_published
+        package_dir, created_at, updated_at, notes, is_published, theme, bg_theme
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0)
-    """, (kb_id, title, content, raw_content, thumb_prompt, status, voice, pkg_dir, now, now, notes))
+    VALUES (?, ?, ?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0, ?, ?)
+    """, (kb_id, title, content, raw_content, thumb_prompt, status, voice, pkg_dir, now, now, notes, theme, theme))
     conn.commit()
     conn.close()
 
     return get_project(kb_id)
 
-def create_raw_project(raw_content: str, title: Optional[str] = None, notes: str = "") -> Dict[str, Any]:
+def create_raw_project(raw_content: str, title: Optional[str] = None, notes: str = "", theme: str = "nau_an") -> Dict[str, Any]:
     """Tạo một kịch bản thô (chờ AI hoàn thiện)"""
     first_line = raw_content.strip().split("\n")[0][:40] if raw_content.strip() else "Kịch bản thô"
     auto_title = title or f"Bản thô: {first_line}..."
@@ -143,16 +147,17 @@ def create_raw_project(raw_content: str, title: Optional[str] = None, notes: str
         content="",
         raw_content=raw_content,
         status="0_ban_tho",
-        notes=notes or "Kịch bản thô (Chờ Claude xử lý 2 Skill)"
+        notes=notes or "Kịch bản thô (Chờ Claude xử lý 2 Skill)",
+        theme=theme
     )
 
-def batch_create_raw_projects(raw_list: List[str]) -> List[Dict[str, Any]]:
+def batch_create_raw_projects(raw_list: List[str], theme: str = "nau_an") -> List[Dict[str, Any]]:
     """Tạo hàng loạt kịch bản thô cùng lúc"""
     results = []
     for raw in raw_list:
         clean = raw.strip()
         if clean:
-            p = create_raw_project(clean)
+            p = create_raw_project(clean, theme=theme)
             results.append(p)
     return results
 

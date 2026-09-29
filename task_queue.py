@@ -207,6 +207,22 @@ def _process_capcut_task(task: Dict[str, Any]):
         notes=notes,
         status="4_da_render_video"
     )
+
+    # 🛒 Bốc link Shopee Affiliate tự động nếu kịch bản chưa có link
+    try:
+        cur_p = database.get_project(project_id)
+        if cur_p and not cur_p.get("affiliate_link"):
+            import affiliate_manager
+            proj_theme = cur_p.get("theme") or theme or "nau_an"
+            picked = affiliate_manager.pick_affiliate_link(proj_theme, project_id)
+            if picked:
+                database.update_project(
+                    project_id,
+                    affiliate_comment=picked.get("comment", ""),
+                    affiliate_link=picked.get("link", "")
+                )
+    except Exception as e:
+        print(f"[TaskQueue] Lỗi bốc link Shopee Affiliate: {e}")
     
     task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đã hoàn thành CapCut 16:9 cho [{project_id}] ({draft_res['clips_count']} clip nền)", "success", project_id)
     return draft_res
@@ -315,6 +331,22 @@ def _process_auto_render_task(task: Dict[str, Any]):
         database.update_project(project_id, video_tiktok_path=rendered_path, status="5_hoan_thanh")
         
     task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đã tự động xuất xong Video MP4 cho [{project_id}]!", "success", project_id)
+
+    # 🛒 Bốc link Shopee Affiliate tự động nếu kịch bản chưa có link
+    try:
+        cur_p = database.get_project(project_id)
+        if cur_p and not cur_p.get("affiliate_link"):
+            import affiliate_manager
+            proj_theme = cur_p.get("theme") or theme or "nau_an"
+            picked = affiliate_manager.pick_affiliate_link(proj_theme, project_id)
+            if picked:
+                database.update_project(
+                    project_id,
+                    affiliate_comment=picked.get("comment", ""),
+                    affiliate_link=picked.get("link", "")
+                )
+    except Exception as e:
+        print(f"[TaskQueue] Lỗi bốc link Shopee Affiliate: {e}")
 
     # 🚀 AUTO-PIPELINE (DÂY CHUYỀN 1-CLICK): Nối tiếp sang tạo bản TikTok dọc 9:16
     if payload.get("auto_chain") and aspect_ratio == "16:9":
