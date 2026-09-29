@@ -297,13 +297,16 @@
         updateStatusWidget(`⏳ ${p1Status}...`, "#eab308");
 
         try {
-            const skillConfig = await apiFetch('/api/claude-skill-config').catch(() => ({
-                script_skill_command: '/tao-kich-ban',
-                title_thumb_skill_command: '/tieu-de-thumb'
+            const myProfileId = localStorage.getItem('claude_profile_id') || "";
+            const skillConfig = await apiFetch(`/api/claude-skill-config?profile_id=${encodeURIComponent(myProfileId)}`).catch(() => ({
+                prompt1: '/tao-kich-ban',
+                prompt2: '/tieu-de-thumb'
             }));
 
-            const scriptSkill = (skillConfig.script_skill_command || '/tao-kich-ban').trim();
-            const titleThumbSkill = (skillConfig.title_thumb_skill_command || '/tieu-de-thumb').trim();
+            const scriptSkill = (skillConfig.prompt1 || skillConfig.script_skill_command || '/tao-kich-ban').trim();
+            const titleThumbSkill = (skillConfig.prompt2 || skillConfig.title_thumb_skill_command || '/tieu-de-thumb').trim();
+            const profileLabel = skillConfig.label || myProfileId || "Mặc định";
+            console.log(`--> [Userscript] Chạy kịch bản [${project.id}] theo Profile [${profileLabel}] (Prompt 1: ${scriptSkill} | Prompt 2: ${titleThumbSkill})`);
 
             const rawContent = project.raw_content || project.content || "";
             if (!rawContent) throw new Error(`Kịch bản [${project.id}] không có nội dung thô!`);
@@ -311,7 +314,8 @@
             const initialCount = getClaudeResponses().length;
 
             // 1. LƯỢT 1: Tạo kịch bản chính (Cho phép tối đa 30 phút = 1800s cho Claude Extended Thinking & Kịch bản dài)
-            updateStatusWidget(`[1/2] Đang viết kịch bản [${project.id}]...`, "#8b5cf6");
+            const p1Status = `[1/2] Đang viết kịch bản [${project.id}]`;
+            updateStatusWidget(`${p1Status}...`, "#8b5cf6");
             const prompt1 = `${scriptSkill}\n\n${rawContent}`;
             await typeIntoChat(prompt1);
             await sleep(800);
@@ -439,9 +443,23 @@
         `;
 
         statusWidget.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;" id="truyen-dot"></span>
                 <span id="truyen-status-text" style="font-weight: 600;">Xưởng Video: Sẵn Sàng</span>
+                <span id="truyen-profile-badge" title="Nhấp để đổi hoặc gán Profile Chrome cho cửa sổ này" style="
+                    cursor: pointer;
+                    background: #f1f5f9;
+                    color: #475569;
+                    padding: 2px 8px;
+                    border-radius: 9999px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    border: 1px solid #cbd5e1;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    transition: all 0.2s;
+                ">👤 <span id="truyen-profile-name">Đang tải...</span></span>
             </div>
             <button id="truyen-run-btn" style="
                 background: #7c3aed;
@@ -460,6 +478,19 @@
 
         document.body.appendChild(statusWidget);
 
+        const badge = document.getElementById('truyen-profile-badge');
+        if (badge) {
+            badge.onclick = async () => {
+                const cur = localStorage.getItem('claude_profile_id') || "";
+                const next = prompt("Nhập Chrome Profile ID cho cửa sổ này (Ví dụ: Profile 1, Profile 2, Default):", cur);
+                if (next !== null) {
+                    localStorage.setItem('claude_profile_id', next.trim());
+                    await updateProfileBadge();
+                    await refreshPendingList();
+                }
+            };
+        }
+
         document.getElementById('truyen-run-btn').onclick = async () => {
             try {
                 const pending = await apiFetch('/api/projects/pending-raw');
@@ -475,6 +506,24 @@
                 alert("Không kết nối được với Xưởng (localhost:8888). Vui lòng đảm bảo run_system.bat đang chạy!");
             }
         };
+    }
+
+    async function updateProfileBadge() {
+        const nameEl = document.getElementById('truyen-profile-name');
+        if (!nameEl) return;
+        const pid = (localStorage.getItem('claude_profile_id') || "").trim();
+        if (!pid) {
+            nameEl.textContent = "Chưa gán Profile";
+            nameEl.title = "Nhấp để gán Profile ID (VD: Profile 1, Profile 2)";
+            return;
+        }
+        try {
+            const cfg = await apiFetch(`/api/claude-skill-config?profile_id=${encodeURIComponent(pid)}`);
+            nameEl.textContent = cfg.label || pid;
+            nameEl.title = `Profile: ${pid}\nThể loại: ${cfg.label || 'Mặc định'}\nPrompt 1 (Kịch bản): ${cfg.prompt1 || cfg.script_skill_command}\nPrompt 2 (Thumb): ${cfg.prompt2 || cfg.title_thumb_skill_command}`;
+        } catch (e) {
+            nameEl.textContent = pid;
+        }
     }
 
     function updateStatusWidget(text, dotColor = "#22c55e") {
@@ -497,6 +546,13 @@
 
     async function checkAutoRunFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
+        const profileIdParam = urlParams.get('profile_id');
+        if (profileIdParam) {
+            localStorage.setItem('claude_profile_id', profileIdParam);
+            console.log(`[Claude To Truyen] Đã lưu Profile ID từ URL: ${profileIdParam}`);
+        }
+        updateProfileBadge();
+
         const autoKbId = urlParams.get('auto_kb');
         if (!autoKbId) return;
 
@@ -525,7 +581,14 @@
     }
 
     setTimeout(() => {
+        const initParams = new URLSearchParams(window.location.search);
+        const pId = initParams.get('profile_id');
+        if (pId) {
+            localStorage.setItem('claude_profile_id', pId);
+        }
+
         createFloatingWidget();
+        updateProfileBadge();
         refreshPendingList();
         checkAutoRunFromUrl();
         setInterval(refreshPendingList, 15000);

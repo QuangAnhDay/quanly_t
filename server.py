@@ -158,8 +158,9 @@ class AICompletePayload(BaseModel):
     notes: Optional[str] = ""
 
 class ClaudeSkillConfigPayload(BaseModel):
-    script_skill_command: str
-    title_thumb_skill_command: str
+    script_skill_command: Optional[str] = "/tao-kich-ban"
+    title_thumb_skill_command: Optional[str] = "/tieu-de-thumb"
+    profile_skills: Optional[Dict[str, Any]] = None
 
 class BatchDeletePayload(BaseModel):
     project_ids: List[str]
@@ -250,7 +251,8 @@ async def api_launch_chrome_selected(payload: LaunchSelectedProfilesPayload):
 
     launched = []
     for pid in payload.profiles:
-        cmd = f'"{chrome_path}" --profile-directory="{pid}" "https://claude.ai"'
+        target_url = f"https://claude.ai/?profile_id={pid}"
+        cmd = f'"{chrome_path}" --profile-directory="{pid}" "{target_url}"'
         subprocess.Popen(cmd, shell=True)
         launched.append(pid)
     
@@ -379,21 +381,48 @@ async def create_project_api(payload: ScriptPayload):
     return proj
 
 @app.get("/api/claude-skill-config")
-async def api_get_claude_skill_config():
+async def api_get_claude_skill_config(profile_id: Optional[str] = None):
     cfg = get_config()
-    skills = cfg.get("claude_skills", {
-        "script_skill_command": "/tao-kich-ban",
-        "title_thumb_skill_command": "/tieu-de-thumb"
+    default_skills = cfg.get("claude_skills", {
+        "script_skill_command": "/kichban-audio-bancungphong",
+        "title_thumb_skill_command": "/tieu-de-thumb-audio-hoc-duong"
     })
-    return skills
+    profile_skills = cfg.get("profile_skills", {})
+    
+    if profile_id:
+        p_cfg = profile_skills.get(profile_id, {})
+        prompt1 = (p_cfg.get("prompt1") or default_skills.get("script_skill_command", "/tao-kich-ban")).strip()
+        prompt2 = (p_cfg.get("prompt2") or default_skills.get("title_thumb_skill_command", "/tieu-de-thumb")).strip()
+        label = p_cfg.get("name") or p_cfg.get("label") or profile_id
+        return {
+            "profile_id": profile_id,
+            "label": label,
+            "prompt1": prompt1,
+            "prompt2": prompt2,
+            "script_skill_command": prompt1,
+            "title_thumb_skill_command": prompt2
+        }
+
+    return {
+        "default": default_skills,
+        "script_skill_command": default_skills.get("script_skill_command", "/tao-kich-ban"),
+        "title_thumb_skill_command": default_skills.get("title_thumb_skill_command", "/tieu-de-thumb"),
+        "profile_skills": profile_skills
+    }
 
 @app.post("/api/claude-skill-config")
 async def api_set_claude_skill_config(payload: ClaudeSkillConfigPayload):
     cfg = get_config()
-    cfg["claude_skills"] = {
-        "script_skill_command": payload.script_skill_command.strip(),
-        "title_thumb_skill_command": payload.title_thumb_skill_command.strip()
-    }
+    if payload.script_skill_command:
+        cfg.setdefault("claude_skills", {})["script_skill_command"] = payload.script_skill_command.strip()
+    if payload.title_thumb_skill_command:
+        cfg.setdefault("claude_skills", {})["title_thumb_skill_command"] = payload.title_thumb_skill_command.strip()
+    if payload.profile_skills is not None:
+        cfg["profile_skills"] = payload.profile_skills
+        
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return {"success": True, "config": cfg}
 class ClaudeSessionPayload(BaseModel):
     session_key: str
 
@@ -509,7 +538,7 @@ async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
     launched = []
     for idx, pid in enumerate(selected_profiles):
         target_kb = pending_list[idx]["id"] if idx < len(pending_list) else None
-        target_url = f"https://claude.ai/new?auto_kb={target_kb}" if target_kb else "https://claude.ai/new"
+        target_url = f"https://claude.ai/new?auto_kb={target_kb}&profile_id={pid}" if target_kb else f"https://claude.ai/new?profile_id={pid}"
         cmd = f'"{chrome_path}" --profile-directory="{pid}" "{target_url}"'
         subprocess.Popen(cmd, shell=True)
         launched.append({"profile": pid, "assigned_kb": target_kb})

@@ -630,13 +630,13 @@
 
   <!-- Modal: Quản lý & Chọn Profile Chrome + Cài Đặt Skill -->
   <div id="chrome-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i class="fa-brands fa-chrome text-amber-500 text-lg"></i>
           <div>
-            <h3 class="font-bold text-slate-900 text-sm">Quản Lý Profile Chrome & Cài Đặt Skill Claude</h3>
-            <p class="text-[11px] text-slate-500">Cấu hình tự động hóa 2-Skill và mở các tài khoản Claude</p>
+            <h3 class="font-bold text-slate-900 text-sm">Quản Lý Profile Chrome & Cài Đặt Skill Riêng Biệt</h3>
+            <p class="text-[11px] text-slate-500">Mỗi profile chuyên một thể loại truyện (Prompt 1 riêng) và Prompt 2 có thể chung hoặc riêng</p>
           </div>
         </div>
         <button onclick="closeModal('chrome-modal')" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
@@ -650,8 +650,8 @@
               <i class="fa-solid fa-code"></i>
             </div>
             <div>
-              <p class="text-xs font-bold text-violet-950">Userscript Tự Động Hóa Tampermonkey (v2.1)</p>
-              <p class="text-[11px] text-violet-700">Tự động gõ lệnh 2 Skill, chờ AI viết và bắn dữ liệu về xưởng</p>
+              <p class="text-xs font-bold text-violet-950">Userscript Tự Động Hóa Tampermonkey (v2.2)</p>
+              <p class="text-[11px] text-violet-700">Tự động nhận diện Profile Chrome, chạy 2 Skill theo kịch bản và gửi dữ liệu về xưởng</p>
             </div>
           </div>
           <div class="flex items-center gap-1.5">
@@ -664,26 +664,33 @@
           </div>
         </div>
 
-        <!-- Cài đặt lệnh Skill -->
-        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+        <!-- Cài đặt lệnh Skill Mặc Định & Công Cụ Nhanh -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-wand-magic-sparkles text-violet-600 mr-1"></i> Cấu hình lệnh Trigger 2 Skill Claude:</span>
-            <button onclick="saveSkillConfig()" class="text-[11px] font-bold text-violet-600 hover:underline">Lưu lệnh</button>
+            <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-wand-magic-sparkles text-violet-600 mr-1"></i> Cấu hình Skill chung (Mặc định cho các Profile mới):</span>
+            <div class="flex items-center gap-2">
+              <button onclick="applyPrompt2ToAll()" class="px-2.5 py-1 text-[11px] font-semibold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition flex items-center gap-1" title="Chép Prompt 2 mặc định vào tất cả các dòng profile bên dưới">
+                <i class="fa-solid fa-copy"></i> Điền Prompt 2 này cho tất cả Profile
+              </button>
+              <button onclick="saveSkillConfig()" class="px-3 py-1 text-[11px] font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-xs transition flex items-center gap-1">
+                <i class="fa-solid fa-floppy-disk"></i> Lưu Toàn Bộ Cấu Hình
+              </button>
+            </div>
           </div>
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Skill Kịch Bản (Lượt 1):</label>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Prompt 1 mặc định (Skill Kịch Bản):</label>
               <input type="text" id="cfg-skill-script" value="/tao-kich-ban" placeholder="/tao-kich-ban" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Skill Tiêu Đề/Thumb (Lượt 2):</label>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Prompt 2 mặc định (Skill Tiêu Đề/Thumb):</label>
               <input type="text" id="cfg-skill-title" value="/tieu-de-thumb" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
             </div>
           </div>
         </div>
 
         <div class="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
-          <span class="font-semibold text-slate-600">Danh sách tài khoản phát hiện trên máy:</span>
+          <span class="font-semibold text-slate-700"><i class="fa-solid fa-users-gear text-amber-500 mr-1"></i> Cấu hình riêng cho từng Profile Chrome:</span>
           <div class="flex gap-2">
             <button onclick="selectAllProfiles(true)" class="text-violet-600 hover:underline">Chọn tất cả</button>
             <span class="text-slate-300">|</span>
@@ -691,8 +698,23 @@
           </div>
         </div>
 
-        <div id="chrome-profiles-list" class="space-y-2">
-          <div class="text-center py-6 text-slate-400 text-xs">Đang quét danh sách hồ sơ...</div>
+        <div id="chrome-profiles-container" class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 text-slate-600 font-semibold text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3 w-10 text-center">
+                  <input type="checkbox" id="profile-select-all-cb" onchange="selectAllProfiles(this.checked)" class="w-4 h-4 text-violet-600 rounded border-slate-300">
+                </th>
+                <th class="py-2.5 px-3 w-48">Hồ sơ Chrome</th>
+                <th class="py-2.5 px-3 w-44">Tên Thể Loại / Ghi Chú</th>
+                <th class="py-2.5 px-3">Lệnh Prompt 1 (Kịch bản riêng)</th>
+                <th class="py-2.5 px-3">Lệnh Prompt 2 (Thumb / Tiêu đề)</th>
+              </tr>
+            </thead>
+            <tbody id="chrome-profiles-tbody" class="divide-y divide-slate-100 bg-white">
+              <tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Đang quét danh sách hồ sơ...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -700,6 +722,10 @@
         <span id="selected-profile-count" class="text-xs text-slate-500 font-medium">Đã chọn: 0 profile</span>
         <div class="flex gap-2">
           <button onclick="closeModal('chrome-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Đóng</button>
+          <button onclick="saveSkillConfig()" class="px-4 py-2 text-xs font-semibold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Lưu Cấu Hình Skills</span>
+          </button>
           <button onclick="launchSelectedProfiles()" class="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition flex items-center gap-1.5">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
             <span>Mở Các Profile Đã Chọn</span>
@@ -2003,18 +2029,27 @@
       }
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     // Modal: Quản lý Profile Chrome & Skill Config
     async function openChromeModal() {
       openModal('chrome-modal');
-      const container = document.getElementById('chrome-profiles-list');
-      container.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Đang tải danh sách tài khoản...</div>';
+      const tbody = document.getElementById('chrome-profiles-tbody');
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Đang tải cấu hình & danh sách tài khoản...</td></tr>';
 
-      // Load skill config
+      let skillCfg = { script_skill_command: '/tao-kich-ban', title_thumb_skill_command: '/tieu-de-thumb', profile_skills: {} };
       try {
         const sRes = await fetch('/api/claude-skill-config');
-        const sCfg = await sRes.json();
-        document.getElementById('cfg-skill-script').value = sCfg.script_skill_command || '/tao-kich-ban';
-        document.getElementById('cfg-skill-title').value = sCfg.title_thumb_skill_command || '/tieu-de-thumb';
+        skillCfg = await sRes.json();
+        document.getElementById('cfg-skill-script').value = skillCfg.script_skill_command || '/tao-kich-ban';
+        document.getElementById('cfg-skill-title').value = skillCfg.title_thumb_skill_command || '/tieu-de-thumb';
       } catch (e) {}
 
       // Load chrome profiles
@@ -2027,45 +2062,107 @@
           savedSelected = availableProfiles.map(p => p.id);
         }
 
-        container.innerHTML = '';
+        const profSkills = skillCfg.profile_skills || {};
+        tbody.innerHTML = '';
+        
+        if (availableProfiles.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Không tìm thấy hồ sơ Chrome nào trên máy!</td></tr>';
+          return;
+        }
+
         availableProfiles.forEach(p => {
           const isChecked = savedSelected.includes(p.id);
-          const div = document.createElement('label');
-          div.className = "flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition select-none";
-          div.innerHTML = `
-            <div class="flex items-center gap-3">
-              <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} onchange="onProfileCheckChange()" class="profile-checkbox w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500">
-              <div>
-                <p class="text-xs font-bold text-slate-800">${p.name || p.gaia_name || p.id}</p>
-                <p class="text-[11px] text-slate-500">${p.email || 'Chưa đăng nhập Gmail'}</p>
+          const pSkill = profSkills[p.id] || {};
+          const pLabel = pSkill.name || pSkill.label || p.name || p.gaia_name || p.id;
+          const pPrompt1 = pSkill.prompt1 || skillCfg.script_skill_command || '/tao-kich-ban';
+          const pPrompt2 = pSkill.prompt2 || skillCfg.title_thumb_skill_command || '/tieu-de-thumb';
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50/80 transition";
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 text-center align-middle">
+              <input type="checkbox" value="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''} onchange="onProfileCheckChange()" class="profile-checkbox w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500 cursor-pointer">
+            </td>
+            <td class="py-2.5 px-3 align-middle">
+              <div class="font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                <span>${escapeHtml(p.name || p.gaia_name || p.id)}</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold border border-slate-200">${escapeHtml(p.id)}</span>
               </div>
-            </div>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">${p.id}</span>
+              <div class="text-[11px] text-slate-400 truncate max-w-[180px]">${escapeHtml(p.email || 'Chưa đăng nhập Gmail')}</div>
+            </td>
+            <td class="py-2.5 px-3 align-middle">
+              <input type="text" id="prof-name-${escapeHtml(p.id)}" value="${escapeHtml(pLabel)}" placeholder="VD: Truyện ma, Review..." class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white shadow-2xs font-medium text-slate-700">
+            </td>
+            <td class="py-2.5 px-3 align-middle">
+              <input type="text" id="prof-p1-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt1)}" placeholder="/truyen-ma" class="w-full px-2.5 py-1 text-xs font-mono text-violet-700 font-bold border border-violet-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-violet-50/30 shadow-2xs">
+            </td>
+            <td class="py-2.5 px-3 align-middle">
+              <input type="text" id="prof-p2-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt2)}" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1 text-xs font-mono text-blue-700 font-bold border border-blue-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50/30 shadow-2xs">
+            </td>
           `;
-          container.appendChild(div);
+          tbody.appendChild(tr);
         });
 
         updateSelectedProfileCount();
       } catch (err) {
-        container.innerHTML = '<div class="text-center py-4 text-rose-500 text-xs">Lỗi khi đọc profile Chrome</div>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-rose-500 text-xs">Lỗi khi đọc danh sách profile Chrome</td></tr>';
       }
     }
 
+    function applyPrompt2ToAll() {
+      const commonP2 = document.getElementById('cfg-skill-title').value.trim();
+      if (!commonP2) {
+        showToast("Vui lòng nhập lệnh Prompt 2 ở ô mặc định trước!", "error");
+        return;
+      }
+      let count = 0;
+      if (Array.isArray(availableProfiles)) {
+        availableProfiles.forEach(p => {
+          const input = document.getElementById(`prof-p2-${p.id}`);
+          if (input) {
+            input.value = commonP2;
+            count++;
+          }
+        });
+      }
+      showToast(`✨ Đã điền Prompt 2 ("${commonP2}") cho tất cả ${count} profile! Nhớ bấm "Lưu Cấu Hình Skills".`, "success");
+    }
+
     async function saveSkillConfig() {
-      const script_skill = document.getElementById('cfg-skill-script').value.trim();
-      const title_skill = document.getElementById('cfg-skill-title').value.trim();
+      const script_skill = document.getElementById('cfg-skill-script').value.trim() || '/tao-kich-ban';
+      const title_skill = document.getElementById('cfg-skill-title').value.trim() || '/tieu-de-thumb';
+      
+      const profile_skills = {};
+      if (Array.isArray(availableProfiles)) {
+        availableProfiles.forEach(p => {
+          const pName = document.getElementById(`prof-name-${p.id}`)?.value.trim() || (p.name || p.id);
+          const p1 = document.getElementById(`prof-p1-${p.id}`)?.value.trim() || script_skill;
+          const p2 = document.getElementById(`prof-p2-${p.id}`)?.value.trim() || title_skill;
+          profile_skills[p.id] = {
+            name: pName,
+            prompt1: p1,
+            prompt2: p2
+          };
+        });
+      }
+
       try {
-        await fetch('/api/claude-skill-config', {
+        const res = await fetch('/api/claude-skill-config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             script_skill_command: script_skill,
-            title_thumb_skill_command: title_skill
+            title_thumb_skill_command: title_skill,
+            profile_skills: profile_skills
           })
         });
-        showToast("✅ Đã lưu cấu hình lệnh Skill Claude!", "success");
+        if (res.ok) {
+          showToast("✅ Đã lưu toàn bộ cấu hình Profile Skills thành công!", "success");
+        } else {
+          throw new Error("Lỗi phản hồi máy chủ");
+        }
       } catch (e) {
-        showToast("Lỗi lưu cấu hình skill", "error");
+        showToast("Lỗi khi lưu cấu hình skill: " + e.message, "error");
       }
     }
 
@@ -2078,12 +2175,20 @@
 
     function selectAllProfiles(checked) {
       document.querySelectorAll('.profile-checkbox').forEach(cb => cb.checked = checked);
+      const allCb = document.getElementById('profile-select-all-cb');
+      if (allCb) allCb.checked = checked;
       onProfileCheckChange();
     }
 
     function updateSelectedProfileCount() {
-      const count = document.querySelectorAll('.profile-checkbox:checked').length;
+      const allCbs = document.querySelectorAll('.profile-checkbox');
+      const checkedCbs = document.querySelectorAll('.profile-checkbox:checked');
+      const count = checkedCbs.length;
       document.getElementById('selected-profile-count').innerText = `Đã chọn: ${count} profile`;
+      const allCb = document.getElementById('profile-select-all-cb');
+      if (allCb && allCbs.length > 0) {
+        allCb.checked = checkedCbs.length === allCbs.length;
+      }
     }
 
     async function launchSelectedProfiles() {
