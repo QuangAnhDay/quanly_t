@@ -162,6 +162,13 @@ class ClaudeSkillConfigPayload(BaseModel):
     title_thumb_skill_command: Optional[str] = "/tieu-de-thumb"
     profile_skills: Optional[Dict[str, Any]] = None
 
+class SkillLibraryPayload(BaseModel):
+    skills: List[Dict[str, Any]]
+    skills_folder: Optional[str] = None
+
+class ScanSkillFolderPayload(BaseModel):
+    folder_path: Optional[str] = None
+
 class BatchDeletePayload(BaseModel):
     project_ids: List[str]
 
@@ -423,6 +430,182 @@ async def api_set_claude_skill_config(payload: ClaudeSkillConfigPayload):
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
     return {"success": True, "config": cfg}
+
+DEFAULT_SKILL_PRESETS = [
+    {
+        "id": "bancungphong",
+        "label": "Bạn Cùng Phòng",
+        "file_name": "bancungphong.md",
+        "command": "/kichban-audio-bancungphong",
+        "type": "prompt1"
+    },
+    {
+        "id": "chi_em",
+        "label": "Chị Em Ruột Toxic",
+        "file_name": "SKILLS_CHI_EM.MD",
+        "command": "/kichban-chi-em",
+        "type": "prompt1"
+    },
+    {
+        "id": "hoa_khoi",
+        "label": "Vả Mặt Hoa Khôi",
+        "file_name": "SKILLS_HOA_KHOI.MD",
+        "command": "/kichban-hoa-khoi",
+        "type": "prompt1"
+    },
+    {
+        "id": "nu_chinh",
+        "label": "Nữ Chính Ngôi 1",
+        "file_name": "SKILLS_NU_CHINH_NGOI_1.MD",
+        "command": "/kichban-nu-chinh",
+        "type": "prompt1"
+    },
+    {
+        "id": "hoc_duong",
+        "label": "Kịch Bản Học Đường",
+        "file_name": "SKILL.md",
+        "command": "/kichban-audio-hocduong",
+        "type": "prompt1"
+    },
+    {
+        "id": "thumb_hoc_duong",
+        "label": "Tiêu Đề & Thumb Học Đường",
+        "file_name": "",
+        "command": "/tieu-de-thumb-audio-hoc-duong",
+        "type": "prompt2"
+    },
+    {
+        "id": "thumb_chung",
+        "label": "Tiêu Đề & Thumb Chuẩn",
+        "file_name": "",
+        "command": "/tieu-de-thumb",
+        "type": "prompt2"
+    }
+]
+
+@app.get("/api/skill-library")
+async def api_get_skill_library():
+    cfg = get_config()
+    saved_lib = cfg.get("skill_library", DEFAULT_SKILL_PRESETS)
+    profile_skills = cfg.get("profile_skills", {})
+    existing_cmds = {}
+    
+    for item in saved_lib:
+        cmd = item.get("command")
+        if cmd:
+            existing_cmds[cmd] = dict(item)
+
+    for pid, pdata in profile_skills.items():
+        p1 = pdata.get("prompt1")
+        if p1 and p1 not in existing_cmds:
+            name = pdata.get("name") or pid
+            existing_cmds[p1] = {
+                "id": f"prof_{pid}_p1",
+                "label": f"{name}",
+                "command": p1,
+                "type": "prompt1",
+                "file_name": ""
+            }
+        p2 = pdata.get("prompt2")
+        if p2 and p2 not in existing_cmds:
+            name = pdata.get("name") or pid
+            existing_cmds[p2] = {
+                "id": f"prof_{pid}_p2",
+                "label": f"Thumb {name}",
+                "command": p2,
+                "type": "prompt2",
+                "file_name": ""
+            }
+
+    d_skills = cfg.get("claude_skills", {})
+    dp1 = d_skills.get("script_skill_command")
+    if dp1 and dp1 not in existing_cmds:
+        existing_cmds[dp1] = {"id": "def_p1", "label": "Mặc Định (Kịch bản)", "command": dp1, "type": "prompt1", "file_name": ""}
+    dp2 = d_skills.get("title_thumb_skill_command")
+    if dp2 and dp2 not in existing_cmds:
+        existing_cmds[dp2] = {"id": "def_p2", "label": "Mặc Định (Thumb)", "command": dp2, "type": "prompt2", "file_name": ""}
+
+    return {
+        "skills": list(existing_cmds.values()),
+        "skills_folder": cfg.get("skills_folder", r"D:\New folder")
+    }
+
+@app.post("/api/skill-library")
+async def api_save_skill_library(payload: SkillLibraryPayload):
+    cfg = get_config()
+    cfg["skill_library"] = payload.skills
+    if payload.skills_folder:
+        cfg["skills_folder"] = payload.skills_folder
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return {"success": True, "count": len(payload.skills)}
+
+@app.post("/api/scan-skill-files")
+async def api_scan_skill_files(payload: ScanSkillFolderPayload):
+    cfg = get_config()
+    folder = payload.folder_path or cfg.get("skills_folder", r"D:\New folder")
+    if not os.path.isdir(folder):
+        raise HTTPException(status_code=400, detail=f"Thư mục không tồn tại: {folder}")
+
+    results = []
+    seen_files = set()
+    for root, dirs, files in os.walk(folder):
+        for f in files:
+            if f.lower().endswith(('.md', '.txt')):
+                fp = os.path.join(root, f)
+                if fp in seen_files:
+                    continue
+                seen_files.add(fp)
+                try:
+                    with open(fp, 'r', encoding='utf-8', errors='ignore') as fl:
+                        content = fl.read()
+                    yaml_m = re.search(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+                    cmd = ""
+                    label = ""
+                    if yaml_m:
+                        nm = re.search(r'name:\s*([^\r\n]+)', yaml_m.group(1))
+                        if nm:
+                            cmd = "/" + nm.group(1).strip().lstrip("/")
+                    
+                    title_m = re.search(r'^#\s+([^\r\n]+)', content, re.MULTILINE)
+                    if title_m:
+                        t = title_m.group(1).strip()
+                        t_clean = re.sub(r'^(SKILL MASTER:\s*|CÔNG THỨC SẢN XUẤT KỊCH BẢN AUDIO TRIỆU VIEW\s*[-–—]\s*)', '', t, flags=re.I)
+                        t_clean = re.sub(r'^(CHỦ ĐỀ\s*["\']?|Kịch bản truyện audio\s*["\']?)', '', t_clean, flags=re.I)
+                        t_clean = t_clean.strip(' "\'—–-')
+                        label = t_clean[:50]
+                    
+                    if not label:
+                        label = os.path.splitext(f)[0].replace("_", " ").replace("-", " ").title()
+
+                    if not cmd:
+                        base = os.path.splitext(f)[0].lower()
+                        slug = re.sub(r'[^a-zA-Z0-9]+', '-', base).strip('-')
+                        if slug.startswith("skills-"):
+                            cmd = f"/kichban-{slug[7:]}"
+                        elif slug.startswith("skill-"):
+                            cmd = f"/kichban-{slug[6:]}"
+                        else:
+                            cmd = f"/kichban-{slug}"
+
+                    is_thumb = bool(re.search(r'(thumb|tieu-de|title)', f + " " + cmd, re.I))
+
+                    results.append({
+                        "label": label,
+                        "file_name": f,
+                        "file_path": fp,
+                        "command": cmd,
+                        "type": "prompt2" if is_thumb else "prompt1"
+                    })
+                except Exception:
+                    pass
+
+    return {
+        "folder": folder,
+        "found": len(results),
+        "skills": results
+    }
+
 class ClaudeSessionPayload(BaseModel):
     session_key: str
 

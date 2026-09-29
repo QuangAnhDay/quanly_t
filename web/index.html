@@ -680,12 +680,34 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Prompt 1 mặc định (Skill Kịch Bản):</label>
-              <input type="text" id="cfg-skill-script" value="/tao-kich-ban" placeholder="/tao-kich-ban" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
+              <input type="text" id="cfg-skill-script" onfocus="showSkillQuickPicker(this, 'prompt1')" onclick="showSkillQuickPicker(this, 'prompt1')" value="/tao-kich-ban" placeholder="/tao-kich-ban" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
             </div>
             <div>
               <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Lệnh Prompt 2 mặc định (Skill Tiêu Đề/Thumb):</label>
-              <input type="text" id="cfg-skill-title" value="/tieu-de-thumb" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
+              <input type="text" id="cfg-skill-title" onfocus="showSkillQuickPicker(this, 'prompt2')" onclick="showSkillQuickPicker(this, 'prompt2')" value="/tieu-de-thumb" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white">
             </div>
+          </div>
+        </div>
+
+        <!-- Thanh Chọn Nhanh Skill (Hiện khi click vào bất kỳ ô skill) -->
+        <div id="skill-quick-picker" class="hidden p-3 bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50 border border-violet-200 rounded-xl shadow-xs transition-all duration-200">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-violet-600 animate-pulse"></span>
+              <span class="text-xs font-bold text-violet-950 flex items-center gap-1.5" id="quick-picker-title">
+                <i class="fa-solid fa-wand-magic-sparkles text-violet-600"></i>
+                <span>Bấm để điền nhanh Skill:</span>
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="openSkillLibraryModal()" class="text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white px-2.5 py-1 rounded-lg border border-violet-200 hover:bg-violet-50 transition shadow-2xs flex items-center gap-1">
+                <i class="fa-solid fa-book-bookmark"></i> Quản lý Thư viện / Quét file .md
+              </button>
+              <button type="button" onclick="hideSkillQuickPicker()" class="text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center rounded-md hover:bg-slate-200 transition text-xs font-bold" title="Đóng thanh chọn nhanh">✕</button>
+            </div>
+          </div>
+          <div id="quick-picker-chips" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scroll">
+            <!-- Chips rendered here -->
           </div>
         </div>
 
@@ -722,6 +744,10 @@
         <span id="selected-profile-count" class="text-xs text-slate-500 font-medium">Đã chọn: 0 profile</span>
         <div class="flex gap-2">
           <button onclick="closeModal('chrome-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Đóng</button>
+          <button onclick="openSkillLibraryModal()" class="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition flex items-center gap-1.5 shadow-2xs">
+            <i class="fa-solid fa-book-bookmark text-violet-600"></i>
+            <span>Kho Skill & Quét File</span>
+          </button>
           <button onclick="saveSkillConfig()" class="px-4 py-2 text-xs font-semibold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition flex items-center gap-1.5">
             <i class="fa-solid fa-floppy-disk"></i>
             <span>Lưu Cấu Hình Skills</span>
@@ -729,6 +755,83 @@
           <button onclick="launchSelectedProfiles()" class="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition flex items-center gap-1.5">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
             <span>Mở Các Profile Đã Chọn</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Quản Lý Thư Viện Skill & Quét File .md Trên Máy -->
+  <div id="skill-library-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-60 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-violet-600 text-white flex items-center justify-center text-xs shadow-sm">
+            <i class="fa-solid fa-book-bookmark"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-xs">Thư Viện Skill & Ánh Xạ File Trên Máy</h3>
+            <p class="text-[10px] text-slate-500">Khớp nối Tên File lưu trong máy với Lệnh Claude (/...)</p>
+          </div>
+        </div>
+        <button onclick="closeModal('skill-library-modal')" class="text-slate-400 hover:text-slate-600 text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll flex-1 space-y-4 text-xs">
+        <!-- Hướng dẫn ngắn -->
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-[11px] leading-relaxed flex items-start gap-2.5">
+          <i class="fa-solid fa-circle-info text-amber-600 text-sm mt-0.5 shrink-0"></i>
+          <div>
+            <strong>Tại sao tên file trên máy khác tên Claude đọc?</strong>
+            <p class="mt-0.5 text-amber-800">Trên máy tính, file thường được đặt tên như <code>SKILLS_CHI_EM.MD</code>. Nhưng trong Claude, lệnh kích hoạt là mã slash như <code>/kichban-chi-em</code>. Bảng dưới đây giúp bạn ghi nhớ và ánh xạ sẵn để khi thiết lập profile chỉ việc chọn 1 click!</p>
+          </div>
+        </div>
+
+        <!-- Công cụ quét file -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <label class="block font-bold text-slate-700 text-[11px]">🔍 Quét Tự Động Thư Mục File Skill (.md) Trên Máy:</label>
+          <div class="flex gap-2">
+            <input type="text" id="scan-folder-path" value="D:\New folder" placeholder="VD: D:\New folder" class="flex-1 px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-violet-500">
+            <button onclick="scanSkillFolderOnDisk()" id="btn-scan-folder" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 whitespace-nowrap">
+              <i class="fa-solid fa-magnifying-glass"></i> Quét File
+            </button>
+          </div>
+          <div id="scan-results-box" class="hidden mt-2 p-2 bg-white border border-violet-200 rounded-lg space-y-1.5 max-h-40 overflow-y-auto custom-scroll">
+          </div>
+        </div>
+
+        <!-- Bảng danh mục skill -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-slate-800 text-[11px]">Danh Sách Skill Khả Dụng Trong Thư Viện:</span>
+            <button onclick="addNewSkillToLibraryRow()" class="text-violet-600 font-bold hover:underline text-[11px] flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> Thêm Skill Thủ Công
+            </button>
+          </div>
+          <div class="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <table class="w-full text-left text-[11px]">
+              <thead class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="p-2 w-36">Tên Hiển Thị / Thể Loại</th>
+                  <th class="p-2 w-32">Tên File Trên Máy</th>
+                  <th class="p-2">Lệnh Claude (/...)</th>
+                  <th class="p-2 w-20">Loại</th>
+                  <th class="p-2 w-10 text-center">Xóa</th>
+                </tr>
+              </thead>
+              <tbody id="skill-library-tbody" class="divide-y divide-slate-100 bg-white">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-[11px] text-slate-500" id="skill-library-count">0 skills</span>
+        <div class="flex gap-2">
+          <button onclick="closeModal('skill-library-modal')" class="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-lg transition font-medium">Đóng</button>
+          <button onclick="saveSkillLibraryToServer()" class="px-4 py-1.5 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> Lưu Thư Viện
           </button>
         </div>
       </div>
@@ -2038,9 +2141,118 @@
         .replace(/"/g, '&quot;');
     }
 
+    // ==================== SKILL LIBRARY & QUICK PICKER LOGIC ====================
+    let cachedSkillLibrary = [];
+    let currentFocusedSkillInput = null;
+    let currentTargetProfileId = null;
+
+    async function loadSkillLibrary() {
+      try {
+        const res = await fetch('/api/skill-library');
+        const data = await res.json();
+        cachedSkillLibrary = data.skills || [];
+        if (data.skills_folder) {
+          const folderInput = document.getElementById('scan-folder-path');
+          if (folderInput) folderInput.value = data.skills_folder;
+        }
+      } catch (err) {
+        console.error("Lỗi tải thư viện skill:", err);
+      }
+    }
+
+    function showSkillQuickPicker(inputEl, skillType = 'prompt1', profileId = null) {
+      currentFocusedSkillInput = inputEl;
+      currentTargetProfileId = profileId;
+
+      const pickerBox = document.getElementById('skill-quick-picker');
+      const titleEl = document.getElementById('quick-picker-title');
+      const chipsContainer = document.getElementById('quick-picker-chips');
+      if (!pickerBox || !chipsContainer) return;
+
+      pickerBox.classList.remove('hidden');
+
+      const isP1 = (skillType === 'prompt1');
+      if (titleEl) {
+        titleEl.innerHTML = isP1
+          ? `<i class="fa-solid fa-wand-magic-sparkles text-violet-600"></i> Bấm để điền nhanh Skill Kịch Bản (Lượt 1):`
+          : `<i class="fa-solid fa-image text-blue-600"></i> Bấm để điền nhanh Skill Tiêu Đề & Thumb (Lượt 2):`;
+      }
+
+      // Sắp xếp: ưu tiên loại đang chọn lên trước
+      const sortedSkills = [...cachedSkillLibrary].sort((a, b) => {
+        if (a.type === skillType && b.type !== skillType) return -1;
+        if (a.type !== skillType && b.type === skillType) return 1;
+        return 0;
+      });
+
+      chipsContainer.innerHTML = '';
+      if (sortedSkills.length === 0) {
+        chipsContainer.innerHTML = '<span class="text-slate-400 text-[11px] py-1">Chưa có skill trong danh mục. Nhấp "Quản lý Thư viện" để thêm hoặc quét file .md trên máy!</span>';
+        return;
+      }
+
+      sortedSkills.forEach(s => {
+        const isMatch = (s.type === skillType);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-2.5 py-1.5 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 shadow-2xs group cursor-pointer ${
+          isMatch 
+            ? (isP1 ? 'bg-white border-violet-300 hover:bg-violet-600 hover:text-white hover:border-violet-600' : 'bg-white border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600')
+            : 'bg-slate-100 border-slate-200 opacity-60 hover:opacity-100 hover:bg-slate-200 text-slate-600'
+        }`;
+        
+        btn.title = `Lệnh: ${s.command}${s.file_name ? ' | File: ' + s.file_name : ''}`;
+        btn.innerHTML = `
+          <span class="font-bold text-slate-800 group-hover:text-white">${escapeHtml(s.label || s.command)}</span>
+          ${s.file_name ? `<span class="text-[10px] text-slate-400 font-mono group-hover:text-violet-200">(${escapeHtml(s.file_name)})</span>` : ''}
+          <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-violet-700 font-bold group-hover:bg-violet-700 group-hover:text-white border border-slate-200 group-hover:border-violet-500">${escapeHtml(s.command)}</span>
+        `;
+
+        btn.onmousedown = (e) => {
+          e.preventDefault();
+          applySkillFromChip(s);
+        };
+        chipsContainer.appendChild(btn);
+      });
+    }
+
+    function hideSkillQuickPicker() {
+      const pickerBox = document.getElementById('skill-quick-picker');
+      if (pickerBox) pickerBox.classList.add('hidden');
+      currentFocusedSkillInput = null;
+      currentTargetProfileId = null;
+    }
+
+    function applySkillFromChip(skill) {
+      if (!currentFocusedSkillInput) {
+        showToast("Vui lòng nhấp vào ô nhập lệnh muốn điền trước!", "error");
+        return;
+      }
+
+      currentFocusedSkillInput.value = skill.command;
+      
+      currentFocusedSkillInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+      setTimeout(() => {
+        currentFocusedSkillInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+      }, 700);
+
+      if (currentTargetProfileId && skill.type === 'prompt1') {
+        const nameInput = document.getElementById(`prof-name-${currentTargetProfileId}`);
+        if (nameInput && (!nameInput.value.trim() || nameInput.value.trim() === currentTargetProfileId)) {
+          nameInput.value = skill.label;
+        }
+      }
+
+      onProfileCheckChange();
+      showToast(`⚡ Đã điền: ${skill.command}`, "success");
+    }
+
     // Modal: Quản lý Profile Chrome & Skill Config
     async function openChromeModal() {
       openModal('chrome-modal');
+      hideSkillQuickPicker();
+      await loadSkillLibrary();
+
       const tbody = document.getElementById('chrome-profiles-tbody');
       tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Đang tải cấu hình & danh sách tài khoản...</td></tr>';
 
@@ -2094,10 +2306,10 @@
               <input type="text" id="prof-name-${escapeHtml(p.id)}" value="${escapeHtml(pLabel)}" placeholder="VD: Truyện ma, Review..." class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white shadow-2xs font-medium text-slate-700">
             </td>
             <td class="py-2.5 px-3 align-middle">
-              <input type="text" id="prof-p1-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt1)}" placeholder="/truyen-ma" class="w-full px-2.5 py-1 text-xs font-mono text-violet-700 font-bold border border-violet-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-violet-50/30 shadow-2xs">
+              <input type="text" id="prof-p1-${escapeHtml(p.id)}" onfocus="showSkillQuickPicker(this, 'prompt1', '${escapeHtml(p.id)}')" onclick="showSkillQuickPicker(this, 'prompt1', '${escapeHtml(p.id)}')" value="${escapeHtml(pPrompt1)}" placeholder="/truyen-ma" class="w-full px-2.5 py-1 text-xs font-mono text-violet-700 font-bold border border-violet-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-violet-50/30 shadow-2xs">
             </td>
             <td class="py-2.5 px-3 align-middle">
-              <input type="text" id="prof-p2-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt2)}" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1 text-xs font-mono text-blue-700 font-bold border border-blue-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50/30 shadow-2xs">
+              <input type="text" id="prof-p2-${escapeHtml(p.id)}" onfocus="showSkillQuickPicker(this, 'prompt2', '${escapeHtml(p.id)}')" onclick="showSkillQuickPicker(this, 'prompt2', '${escapeHtml(p.id)}')" value="${escapeHtml(pPrompt2)}" placeholder="/tieu-de-thumb" class="w-full px-2.5 py-1 text-xs font-mono text-blue-700 font-bold border border-blue-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50/30 shadow-2xs">
             </td>
           `;
           tbody.appendChild(tr);
@@ -2107,6 +2319,194 @@
       } catch (err) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-rose-500 text-xs">Lỗi khi đọc danh sách profile Chrome</td></tr>';
       }
+    }
+
+    // Modal Quản Lý Thư Viện Skill
+    async function openSkillLibraryModal() {
+      openModal('skill-library-modal');
+      await loadSkillLibrary();
+      renderSkillLibraryTable();
+      const resBox = document.getElementById('scan-results-box');
+      if (resBox) resBox.classList.add('hidden');
+    }
+
+    function renderSkillLibraryTable() {
+      const tbody = document.getElementById('skill-library-tbody');
+      const countEl = document.getElementById('skill-library-count');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      if (countEl) countEl.innerText = `${cachedSkillLibrary.length} skill khả dụng`;
+
+      if (cachedSkillLibrary.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Thư viện trống. Hãy bấm Quét File hoặc Thêm Skill!</td></tr>';
+        return;
+      }
+
+      cachedSkillLibrary.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="p-2">
+            <input type="text" value="${escapeHtml(s.label || '')}" onchange="updateSkillItem(${idx}, 'label', this.value)" placeholder="Tên thể loại" class="w-full px-2 py-1 border border-slate-200 rounded font-medium text-slate-800">
+          </td>
+          <td class="p-2">
+            <input type="text" value="${escapeHtml(s.file_name || '')}" onchange="updateSkillItem(${idx}, 'file_name', this.value)" placeholder="Tên file trên máy" class="w-full px-2 py-1 font-mono text-[10px] border border-slate-200 rounded text-slate-500">
+          </td>
+          <td class="p-2">
+            <input type="text" value="${escapeHtml(s.command || '')}" onchange="updateSkillItem(${idx}, 'command', this.value)" placeholder="/lenh-claude" class="w-full px-2 py-1 font-mono font-bold text-violet-700 border border-slate-200 rounded">
+          </td>
+          <td class="p-2">
+            <select onchange="updateSkillItem(${idx}, 'type', this.value)" class="w-full px-1.5 py-1 border border-slate-200 rounded font-medium text-[10px]">
+              <option value="prompt1" ${s.type === 'prompt1' ? 'selected' : ''}>Kịch bản (P1)</option>
+              <option value="prompt2" ${s.type === 'prompt2' ? 'selected' : ''}>Thumb/Title (P2)</option>
+            </select>
+          </td>
+          <td class="p-2 text-center">
+            <button onclick="removeSkillItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateSkillItem(idx, field, val) {
+      if (cachedSkillLibrary[idx]) {
+        cachedSkillLibrary[idx][field] = val.trim();
+      }
+    }
+
+    function removeSkillItem(idx) {
+      cachedSkillLibrary.splice(idx, 1);
+      renderSkillLibraryTable();
+    }
+
+    function addNewSkillToLibraryRow() {
+      cachedSkillLibrary.push({
+        id: 'skill_' + Date.now(),
+        label: 'Skill Mới',
+        file_name: '',
+        command: '/kichban-moi',
+        type: 'prompt1'
+      });
+      renderSkillLibraryTable();
+    }
+
+    async function saveSkillLibraryToServer() {
+      const folderVal = document.getElementById('scan-folder-path')?.value.trim() || "D:\\New folder";
+      try {
+        const res = await fetch('/api/skill-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            skills: cachedSkillLibrary,
+            skills_folder: folderVal
+          })
+        });
+        if (res.ok) {
+          showToast("✅ Đã lưu Thư Viện Skill thành công!", "success");
+          closeModal('skill-library-modal');
+        } else {
+          throw new Error("Lỗi phản hồi");
+        }
+      } catch (err) {
+        showToast("Lỗi lưu thư viện: " + err.message, "error");
+      }
+    }
+
+    async function scanSkillFolderOnDisk() {
+      const folderVal = document.getElementById('scan-folder-path')?.value.trim() || "D:\\New folder";
+      const btn = document.getElementById('btn-scan-folder');
+      const box = document.getElementById('scan-results-box');
+      if (!box) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang quét...';
+      box.classList.remove('hidden');
+      box.innerHTML = '<div class="text-center py-2 text-slate-500 text-xs">Đang quét các file .md trong thư mục...</div>';
+
+      try {
+        const res = await fetch('/api/scan-skill-files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_path: folderVal })
+        });
+        const data = await res.json();
+        
+        if (!data.skills || data.skills.length === 0) {
+          box.innerHTML = `<div class="p-2 text-amber-600 text-xs font-medium">Không tìm thấy file .md nào trong "${escapeHtml(folderVal)}".</div>`;
+          return;
+        }
+
+        const safeSkillsJson = JSON.stringify(data.skills).replace(/"/g, '&quot;');
+        let itemsHtml = '';
+        data.skills.forEach((s, i) => {
+          const sJson = JSON.stringify(s).replace(/"/g, '&quot;');
+          itemsHtml += `
+            <div class="flex items-center justify-between p-1.5 bg-slate-50 rounded border border-slate-200 text-xs">
+              <div>
+                <div class="font-bold text-slate-800">${escapeHtml(s.label)}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${escapeHtml(s.file_name)} ➔ <span class="text-violet-700 font-bold">${escapeHtml(s.command)}</span></div>
+              </div>
+              <button type="button" onclick="addSingleScannedSkill(${i}, ${sJson})" class="px-2 py-0.5 text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-700 rounded transition whitespace-nowrap">
+                Thêm
+              </button>
+            </div>
+          `;
+        });
+
+        box.innerHTML = `
+          <div class="flex items-center justify-between pb-1 mb-1 border-b border-violet-100">
+            <span class="font-bold text-violet-900 text-xs">🔍 Tìm thấy ${data.found} file skill trên máy:</span>
+            <button type="button" onclick="addAllScannedSkills(${safeSkillsJson})" class="text-[11px] font-bold text-violet-700 bg-violet-100 hover:bg-violet-200 px-2 py-0.5 rounded transition">
+              ➕ Thêm Tất Cả Vào Thư Viện
+            </button>
+          </div>
+          <div class="space-y-1">
+            ${itemsHtml}
+          </div>
+        `;
+      } catch (err) {
+        box.innerHTML = `<div class="p-2 text-rose-500 text-xs">Lỗi quét thư mục: ${escapeHtml(err.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Quét File';
+      }
+    }
+
+    function addSingleScannedSkill(idx, skill) {
+      const exists = cachedSkillLibrary.some(x => x.command === skill.command);
+      if (exists) {
+        showToast(`Skill ${skill.command} đã có trong danh mục!`, "info");
+        return;
+      }
+      cachedSkillLibrary.push({
+        id: 'scanned_' + Date.now() + '_' + idx,
+        label: skill.label,
+        file_name: skill.file_name,
+        command: skill.command,
+        type: skill.type || 'prompt1'
+      });
+      renderSkillLibraryTable();
+      showToast(`Đã thêm: ${skill.label}`, "success");
+    }
+
+    function addAllScannedSkills(skills) {
+      let added = 0;
+      skills.forEach((s, idx) => {
+        if (!cachedSkillLibrary.some(x => x.command === s.command)) {
+          cachedSkillLibrary.push({
+            id: 'scanned_' + Date.now() + '_' + idx,
+            label: s.label,
+            file_name: s.file_name,
+            command: s.command,
+            type: s.type || 'prompt1'
+          });
+          added++;
+        }
+      });
+      renderSkillLibraryTable();
+      showToast(`Đã thêm thành công ${added} skill mới vào danh mục!`, "success");
     }
 
     function applyPrompt2ToAll() {
@@ -2221,8 +2621,8 @@
     }
 
     function openModal(id) {
-      ['new-script-modal', 'view-script-modal', 'chrome-modal', 'health-modal', 'logs-modal', 'affiliate-modal'].forEach(mId => {
-        if (mId !== id) closeModal(mId);
+      ['new-script-modal', 'view-script-modal', 'chrome-modal', 'health-modal', 'logs-modal', 'affiliate-modal', 'skill-library-modal'].forEach(mId => {
+        if (mId !== id && !(id === 'skill-library-modal' && mId === 'chrome-modal')) closeModal(mId);
       });
       const target = document.getElementById(id);
       if (target) target.classList.remove('hidden');

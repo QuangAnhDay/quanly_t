@@ -16,5 +16,57 @@
   "claude_skills": {
     "script_skill_command": "/kichban-audio-bancungphong",
     "title_thumb_skill_command": "/tieu-de-thumb-audio-hoc-duong"
-  }
+  },
+  "skills_folder": "D:\\New folder",
+  "skill_library": [
+    {
+      "id": "bancungphong",
+      "label": "Bạn Cùng Phòng KTX",
+      "file_name": "bancungphong.md",
+      "command": "/kichban-audio-bancungphong",
+      "type": "prompt1"
+    },
+    {
+      "id": "chi_em",
+      "label": "Chị Em Ruột Toxic",
+      "file_name": "SKILLS_CHI_EM.MD",
+      "command": "/kichban-chi-em",
+      "type": "prompt1"
+    },
+    {
+      "id": "hoa_khoi",
+      "label": "Vả Mặt Hoa Khôi Lớp",
+      "file_name": "SKILLS_HOA_KHOI.MD",
+      "command": "/kichban-hoa-khoi",
+      "type": "prompt1"
+    },
+    {
+      "id": "nu_chinh",
+      "label": "Nữ Chính Ngôi 1 (Cà Mặn)",
+      "file_name": "SKILLS_NU_CHINH_NGOI_1.MD",
+      "command": "/kichban-nu-chinh",
+      "type": "prompt1"
+    },
+    {
+      "id": "hoc_duong",
+      "label": "Kịch Bản Học Đường",
+      "file_name": "SKILL.md",
+      "command": "/kichban-audio-hocduong",
+      "type": "prompt1"
+    },
+    {
+      "id": "thumb_hoc_duong",
+      "label": "Tiêu Đề & Thumb Học Đường",
+      "file_name": "",
+      "command": "/tieu-de-thumb-audio-hoc-duong",
+      "type": "prompt2"
+    },
+    {
+      "id": "thumb_chung",
+      "label": "Tiêu Đề & Thumb Chuẩn",
+      "file_name": "",
+      "command": "/tieu-de-thumb",
+      "type": "prompt2"
+    }
+  ]
 }
