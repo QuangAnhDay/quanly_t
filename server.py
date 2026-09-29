@@ -23,6 +23,8 @@ import task_queue
 # Khởi tạo toàn bộ thư mục cần thiết
 capcut_engine.init_theme_folders()
 os.makedirs(os.path.join(BASE_DIR, "outputs"), exist_ok=True)
+SKILLS_DIR = os.path.join(BASE_DIR, "skills")
+os.makedirs(SKILLS_DIR, exist_ok=True)
 
 # Khởi tạo DB
 database.init_db()
@@ -486,15 +488,72 @@ DEFAULT_SKILL_PRESETS = [
 @app.get("/api/skill-library")
 async def api_get_skill_library():
     cfg = get_config()
-    saved_lib = cfg.get("skill_library", DEFAULT_SKILL_PRESETS)
-    profile_skills = cfg.get("profile_skills", {})
     existing_cmds = {}
-    
+
+    # 1. Quét trực tiếp thư mục skills trong dự án (D:\quanly_tt\skills)
+    if os.path.isdir(SKILLS_DIR):
+        for f in os.listdir(SKILLS_DIR):
+            if f.lower().endswith(('.md', '.txt')):
+                fp = os.path.join(SKILLS_DIR, f)
+                try:
+                    with open(fp, 'r', encoding='utf-8', errors='ignore') as fl:
+                        content = fl.read()
+                    yaml_m = re.search(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+                    cmd = ""
+                    label = ""
+                    stype = None
+                    if yaml_m:
+                        yaml_txt = yaml_m.group(1)
+                        nm = re.search(r'name:\s*([^\r\n]+)', yaml_txt)
+                        if nm:
+                            cmd = "/" + nm.group(1).strip().lstrip("/")
+                        ty = re.search(r'type:\s*([^\r\n]+)', yaml_txt)
+                        if ty:
+                            stype = ty.group(1).strip().lower()
+
+                    title_m = re.search(r'^#\s+([^\r\n]+)', content, re.MULTILINE)
+                    if title_m:
+                        t = title_m.group(1).strip()
+                        t_clean = re.sub(r'^(SKILL MASTER:\s*|CÔNG THỨC SẢN XUẤT KỊCH BẢN AUDIO TRIỆU VIEW\s*[-–—]\s*)', '', t, flags=re.I)
+                        t_clean = re.sub(r'^(CHỦ ĐỀ\s*["\']?|Kịch bản truyện audio\s*["\']?|SKILL:\s*)', '', t_clean, flags=re.I)
+                        t_clean = t_clean.strip(' "\'—–-')
+                        label = t_clean[:45]
+
+                    if not label:
+                        label = os.path.splitext(f)[0].replace("_", " ").replace("-", " ").title()
+
+                    if not cmd:
+                        base = os.path.splitext(f)[0].lower()
+                        slug = re.sub(r'[^a-zA-Z0-9]+', '-', base).strip('-')
+                        if slug.startswith("skills-"):
+                            cmd = f"/kichban-{slug[7:]}"
+                        elif slug.startswith("skill-"):
+                            cmd = f"/kichban-{slug[6:]}"
+                        else:
+                            cmd = f"/kichban-{slug}"
+
+                    if not stype:
+                        is_thumb = bool(re.search(r'(thumb|tieu-de|title)', f + " " + cmd, re.I))
+                        stype = "prompt2" if is_thumb else "prompt1"
+
+                    existing_cmds[cmd] = {
+                        "id": f"folder_{os.path.splitext(f)[0]}",
+                        "label": label,
+                        "file_name": f,
+                        "command": cmd,
+                        "type": stype
+                    }
+                except Exception:
+                    pass
+
+    # 2. Bổ sung từ danh sách lưu và profile_skills nếu chưa có
+    saved_lib = cfg.get("skill_library", DEFAULT_SKILL_PRESETS)
     for item in saved_lib:
         cmd = item.get("command")
-        if cmd:
+        if cmd and cmd not in existing_cmds:
             existing_cmds[cmd] = dict(item)
 
+    profile_skills = cfg.get("profile_skills", {})
     for pid, pdata in profile_skills.items():
         p1 = pdata.get("prompt1")
         if p1 and p1 not in existing_cmds:
@@ -527,8 +586,17 @@ async def api_get_skill_library():
 
     return {
         "skills": list(existing_cmds.values()),
-        "skills_folder": cfg.get("skills_folder", r"D:\New folder")
+        "skills_folder": SKILLS_DIR
     }
+
+@app.post("/api/open-skills-folder")
+async def api_open_skills_folder():
+    os.makedirs(SKILLS_DIR, exist_ok=True)
+    try:
+        os.startfile(SKILLS_DIR)
+        return {"success": True, "path": SKILLS_DIR}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.post("/api/skill-library")
 async def api_save_skill_library(payload: SkillLibraryPayload):

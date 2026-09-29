@@ -699,9 +699,12 @@
                 <span>Bấm để điền nhanh Skill:</span>
               </span>
             </div>
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="openSkillLibraryModal()" class="text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white px-2.5 py-1 rounded-lg border border-violet-200 hover:bg-violet-50 transition shadow-2xs flex items-center gap-1">
-                <i class="fa-solid fa-book-bookmark"></i> Quản lý Thư viện / Quét file .md
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="openSkillsFolderDirectly()" class="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 transition shadow-2xs flex items-center gap-1" title="Mở thư mục skills trên máy tính để dán thêm file skill">
+                <i class="fa-solid fa-folder-open text-amber-600"></i> Dán File Vào Thư Mục
+              </button>
+              <button type="button" onclick="loadSkillLibrary().then(() => showSkillQuickPicker(currentFocusedSkillInput, 'prompt1'))" class="text-[11px] font-bold text-slate-600 hover:text-slate-800 bg-white px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1" title="Làm mới lại danh sách skill sau khi dán file mới">
+                <i class="fa-solid fa-arrows-rotate text-violet-600"></i> Làm Mới
               </button>
               <button type="button" onclick="hideSkillQuickPicker()" class="text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center rounded-md hover:bg-slate-200 transition text-xs font-bold" title="Đóng thanh chọn nhanh">✕</button>
             </div>
@@ -744,9 +747,9 @@
         <span id="selected-profile-count" class="text-xs text-slate-500 font-medium">Đã chọn: 0 profile</span>
         <div class="flex gap-2">
           <button onclick="closeModal('chrome-modal')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Đóng</button>
-          <button onclick="openSkillLibraryModal()" class="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition flex items-center gap-1.5 shadow-2xs">
-            <i class="fa-solid fa-book-bookmark text-violet-600"></i>
-            <span>Kho Skill & Quét File</span>
+          <button onclick="openSkillsFolderDirectly()" class="px-3 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition flex items-center gap-1.5 shadow-2xs" title="Mở thư mục D:\quanly_tt\skills trên máy tính để dán file skill">
+            <i class="fa-solid fa-folder-open text-amber-600"></i>
+            <span>Mở Thư Mục Skills</span>
           </button>
           <button onclick="saveSkillConfig()" class="px-4 py-2 text-xs font-semibold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition flex items-center gap-1.5">
             <i class="fa-solid fa-floppy-disk"></i>
@@ -2411,6 +2414,15 @@
         }
       } catch (err) {
         showToast("Lỗi lưu thư viện: " + err.message, "error");
+      }
+    }
+
+    async function openSkillsFolderDirectly() {
+      try {
+        await fetch('/api/open-skills-folder', { method: 'POST' });
+        showToast("📂 Đã mở thư mục skills/ trên máy tính! Bạn có thể dán file .md vào đây.", "info");
+      } catch (err) {
+        showToast("Không thể mở thư mục skills: " + err.message, "error");
       }
     }
 
