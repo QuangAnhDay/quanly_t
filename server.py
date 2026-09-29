@@ -134,6 +134,11 @@ class BatchRawScriptPayload(BaseModel):
 
 class AffiliateBatchAddPayload(BaseModel):
     theme: str = "nau_an"
+    raw_text: Optional[str] = None
+    items: Optional[List[Dict[str, str]]] = None
+
+class AffiliatePreviewPayload(BaseModel):
+    theme: str = "nau_an"
     raw_text: str
 
 class AffiliateSinglePayload(BaseModel):
@@ -555,14 +560,24 @@ async def get_affiliate_links_api(theme: Optional[str] = "nau_an"):
     links = affiliate_manager.get_links_by_theme(theme or "nau_an")
     return {"success": True, "theme": theme, "links": links, "count": len(links)}
 
+@app.post("/api/affiliate/preview")
+async def preview_affiliate_links_api(payload: AffiliatePreviewPayload):
+    """Bóc tách dữ liệu từ Excel / Google Sheets và trả về bản xem trước (Live Preview Grid)"""
+    return affiliate_manager.preview_parsed_links(payload.theme or "nau_an", payload.raw_text)
+
 @app.post("/api/affiliate/batch-add")
 async def batch_add_affiliate_links_api(payload: AffiliateBatchAddPayload):
     """
-    Dán hàng loạt theo định dạng: Mỗi dòng 1 sản phẩm:
-    'Nội dung comment | Link Shopee'
-    Tự động lọc bỏ link trùng lặp!
+    Nạp hàng loạt vào kho:
+    - Hỗ trợ dán trực tiếp từ Excel / Google Sheets / CSV
+    - Hoặc nhận danh sách items đã tích chọn từ Live Preview Grid
+    - Tự động lọc trùng lặp thông minh!
     """
-    res = affiliate_manager.batch_add_links(payload.theme or "nau_an", payload.raw_text)
+    res = affiliate_manager.batch_add_links(
+        theme=payload.theme or "nau_an",
+        raw_text=payload.raw_text,
+        items=payload.items
+    )
     return res
 
 @app.post("/api/affiliate/link")

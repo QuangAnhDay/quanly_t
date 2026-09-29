@@ -977,44 +977,101 @@
           </div>
         </div>
 
-        <!-- VIEW 2: DÁN HÀNG LOẠT & LỌC TRÙNG TỰ ĐỘNG -->
+        <!-- VIEW 2: DÁN HÀNG LOẠT TỪ EXCEL / GOOGLE SHEETS & LIVE PREVIEW GRID -->
         <div id="aff-view-batch" class="hidden space-y-4">
-          <div class="p-4 bg-gradient-to-r from-violet-50 to-amber-50 border border-violet-200 rounded-xl text-xs space-y-2">
-            <h4 class="font-bold text-slate-900 flex items-center gap-2">
-              <i class="fa-solid fa-wand-magic-sparkles text-violet-600"></i> Hướng Dẫn Nạp Hàng Loạt & Chống Trùng:
-            </h4>
-            <p class="text-slate-600 leading-relaxed">
-              Dán danh sách các sản phẩm vào ô bên dưới, mỗi dòng một sản phẩm theo định dạng gộp 2 cột:<br>
-              <code class="px-2 py-0.5 bg-white border border-slate-200 rounded font-bold text-violet-700">Nội dung comment | Link Shopee</code>
-            </p>
-            <p class="text-slate-500 text-[11px]">
-              🛡️ <strong>Cơ chế tự động lọc trùng</strong>: Hệ thống sẽ tự động bóc tách link, chuẩn hóa URL (bỏ query parameters rác) và so sánh với toàn bộ link hiện có trong kho. Nếu link đã có sẽ tự động bỏ qua và hiển thị báo cáo chi tiết!
+          <!-- Excel / Sheets Pro Banner -->
+          <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200 rounded-xl text-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-emerald-950 flex items-center gap-2">
+                <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Copy & Paste Trực Tiếp Từ Excel / Google Sheets
+              </h4>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                ⚡ Tự Nhận Diện Cột Thông Minh
+              </span>
+            </div>
+            <p class="text-slate-600 leading-relaxed text-[11px]">
+              Bạn chỉ cần bôi đen các dòng trên <strong>Excel</strong> hoặc <strong>Google Sheets</strong> rồi nhấn <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl+C</kbd> và dán vào ô bên dưới. Hệ thống sẽ <strong>tự động bóc tách link Shopee và nội dung comment</strong> (kể cả đổi thứ tự cột, có cột STT số, hoặc dán kèm dòng tiêu đề).
             </p>
           </div>
 
+          <!-- Textarea Input Area -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="text-xs font-bold text-slate-700">Danh sách sản phẩm cần nạp:</label>
-              <button onclick="document.getElementById('aff-batch-textarea').value=''" class="text-[11px] text-slate-400 hover:text-rose-600 transition">
-                <i class="fa-regular fa-trash-can mr-1"></i> Xóa trắng ô nhập
-              </button>
+              <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span>Dán dữ liệu từ bảng tính hoặc text:</span>
+                <span id="aff-batch-parse-status" class="text-[11px] font-normal text-slate-400"></span>
+              </label>
+              <div class="flex items-center gap-2">
+                <button onclick="pasteFromClipboardToBatch()" class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition flex items-center gap-1">
+                  <i class="fa-regular fa-paste"></i> Dán từ Clipboard
+                </button>
+                <button onclick="clearAffiliateBatch()" class="text-[11px] text-slate-400 hover:text-rose-600 transition">
+                  <i class="fa-regular fa-trash-can mr-1"></i> Xóa trắng
+                </button>
+              </div>
             </div>
-            <textarea id="aff-batch-textarea" rows="10" placeholder="Khuôn silicon làm bánh bông lan siêu xinh | https://s.shopee.vn/abcdef1&#10;Chảo chống dính sâu lòng nấu món ngon | https://s.shopee.vn/abcdef2&#10;Set dao gọt hoa quả nhà bếp sắc bén | https://s.shopee.vn/abcdef3" class="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:outline-none bg-slate-50/50 focus:bg-white transition"></textarea>
+            <textarea id="aff-batch-textarea" oninput="onAffiliateBatchInput()" rows="5" placeholder="Bôi đen 2 cột trên Excel hoặc Sheets rồi bấm Ctrl+V vào đây...&#10;Ví dụ:&#10;Chảo chống dính sâu lòng 24cm&#9;https://s.shopee.vn/abcdef1&#10;Khuôn silicon làm bánh 6 ô&#9;https://s.shopee.vn/abcdef2" class="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50/50 focus:bg-white transition custom-scroll"></textarea>
           </div>
 
-          <!-- Báo cáo kết quả nạp hàng loạt -->
-          <div id="aff-batch-report" class="hidden p-3.5 rounded-xl border text-xs space-y-2">
-            <!-- Dynamic feedback -->
+          <!-- LIVE PREVIEW GRID (Hiển thị ngay khi dán dữ liệu) -->
+          <div id="aff-batch-preview-container" class="hidden space-y-3 pt-2 border-t border-slate-200">
+            <!-- Toolbar: Counter stats + Template + Swap -->
+            <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl text-xs">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-slate-700"><i class="fa-solid fa-table-cells text-slate-500 mr-1"></i> Xem trước bóc tách:</span>
+                <span id="aff-preview-badge-valid" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full font-bold text-[10px]">0 Sẵn sàng</span>
+                <span id="aff-preview-badge-dup" class="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full font-bold text-[10px]">0 Trùng lặp</span>
+                <span id="aff-preview-badge-inv" class="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded-full font-bold text-[10px]">0 Lỗi link</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <!-- Template Selector -->
+                <select id="aff-template-select" onchange="applyAffiliateTemplate(this.value)" class="text-[11px] bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700 focus:outline-none font-medium">
+                  <option value="raw">📝 Giữ nguyên nội dung đã paste</option>
+                  <option value="tpl1">✨ Mẫu: {tên} trong clip nha các bác</option>
+                  <option value="tpl2">✨ Mẫu: Đồ trong video mình để link ở đây: {tên}</option>
+                  <option value="tpl3">✨ Mẫu: Bác nào hỏi {tên} thì xem ở đây nha</option>
+                </select>
+                <!-- Swap Button -->
+                <button onclick="swapPreviewColumns()" class="px-2.5 py-1 bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold transition flex items-center gap-1" title="Đảo ngược cột Comment <-> Link nếu phát hiện nhầm">
+                  <i class="fa-solid fa-right-left"></i> Đảo Cột
+                </button>
+              </div>
+            </div>
+
+            <!-- Spreadsheet-like Table -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white max-h-72 overflow-y-auto custom-scroll">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 bg-slate-100 border-b border-slate-200 text-slate-700 font-bold text-[11px] z-10">
+                  <tr>
+                    <th class="p-2.5 w-10 text-center">
+                      <input type="checkbox" id="aff-preview-check-all" onchange="toggleAllPreviewCheck(this.checked)" checked class="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer">
+                    </th>
+                    <th class="p-2.5 w-10 text-center">STT</th>
+                    <th class="p-2.5 w-5/12"><i class="fa-regular fa-comment-dots text-violet-600 mr-1"></i> Cột 1: Comment / Tên Sản Phẩm (Bấm để sửa)</th>
+                    <th class="p-2.5 w-4/12"><i class="fa-solid fa-link text-amber-600 mr-1"></i> Cột 2: Link Shopee Sản Phẩm</th>
+                    <th class="p-2.5 text-center w-28">Trạng Thái</th>
+                  </tr>
+                </thead>
+                <tbody id="aff-preview-tbody" class="divide-y divide-slate-100 font-medium">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[11px] text-slate-400">Chỉ những dòng được tích chọn <span class="font-bold text-emerald-600">Hợp lệ</span> mới được thêm vào kho.</span>
+              <div class="flex gap-2">
+                <button onclick="setAffiliateSubTab('table')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition">
+                  Hủy & Quay lại
+                </button>
+                <button id="btn-confirm-batch-add" onclick="confirmBatchAddFromPreview()" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition flex items-center gap-2">
+                  <i class="fa-solid fa-circle-check"></i> <span id="btn-confirm-batch-text">Nạp Vào Kho Ngay</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div class="flex justify-end gap-2">
-            <button onclick="setAffiliateSubTab('table')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition">
-              Quay lại danh sách
-            </button>
-            <button onclick="submitBatchAffiliate()" class="px-5 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-sm transition flex items-center gap-2">
-              <i class="fa-solid fa-filter-circle-check"></i> Nạp & Tự Động Lọc Trùng
-            </button>
-          </div>
         </div>
 
       </div>
@@ -2275,66 +2332,234 @@
       }
     }
 
-    async function submitBatchAffiliate() {
+    // ==================== SMART EXCEL/SHEETS BATCH IMPORT & LIVE PREVIEW ====================
+    let batchParsedRows = [];
+    let batchDebounceTimer = null;
+
+    function onAffiliateBatchInput() {
       const text = document.getElementById('aff-batch-textarea').value.trim();
+      const previewContainer = document.getElementById('aff-batch-preview-container');
+      const statusEl = document.getElementById('aff-batch-parse-status');
+
       if (!text) {
-        showToast("Vui lòng dán danh sách link Shopee", "error");
+        if (previewContainer) previewContainer.classList.add('hidden');
+        if (statusEl) statusEl.innerText = '';
+        batchParsedRows = [];
         return;
       }
 
-      const reportEl = document.getElementById('aff-batch-report');
-      reportEl.classList.remove('hidden');
-      reportEl.className = "p-3.5 rounded-xl border bg-blue-50 border-blue-200 text-xs text-blue-900";
-      reportEl.innerHTML = `<i class="fa-solid fa-gear fa-spin mr-1"></i> Đang nạp và đối chiếu lọc trùng...`;
+      if (statusEl) statusEl.innerHTML = '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang bóc tách cột...</span>';
+      
+      clearTimeout(batchDebounceTimer);
+      batchDebounceTimer = setTimeout(() => {
+        parseBatchPreview(text);
+      }, 250);
+    }
 
+    async function parseBatchPreview(text) {
+      const statusEl = document.getElementById('aff-batch-parse-status');
       try {
-        const res = await fetch('/api/affiliate/batch-add', {
+        const res = await fetch('/api/affiliate/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ theme: currentAffiliateTheme, raw_text: text })
         });
         const data = await res.json();
         if (data.success) {
-          let reportHtml = `
-            <div class="flex items-center justify-between font-bold">
-              <span>Kết quả nạp vào kho [${currentAffiliateTheme === 'handmade' ? 'Handmade' : 'Nấu ăn'}]:</span>
-              <span class="text-[11px] px-2 py-0.5 rounded bg-white border border-slate-200">Tổng kho hiện tại: ${data.total_count}</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 mt-2 text-center font-bold">
-              <div class="p-2 bg-emerald-100/70 border border-emerald-300 text-emerald-800 rounded-lg">
-                <span class="text-base">${data.added_count}</span><br>
-                <span class="text-[10px] font-normal">Đã thêm mới</span>
-              </div>
-              <div class="p-2 bg-amber-100/70 border border-amber-300 text-amber-800 rounded-lg">
-                <span class="text-base">${data.duplicate_count}</span><br>
-                <span class="text-[10px] font-normal">Trùng lặp (Bỏ qua)</span>
-              </div>
-              <div class="p-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-lg">
-                <span class="text-base">${data.invalid_count}</span><br>
-                <span class="text-[10px] font-normal">Sai định dạng</span>
-              </div>
-            </div>
-          `;
+          batchParsedRows = (data.rows || []).map(r => ({
+            ...r,
+            checked: r.status === 'valid',
+            raw_comment: r.comment
+          }));
+          renderBatchPreviewTable(data.stats);
+          if (statusEl) statusEl.innerHTML = `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-check mr-1"></i> Đã nhận diện ${data.stats.total_rows} dòng</span>`;
+        }
+      } catch (err) {
+        if (statusEl) statusEl.innerHTML = '<span class="text-rose-600">Lỗi phân tích cú pháp</span>';
+      }
+    }
 
-          if (data.duplicates && data.duplicates.length > 0) {
-            reportHtml += `
-              <div class="mt-2.5 pt-2 border-t border-amber-200 text-[11px] text-amber-900">
-                <strong>⚠️ Các link trùng đã được hệ thống bỏ qua tự động:</strong>
-                <ul class="list-disc pl-4 mt-1 max-h-24 overflow-y-auto font-mono text-[10px]">
-                  ${data.duplicates.map(d => `<li class="truncate">${d.link} (${d.comment})</li>`).join('')}
-                </ul>
+    function renderBatchPreviewTable(stats) {
+      const container = document.getElementById('aff-batch-preview-container');
+      const tbody = document.getElementById('aff-preview-tbody');
+      if (!container || !tbody) return;
+
+      container.classList.remove('hidden');
+
+      if (stats) {
+        const bValid = document.getElementById('aff-preview-badge-valid');
+        const bDup = document.getElementById('aff-preview-badge-dup');
+        const bInv = document.getElementById('aff-preview-badge-inv');
+        if (bValid) bValid.innerText = `${stats.valid_count || 0} Sẵn sàng`;
+        if (bDup) bDup.innerText = `${stats.duplicate_count || 0} Trùng lặp`;
+        if (bInv) bInv.innerText = `${stats.invalid_count || 0} Lỗi link`;
+      }
+
+      updateBatchConfirmButtonText();
+
+      if (batchParsedRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">Không tìm thấy dữ liệu hợp lệ</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = batchParsedRows.map((r, i) => {
+        let badgeHtml = '';
+        let rowBg = '';
+        if (r.status === 'valid') {
+          badgeHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">✅ Hợp lệ</span>';
+        } else if (r.status === 'duplicate') {
+          badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="${r.reason}">⚠️ Trùng lặp</span>`;
+          rowBg = 'bg-amber-50/40 text-slate-400';
+        } else {
+          badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300" title="${r.reason}">❌ Lỗi</span>`;
+          rowBg = 'bg-rose-50/40 text-slate-400';
+        }
+
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition ${rowBg}">
+            <td class="p-2.5 text-center">
+              <input type="checkbox" onchange="toggleSinglePreviewCheck(${i}, this.checked)" ${r.checked ? 'checked' : ''} class="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer">
+            </td>
+            <td class="p-2.5 text-center font-mono text-slate-400 text-[11px]">${i + 1}</td>
+            <td class="p-2.5">
+              <input type="text" value="${r.comment || ''}" onchange="updatePreviewRowComment(${i}, this.value)" class="w-full text-xs bg-transparent border-b border-transparent focus:border-emerald-500 focus:bg-white px-1 py-0.5 rounded focus:outline-none transition font-medium" placeholder="Nội dung comment...">
+            </td>
+            <td class="p-2.5 font-mono text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="truncate max-w-[240px] text-slate-700 flex-1 block" title="${r.link}">${r.link || '<i class="text-rose-400 font-sans">Không tìm thấy link</i>'}</span>
+                ${r.link ? `
+                  <button onclick="window.open('${r.link}', '_blank')" class="text-slate-400 hover:text-emerald-600 text-xs p-0.5" title="Mở thử link">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </button>
+                ` : ''}
               </div>
-            `;
-          }
+            </td>
+            <td class="p-2.5 text-center whitespace-nowrap">
+              ${badgeHtml}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-          reportEl.className = "p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 text-xs text-emerald-900";
-          reportEl.innerHTML = reportHtml;
+    function toggleAllPreviewCheck(checked) {
+      batchParsedRows.forEach(r => {
+        if (r.status === 'valid') {
+          r.checked = checked;
+        } else {
+          r.checked = checked && r.status !== 'invalid';
+        }
+      });
+      renderBatchPreviewTable();
+    }
 
-          showToast(`✅ Đã nạp ${data.added_count} link mới, lọc bỏ ${data.duplicate_count} link trùng!`, "success");
+    function toggleSinglePreviewCheck(idx, checked) {
+      if (batchParsedRows[idx]) {
+        batchParsedRows[idx].checked = checked;
+        updateBatchConfirmButtonText();
+      }
+    }
+
+    function updatePreviewRowComment(idx, val) {
+      if (batchParsedRows[idx]) {
+        batchParsedRows[idx].comment = val;
+      }
+    }
+
+    function updateBatchConfirmButtonText() {
+      const selectedCount = batchParsedRows.filter(r => r.checked && r.link).length;
+      const btnText = document.getElementById('btn-confirm-batch-text');
+      const btn = document.getElementById('btn-confirm-batch-add');
+      if (btnText) {
+        btnText.innerText = `Nạp ${selectedCount} Sản Phẩm Vào Kho`;
+      }
+      if (btn) {
+        btn.disabled = selectedCount === 0;
+        btn.className = selectedCount > 0 
+          ? "px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+          : "px-5 py-2 text-xs font-bold text-slate-400 bg-slate-200 rounded-xl transition flex items-center gap-2 cursor-not-allowed";
+      }
+    }
+
+    function swapPreviewColumns() {
+      if (batchParsedRows.length === 0) return;
+      batchParsedRows.forEach(r => {
+        const tmp = r.comment;
+        r.comment = r.link;
+        r.link = tmp;
+        r.status = (r.link && (r.link.startsWith('http://') || r.link.startsWith('https://'))) ? 'valid' : 'invalid';
+        r.checked = r.status === 'valid';
+      });
+      renderBatchPreviewTable();
+      showToast("Đã đảo ngược 2 cột!", "info");
+    }
+
+    function applyAffiliateTemplate(tplKey) {
+      if (batchParsedRows.length === 0) return;
+      batchParsedRows.forEach(r => {
+        const baseName = r.raw_comment || r.comment || "Sản phẩm";
+        if (tplKey === 'tpl1') {
+          r.comment = `${baseName} trong clip nha các bác`;
+        } else if (tplKey === 'tpl2') {
+          r.comment = `Đồ trong video mình để link ở đây: ${baseName}`;
+        } else if (tplKey === 'tpl3') {
+          r.comment = `Bác nào hỏi ${baseName} thì xem ở đây nha`;
+        } else {
+          r.comment = r.raw_comment || r.comment;
+        }
+      });
+      renderBatchPreviewTable();
+      showToast("Đã áp dụng mẫu câu bình luận!", "success");
+    }
+
+    async function pasteFromClipboardToBatch() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          const area = document.getElementById('aff-batch-textarea');
+          area.value = text;
+          onAffiliateBatchInput();
+          showToast("Đã dán dữ liệu từ Clipboard!", "success");
+        } else {
+          showToast("Clipboard đang trống", "info");
+        }
+      } catch (err) {
+        showToast("Vui lòng nhấn Ctrl+V trực tiếp vào ô", "info");
+      }
+    }
+
+    function clearAffiliateBatch() {
+      document.getElementById('aff-batch-textarea').value = '';
+      document.getElementById('aff-batch-preview-container').classList.add('hidden');
+      document.getElementById('aff-batch-parse-status').innerText = '';
+      batchParsedRows = [];
+    }
+
+    async function confirmBatchAddFromPreview() {
+      const selected = batchParsedRows.filter(r => r.checked && r.link);
+      if (selected.length === 0) {
+        showToast("Vui lòng tích chọn ít nhất 1 sản phẩm hợp lệ để nạp", "error");
+        return;
+      }
+
+      showToast(`Đang nạp ${selected.length} sản phẩm vào kho...`, "info");
+      try {
+        const res = await fetch('/api/affiliate/batch-add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            theme: currentAffiliateTheme,
+            items: selected.map(s => ({ comment: s.comment, link: s.link }))
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✅ Đã nạp thành công ${data.added_count} sản phẩm mới! (Bỏ qua ${data.duplicate_count} trùng)`, "success");
+          clearAffiliateBatch();
+          setAffiliateSubTab('table');
           loadAffiliateLinks(currentAffiliateTheme);
         } else {
-          reportEl.className = "p-3.5 rounded-xl border bg-rose-50 border-rose-200 text-xs text-rose-900";
-          reportEl.innerText = "❌ Có lỗi xảy ra khi nạp hàng loạt.";
+          showToast("Có lỗi xảy ra khi nạp", "error");
         }
       } catch (err) {
         showToast("Lỗi kết nối máy chủ", "error");

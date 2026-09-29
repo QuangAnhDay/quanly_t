@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import re
+import csv
+import io
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import task_logger
@@ -58,67 +60,208 @@ def get_links_by_theme(theme: str = "nau_an") -> List[Dict[str, Any]]:
     data = load_affiliate_data()
     return data.get(theme, [])
 
-def batch_add_links(theme: str, raw_text: str) -> Dict[str, Any]:
+def extract_row_data(line: str) -> Optional[Dict[str, Any]]:
     """
-    Dán hàng loạt theo định dạng: Mỗi dòng 1 sản phẩm:
-    'Nội dung comment | Link Shopee'
-    Tự động lọc trùng: Nếu link đã tồn tại trong kho thì bỏ qua.
+    Tự động nhận diện dữ liệu copy-paste từ Excel, Google Sheets, CSV, hoặc text:
+    - Nhận diện delimiter: tab (\t), pipe (|), comma (,), semicolon (;)
+    - Tự động tìm ô nào chứa Link URL (bắt đầu bằng http, https, hoặc có chứa shopee)
+    - Tự động lấy các ô còn lại làm tên/nội dung bình luận (bất kể thứ tự cột)
+    - Tự động bỏ qua các dòng tiêu đề (Header rows: STT, Tên SP, Link Shopee, URL...)
+    """
+    line = line.strip()
+    if not line:
+        return None
+
+    # Tách các cột theo delimiter ưu tiên: \t (Excel/Sheets) > | > ; > ,
+    if '\t' in line:
+        raw_parts = line.split('\t')
+    elif '|' in line:
+        raw_parts = line.split('|')
+    elif ';' in line:
+        raw_parts = line.split(';')
+    elif ',' in line:
+        try:
+            reader = csv.reader(io.StringIO(line))
+            raw_parts = next(reader)
+        except Exception:
+            raw_parts = line.split(',')
+    else:
+        raw_parts = [line]
+
+    parts = [p.strip().strip('"').strip("'") for p in raw_parts if p.strip()]
+    if not parts:
+        return None
+
+    # Kiểm tra header row (ví dụ copy cả dòng tiêu đề của bảng tính)
+    header_keywords = {"stt", "no", "tên sản phẩm", "ten san pham", "sản phẩm", "san pham", "tên sp", "ten sp", "link", "url", "link shopee", "comment", "bình luận", "ghi chú", "note"}
+    if len(parts) >= 2 and all(p.lower() in header_keywords for p in parts):
+        return {"is_header": True}
+
+    # Tìm ô chứa URL
+    url_index = -1
+    for i, p in enumerate(parts):
+        lower = p.lower()
+        if lower.startswith("http://") or lower.startswith("https://") or "shopee.vn" in lower or "s.shopee" in lower:
+            url_index = i
+            break
+
+    if url_index == -1:
+        url_match = re.search(r'https?://[^\s]+', line)
+        if url_match:
+            link = url_match.group(0).strip('.,;)"\'')
+            comment = line.replace(link, '').strip().strip('|').strip('\t').strip(',').strip(';')
+            return {"comment": comment.strip() or "Sản phẩm xuất hiện trong video nha các bác", "link": link}
+        return {"comment": " ".join(parts), "link": "", "error": "Không tìm thấy link URL hợp lệ"}
+
+    link = parts[url_index]
+    # Lấy các ô còn lại làm comment, loại bỏ ô số thứ tự (ví dụ: "1", "2", "3")
+    other_parts = [p for i, p in enumerate(parts) if i != url_index and not re.match(r'^\d+$', p)]
+    comment = " - ".join(other_parts).strip()
+    if not comment:
+        comment = "Dụng cụ / sản phẩm xuất hiện trong video nha các bác"
+
+    return {"comment": comment, "link": link}
+
+def preview_parsed_links(theme: str, raw_text: str) -> Dict[str, Any]:
+    """
+    Phân tích văn bản dán từ Excel / Google Sheets và trả về bản xem trước (Live Preview):
+    - Đánh dấu trạng thái từng dòng: hợp lệ, trùng lặp, lỗi
+    - Chuẩn bị dữ liệu hiển thị bảng tương tác trước khi bấm lưu
     """
     data = load_affiliate_data()
     theme_links = data.get(theme, [])
-
-    # Tập hợp các link đã tồn tại để chống trùng
     existing_urls = {normalize_url(item.get("link", "")) for item in theme_links}
 
     lines = raw_text.strip().split("\n")
-    added = []
-    duplicates = []
-    invalid = []
-
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    seen_in_batch = set()
 
     for idx, line in enumerate(lines):
         line = line.strip()
         if not line:
             continue
 
-        parts = [p.strip() for p in re.split(r'[|\t]', line) if p.strip()]
-        
-        comment = ""
-        link = ""
+        res = extract_row_data(line)
+        if not res or res.get("is_header"):
+            continue
 
-        if len(parts) >= 2:
-            comment = parts[0]
-            link = parts[1]
-        elif len(parts) == 1:
-            # Nếu chỉ dán 1 URL
-            candidate = parts[0]
-            if candidate.startswith("http") or "shopee" in candidate.lower():
-                link = candidate
-                comment = "Sản phẩm đồ bếp / dụng cụ xuất hiện trong clip"
-            else:
-                comment = candidate
-                link = ""
+        comment = res.get("comment", "")
+        link = res.get("link", "")
+        error = res.get("error", "")
 
-        if not link or not (link.startswith("http://") or link.startswith("https://")):
-            invalid.append({"line": line, "reason": "Không tìm thấy link URL hợp lệ"})
+        if error or not link:
+            rows.append({
+                "row_idx": idx + 1,
+                "comment": comment,
+                "link": link,
+                "status": "invalid",
+                "reason": error or "Thiếu link Shopee hợp lệ",
+                "can_add": False
+            })
             continue
 
         norm = normalize_url(link)
         if norm in existing_urls:
-            duplicates.append({"comment": comment, "link": link})
-            continue
+            rows.append({
+                "row_idx": idx + 1,
+                "comment": comment,
+                "link": link,
+                "status": "duplicate",
+                "reason": "Link này đã có trong kho",
+                "can_add": False
+            })
+        elif norm in seen_in_batch:
+            rows.append({
+                "row_idx": idx + 1,
+                "comment": comment,
+                "link": link,
+                "status": "duplicate",
+                "reason": "Trùng lặp ngay trong danh sách dán",
+                "can_add": False
+            })
+        else:
+            seen_in_batch.add(norm)
+            rows.append({
+                "row_idx": idx + 1,
+                "comment": comment,
+                "link": link,
+                "status": "valid",
+                "reason": "Hợp lệ",
+                "can_add": True
+            })
 
-        item = {
-            "id": f"aff_{uuid.uuid4().hex[:8]}",
-            "comment": comment or "Dụng cụ xuất hiện trong video cho bạn nào cần nhé",
-            "link": link,
-            "used_count": 0,
-            "created_at": now
+    valid_count = sum(1 for r in rows if r["status"] == "valid")
+    dup_count = sum(1 for r in rows if r["status"] == "duplicate")
+    inv_count = sum(1 for r in rows if r["status"] == "invalid")
+
+    return {
+        "success": True,
+        "rows": rows,
+        "stats": {
+            "total_rows": len(rows),
+            "valid_count": valid_count,
+            "duplicate_count": dup_count,
+            "invalid_count": inv_count
         }
-        theme_links.append(item)
-        existing_urls.add(norm)
-        added.append(item)
+    }
+
+def batch_add_links(theme: str, raw_text: Optional[str] = None, items: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+    """
+    Nạp hàng loạt vào kho:
+    - Chấp nhận hoặc raw_text (tự bóc tách từ Excel/Sheets) hoặc items (danh sách đã lọc từ UI)
+    - Tự động lọc trùng thông minh
+    """
+    data = load_affiliate_data()
+    theme_links = data.get(theme, [])
+    existing_urls = {normalize_url(item.get("link", "")) for item in theme_links}
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added = []
+    duplicates = []
+    invalid = []
+
+    # Nếu gửi danh sách items trực tiếp từ Live Preview UI
+    if items is not None:
+        for item in items:
+            comment = (item.get("comment") or "").strip()
+            link = (item.get("link") or "").strip()
+            if not link or not (link.startswith("http://") or link.startswith("https://")):
+                invalid.append({"comment": comment, "link": link, "reason": "Link URL không hợp lệ"})
+                continue
+
+            norm = normalize_url(link)
+            if norm in existing_urls:
+                duplicates.append({"comment": comment, "link": link})
+                continue
+
+            new_item = {
+                "id": f"aff_{uuid.uuid4().hex[:8]}",
+                "comment": comment or "Dụng cụ xuất hiện trong video cho bạn nào cần nhé",
+                "link": link,
+                "used_count": 0,
+                "created_at": now
+            }
+            theme_links.append(new_item)
+            existing_urls.add(norm)
+            added.append(new_item)
+    elif raw_text:
+        preview = preview_parsed_links(theme, raw_text)
+        for row in preview.get("rows", []):
+            if row.get("status") == "valid":
+                new_item = {
+                    "id": f"aff_{uuid.uuid4().hex[:8]}",
+                    "comment": row["comment"],
+                    "link": row["link"],
+                    "used_count": 0,
+                    "created_at": now
+                }
+                theme_links.append(new_item)
+                existing_urls.add(normalize_url(row["link"]))
+                added.append(new_item)
+            elif row.get("status") == "duplicate":
+                duplicates.append({"comment": row["comment"], "link": row["link"]})
+            else:
+                invalid.append({"comment": row["comment"], "link": row["link"], "reason": row.get("reason", "")})
 
     data[theme] = theme_links
     save_affiliate_data(data)
