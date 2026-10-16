@@ -38,12 +38,27 @@ async def startup_event():
         import task_logger
         task_logger.add_log("system", "Hệ thống Web Dashboard đã khởi động thành công", "info")
         vs_ready = voicestudio_service.ensure_voicestudio_running()
+        try:
+            import tiktok_service
+            tiktok_service.start_scheduler()
+        except Exception as e:
+            print(f"[TikTok] Không thể khởi động bộ hẹn giờ: {e}")
         if vs_ready:
             task_logger.add_log("system", "VoiceStudio API Server (Port 3900) đã sẵn sàng", "success")
         else:
             task_logger.add_log("system", "VoiceStudio Server chưa bật tại D:\\myProject\\voice", "warning")
     except Exception as e:
         print(f"[Startup] Lỗi kiểm tra VoiceStudio: {e}")
+
+    # Tự động mở trình duyệt web tới Web Dashboard
+    import webbrowser, threading, time
+    def _open_browser():
+        time.sleep(1.2)
+        try:
+            webbrowser.open("http://localhost:8888")
+        except Exception:
+            pass
+    threading.Thread(target=_open_browser, daemon=True).start()
 
 # Cho phép CORS để Tampermonkey từ claude.ai gọi được
 app.add_middleware(
@@ -179,6 +194,14 @@ class OpenFilePayload(BaseModel):
 
 class ConvertTikTokPayload(BaseModel):
     style: Optional[str] = "blur"
+    max_duration_sec: Optional[int] = 900
+
+class OpenProjectFilePayload(BaseModel):
+    project_id: str
+    file_type: Optional[str] = "folder"
+
+class EpisodePayload(BaseModel):
+    episode: Optional[int] = None
 
 class SplitPartsPayload(BaseModel):
     part_duration_sec: Optional[int] = 180
@@ -941,6 +964,13 @@ async def toggle_thumbnail_api(project_id: str):
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     return {"success": True, "has_thumbnail": proj.get("has_thumbnail", 0), "project": proj}
 
+@app.put("/api/projects/{project_id}/toggle-tiktok-posted")
+async def toggle_tiktok_posted_api(project_id: str):
+    proj = database.toggle_tiktok_posted(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    return {"success": True, "tiktok_posted": proj.get("tiktok_posted", 0), "project": proj}
+
 @app.delete("/api/projects/{project_id}")
 async def delete_project_api(project_id: str):
     success = database.delete_project(project_id)
@@ -1046,7 +1076,8 @@ async def convert_to_tiktok_api(project_id: str, payload: Optional[ConvertTikTok
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
     style = payload.style if payload else "blur"
-    t = task_queue.add_task("tiktok", project_id, {"style": style})
+    max_dur = payload.max_duration_sec if payload and payload.max_duration_sec else 900
+    t = task_queue.add_task("tiktok", project_id, {"style": style, "max_duration_sec": max_dur})
     return {
         "success": True,
         "queued": True,
@@ -1170,6 +1201,7 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     valid_folders = {
         "root": BASE_DIR,
         "outputs": os.path.join(BASE_DIR, "outputs"),
+        "thumb_assets": os.path.join(BASE_DIR, "thumb_assets"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
         "bg_nau_an_doc": os.path.join(BASE_DIR, "backgrounds", "nau_an", "doc"),
         "bg_nau_an_ngang": os.path.join(BASE_DIR, "backgrounds", "nau_an", "ngang"),
@@ -1200,20 +1232,265 @@ async def launch_chrome_profiles():
         return {"success": True, "message": "Đã khởi chạy 5 cửa sổ Chrome"}
     return {"success": False, "message": "Không tìm thấy file bat"}
 
-@app.on_event("startup")
-async def startup_event():
-    import voicestudio_service
-    voicestudio_service.ensure_voicestudio_running()
+
+@app.post("/api/open-project-file")
+async def open_project_file(payload: OpenProjectFilePayload):
+    """Mở trực tiếp thư mục hoặc file mp4 của Project trong Explorer mà không bị lỗi slash"""
+    p = database.get_project(payload.project_id)
+    proj_dir = os.path.normpath(os.path.join(BASE_DIR, "outputs", payload.project_id))
+    os.makedirs(proj_dir, exist_ok=True)
     
-    # Tự động mở trình duyệt web tới Web Dashboard
-    import webbrowser, threading, time
-    def _open_browser():
-        time.sleep(1.0)
+    file_to_select = None
+    if payload.file_type == "youtube":
+        candidates = [
+            p.get("video_youtube_path") if p else None,
+            p.get("video_path") if p else None,
+            os.path.join(proj_dir, "video_youtube.mp4"),
+            os.path.join(proj_dir, f"{payload.project_id}.mp4")
+        ]
+        for c in candidates:
+            if c and os.path.exists(c):
+                file_to_select = os.path.normpath(c)
+                break
+    elif payload.file_type == "tiktok":
+        candidates = [
+            p.get("video_tiktok_path") if p else None,
+            os.path.join(proj_dir, "video_tiktok.mp4"),
+            os.path.join(proj_dir, f"{payload.project_id}_tiktok.mp4")
+        ]
+        for c in candidates:
+            if c and os.path.exists(c):
+                file_to_select = os.path.normpath(c)
+                break
+    elif payload.file_type == "audio":
+        candidates = [
+            p.get("audio_path") if p else None,
+            os.path.join(proj_dir, "audio.mp3"),
+            os.path.join(proj_dir, f"{payload.project_id}.mp3")
+        ]
+        for c in candidates:
+            if c and os.path.exists(c):
+                file_to_select = os.path.normpath(c)
+                break
+
+    if file_to_select and os.path.exists(file_to_select):
         try:
-            webbrowser.open("http://localhost:8888")
+            subprocess.Popen(f'explorer /select,"{file_to_select}"', shell=True)
+            return {"success": True, "opened": file_to_select}
         except Exception:
             pass
-    threading.Thread(target=_open_browser, daemon=True).start()
+    
+    try:
+        os.startfile(proj_dir)
+    except Exception:
+        subprocess.Popen(f'explorer "{proj_dir}"', shell=True)
+    return {"success": True, "opened": proj_dir}
+
+@app.post("/api/projects/{project_id}/episode")
+async def set_project_episode(project_id: str, payload: EpisodePayload):
+    proj = database.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    database.update_project(project_id, ytb_episode=payload.episode)
+    return {"success": True, "episode": payload.episode}
+
+@app.post("/api/projects/{project_id}/auto-episode")
+async def auto_assign_project_episode(project_id: str):
+    proj = database.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    all_projects = database.get_all_projects()
+    max_ep = 0
+    for p in all_projects:
+        ep = p.get("ytb_episode")
+        if ep is not None:
+            try:
+                max_ep = max(max_ep, int(ep))
+            except (ValueError, TypeError):
+                pass
+    next_ep = max_ep + 1
+    database.update_project(project_id, ytb_episode=next_ep)
+    return {"success": True, "episode": next_ep}
+
+# --- TIKTOK MANAGER API ---
+TIKTOK_DIR = r"E:\myProject\atp_tt" if os.path.exists(r"E:\myProject\atp_tt") else r"D:\myProject\atp_tt"
+TIKTOK_CLI_PATH = os.path.join(TIKTOK_DIR, ".venv", "Scripts", "python.exe")
+TIKTOK_SCRIPT_PATH = os.path.join(TIKTOK_DIR, "cli.py")
+
+@app.post("/api/tiktok/login")
+def tiktok_login(payload: dict = Body(...)):
+    account_name = payload.get("account_name", "kenh_le")
+    if not account_name or not account_name.strip():
+        account_name = "kenh_le"
+    account_name = account_name.strip()
+    bat_path = os.path.join(BASE_DIR, "tools", "launch_tiktok_login.bat")
+    try:
+        subprocess.Popen(
+            f'start "DANG NHAP TIKTOK" cmd.exe /c "{bat_path}" {account_name}',
+            shell=True,
+            cwd=BASE_DIR
+        )
+        return {"success": True, "message": f"Đang mở Google Chrome để đăng nhập kênh: {account_name}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tiktok/accounts")
+def tiktok_accounts():
+    accounts = []
+    # 1. Quét trực tiếp từ thư mục chuẩn của autotok (~/.autotok/accounts/*.json)
+    acc_dir = os.path.join(os.path.expanduser("~"), ".autotok", "accounts")
+    if os.path.exists(acc_dir):
+        for f in os.listdir(acc_dir):
+            if f.endswith(".json"):
+                accounts.append(f[:-5])
+    if accounts:
+        return {"success": True, "accounts": sorted(accounts)}
+
+    # 2. Fallback sang CLI nếu có
+    if os.path.exists(TIKTOK_CLI_PATH) and os.path.exists(TIKTOK_SCRIPT_PATH):
+        try:
+            res = subprocess.run([
+                TIKTOK_CLI_PATH,
+                TIKTOK_SCRIPT_PATH,
+                "show",
+                "-u"
+            ], cwd=TIKTOK_DIR, capture_output=True, text=True, encoding="utf-8")
+            lines = res.stdout.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith("No saved accounts") and not line.startswith("usage:"):
+                    acc = line.split()[0]
+                    if acc and acc not in accounts:
+                        accounts.append(acc)
+            return {"success": True, "accounts": sorted(accounts)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    return {"success": True, "accounts": accounts}
+
+@app.get("/api/tiktok/config")
+def get_tiktok_config_api():
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    cfg = tiktok_service.get_tiktok_config()
+    cfg["posted_today"] = tiktok_service.count_posted_today()
+    return {"success": True, "config": cfg}
+
+@app.post("/api/tiktok/config")
+def save_tiktok_config_api(payload: dict = Body(...)):
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    new_cfg = tiktok_service.save_tiktok_config(payload)
+    return {"success": True, "config": new_cfg}
+
+@app.get("/api/tiktok/scheduled-queue")
+def get_tiktok_scheduled_queue_api():
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    candidates = tiktok_service.get_next_scheduled_candidates()
+    return {"success": True, "candidates": candidates}
+
+@app.post("/api/projects/{project_id}/upload-tiktok")
+def upload_project_tiktok_api(project_id: str, payload: Optional[dict] = Body(None)):
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    account = payload.get("account") if payload else None
+    caption = payload.get("caption") if payload else None
+    visibility = payload.get("visibility") if payload else None
+    schedule_seconds = payload.get("schedule_seconds") if payload else None
+    try:
+        res = tiktok_service.upload_project_tiktok(
+            project_id=project_id,
+            account=account,
+            caption=caption,
+            visibility=visibility,
+            schedule_seconds=schedule_seconds
+        )
+        return {"success": True, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/tiktok/bulk-schedule")
+def bulk_schedule_tiktok_api(payload: Optional[dict] = Body(None)):
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    limit = payload.get("limit") if payload else None
+    project_ids = payload.get("project_ids") if payload else None
+    try:
+        res = tiktok_service.bulk_schedule_tiktok(limit=limit, project_ids=project_ids)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== ATP_TT WORKER ENDPOINTS ====================
+@app.get("/api/worker/health")
+def worker_health():
+    return {"status": "ok", "app": "quanly_tt", "version": "1.0.0"}
+
+@app.get("/api/worker/queue")
+def worker_queue():
+    """Trả về danh sách video sẵn sàng đăng cho worker atp_tt tải về"""
+    import tiktok_service, importlib
+    importlib.reload(tiktok_service)
+    candidates = tiktok_service.get_next_scheduled_candidates()
+    
+    queue_data = []
+    for c in candidates:
+        slot = c.get("scheduled_slot")
+        sched_time_str = ""
+        if slot and "date_str" in slot and "time_str" in slot:
+            sched_time_str = f"{slot['date_str']} {slot['time_str']}"
+        
+        queue_data.append({
+            "project_id": c["id"],
+            "title": c.get("title", ""),
+            "channel": c.get("account", "kenh_le"),
+            "caption": c.get("caption", ""),
+            "scheduled_time": sched_time_str
+        })
+    return {"success": True, "queue": queue_data}
+
+@app.get("/api/worker/video/{project_id}")
+def worker_download_video(project_id: str):
+    """Stream file video TikTok sang máy worker"""
+    proj = database.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    
+    video_path = proj.get("video_tiktok_path")
+    if not video_path or not os.path.exists(video_path):
+        pkg_dir = database.get_package_dir(project_id)
+        candidate = os.path.join(pkg_dir, f"{project_id}_tiktok.mp4")
+        if os.path.exists(candidate):
+            video_path = candidate
+        else:
+            raise HTTPException(status_code=404, detail="File video TikTok không tồn tại")
+            
+    return FileResponse(
+        video_path,
+        media_type="video/mp4",
+        filename=f"{project_id}_tiktok.mp4"
+    )
+
+@app.post("/api/worker/confirm/{project_id}")
+def worker_confirm_posted(project_id: str, payload: dict = Body(...)):
+    """Worker báo lại đã đăng thành công một video"""
+    channel = payload.get("channel", "kenh_le")
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    database.update_project(
+        project_id,
+        tiktok_posted=1,
+        tiktok_posted_at=now_str,
+        tiktok_account=channel
+    )
+    task_logger.add_log(
+        module="tiktok",
+        message=f"✅ Worker [ATP_TT] đã đăng thành công [{project_id}] lên kênh {channel}!",
+        level="success",
+        project_id=project_id
+    )
+    return {"success": True, "project_id": project_id, "status": "confirmed"}
+
 
 if __name__ == "__main__":
     import uvicorn

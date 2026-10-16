@@ -4,9 +4,12 @@ __pycache__/
 *$py.class
 
 # Database
+*.db
+*.sqlite3
 data/*.db
 data/*.sqlite3
 !data/**/.gitkeep
+.codebase-memory/
 
 # Output folders (ignored so large media files are not uploaded to git)
 outputs/*

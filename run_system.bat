@@ -25,12 +25,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [2/3] Dang kiem tra & khoi dong VoiceStudio API Server (Port 3900)...
+echo [2/3] Dang kiem tra va khoi dong VoiceStudio API Server (Port 3900)...
 if exist ".venv\Scripts\python.exe" (
     start /b .venv\Scripts\python.exe -c "import voicestudio_service; voicestudio_service.ensure_voicestudio_running()" > nul 2>&1
 )
 
-echo [3/3] Dang khoi dong Web Dashboard & Tu dong mo Trinh duyet...
+echo [3/3] Dang khoi dong Web Dashboard va Tu dong mo Trinh duyet...
 echo.
 echo ======================================================================
 echo   HE THONG DANG HOAT DONG!

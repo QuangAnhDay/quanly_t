@@ -1,5 +1,5 @@
 {
-  "project_dir": "D:\\quanly_tt",
+  "project_dir": "D:\\myProject\\quanly_tt",
   "server_host": "127.0.0.1",
   "server_port": 8888,
   "chrome_profiles": [
@@ -22,22 +22,29 @@
     {
       "id": "bancungphong",
       "label": "Bạn Cùng Phòng KTX",
-      "file_name": "bancungphong.md",
+      "file_name": "SKILL_kichban-audio-bancungphong.md",
       "command": "/kichban-audio-bancungphong",
       "type": "prompt1"
     },
     {
       "id": "chi_em",
       "label": "Chị Em Ruột Toxic",
-      "file_name": "SKILLS_CHI_EM.MD",
-      "command": "/kichban-chi-em",
+      "file_name": "SKILL_kichban-audio-chiem.md",
+      "command": "/kichban-audio-chiem",
       "type": "prompt1"
     },
     {
       "id": "hoa_khoi",
       "label": "Vả Mặt Hoa Khôi Lớp",
-      "file_name": "SKILLS_HOA_KHOI.MD",
-      "command": "/kichban-hoa-khoi",
+      "file_name": "SKILL_kichban-audio-hoakhoi.md",
+      "command": "/kichban-audio-hoakhoi",
+      "type": "prompt1"
+    },
+    {
+      "id": "drama",
+      "label": "Drama Giới Siêu Giàu",
+      "file_name": "drama.md",
+      "command": "/drama",
       "type": "prompt1"
     },
     {
@@ -57,16 +64,74 @@
     {
       "id": "thumb_hoc_duong",
       "label": "Tiêu Đề & Thumb Học Đường",
-      "file_name": "",
+      "file_name": "SKILL_thumb.md",
       "command": "/tieu-de-thumb-audio-hoc-duong",
       "type": "prompt2"
     },
     {
       "id": "thumb_chung",
       "label": "Tiêu Đề & Thumb Chuẩn",
-      "file_name": "",
+      "file_name": "SKILL_thumb.md",
       "command": "/tieu-de-thumb",
       "type": "prompt2"
     }
-  ]
+  ],
+  "profile_skills": {
+    "Default": {
+      "name": "Chrome của bạn",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 1": {
+      "name": "Công việc",
+      "prompt1": "/kichban-audio-hoakhoi",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 10": {
+      "name": "Mỹ",
+      "prompt1": "/kichban-audio-chiem",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 2": {
+      "name": "ban cung phong",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 4": {
+      "name": "ban cung phong",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 5": {
+      "name": "hoa khôi",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 7": {
+      "name": "hoa khôi",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    },
+    "Profile 9": {
+      "name": "hoa khôi",
+      "prompt1": "/kichban-audio-bancungphong",
+      "prompt2": "/tieu-de-thumb-audio-hoc-duong"
+    }
+  },
+  "tiktok_config": {
+    "hashtags": "#truyenhay #audiobook #xuhuong",
+    "auto_schedule_enabled": true,
+    "schedule_hours": [
+      12,
+      20
+    ],
+    "visibility": 0,
+    "caption_template": "Rái Cá Audio số : {episode}",
+    "videos_per_day": 3,
+    "schedule_times": [
+      "08:00",
+      "12:00",
+      "20:00"
+    ]
+  }
 }

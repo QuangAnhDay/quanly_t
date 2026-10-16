@@ -60,6 +60,11 @@ def init_db():
         ("theme", "TEXT DEFAULT 'nau_an'"),
         ("affiliate_comment", "TEXT"),
         ("affiliate_link", "TEXT"),
+        ("ytb_episode", "INTEGER"),
+        ("tiktok_posted", "INTEGER DEFAULT 0"),
+        ("tiktok_posted_at", "TEXT"),
+        ("tiktok_account", "TEXT"),
+        ("tiktok_video_id", "TEXT"),
     ]
     
     for col_name, col_type in migrations:
@@ -260,6 +265,21 @@ def toggle_thumbnail(project_id: str) -> Optional[Dict[str, Any]]:
         return None
     new_val = 0 if p.get("has_thumbnail", 0) else 1
     return update_project(project_id, has_thumbnail=new_val)
+
+def toggle_tiktok_posted(project_id: str) -> Optional[Dict[str, Any]]:
+    """Đảo trạng thái đã đăng TikTok (1: đã đăng, 0: đang chờ up)"""
+    p = get_project(project_id)
+    if not p:
+        return None
+    curr_val = p.get("tiktok_posted", 0)
+    if curr_val:
+        return update_project(project_id, tiktok_posted=0)
+    else:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ep = p.get("ytb_episode")
+        is_even = (int(ep) % 2 == 0) if (ep is not None) else False
+        account = "kenh_chan" if is_even else "kenh_le"
+        return update_project(project_id, tiktok_posted=1, tiktok_posted_at=now_str, tiktok_account=account)
 
 import shutil
 import glob

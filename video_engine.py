@@ -33,7 +33,8 @@ def get_audio_duration(file_path: str) -> float:
 def convert_16x9_to_9x16(
     input_video_path: str,
     output_video_path: str,
-    style: str = "blur" # "blur" (nền mờ cinematic) hoặc "crop" (phóng to full)
+    style: str = "blur",
+    max_duration_sec: int = None
 ) -> str:
     """
     Tự động chuyển đổi video ngang 16:9 (YouTube) sang dọc 9:16 (TikTok) siêu tốc.
@@ -58,13 +59,13 @@ def convert_16x9_to_9x16(
 
     cmd = [
         FFMPEG_PATH, "-y",
-        "-i", input_video_path,
+        "-i", input_video_path] + (["-t", str(max_duration_sec)] if max_duration_sec else []) + [
         "-filter_complex", filter_complex,
         "-map", "[v]",
         "-map", "0:a?",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "22",
+        "-c:v", "h264_nvenc",
+        "-preset", "p4",
+        "-cq", "22",
         "-c:a", "copy", # Copy thẳng audio không cần encode lại
         output_video_path
     ]
@@ -146,9 +147,9 @@ def render_video(
             "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
             "-map", "0:v:0",
             "-map", "1:a:0",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "23",
+            "-c:v", "h264_nvenc",
+            "-preset", "p4",
+            "-cq", "23",
             "-c:a", "aac",
             "-b:a", "192k",
             "-shortest",
@@ -168,8 +169,8 @@ def render_video(
             "-map", "[v]",
             "-map", "1:a",
             "-t", str(duration),
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
+            "-c:v", "h264_nvenc",
+            "-preset", "p1",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
             "-b:a", "192k",
@@ -234,9 +235,9 @@ def render_full_video_auto(
             "-vf", vf_chain,
             "-map", "0:v:0",
             "-map", "1:a:0",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "22",
+            "-c:v", "h264_nvenc",
+            "-preset", "p4",
+            "-cq", "22",
             "-c:a", "aac",
             "-b:a", "192k",
             "-shortest",
@@ -256,8 +257,8 @@ def render_full_video_auto(
             "-map", "[v]",
             "-map", "1:a",
             "-t", str(duration),
-            "-c:v", "libx264",
-            "-preset", "fast",
+            "-c:v", "h264_nvenc",
+            "-preset", "p4",
             "-c:a", "aac",
             "-b:a", "192k",
             output_video_path

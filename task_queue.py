@@ -255,7 +255,7 @@ def _process_tiktok_task(task: Dict[str, Any]):
     task["message"] = "Đang chuyển đổi video 16:9 sang 9:16 TikTok (Cinematic Blur)..."
     task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Đang chuyển đổi TikTok 9:16 cho [{project_id}]...", "info", project_id)
     
-    video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style)
+    video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style, max_duration_sec=payload.get("max_duration_sec", 900))
     
     database.update_project(
         project_id,
