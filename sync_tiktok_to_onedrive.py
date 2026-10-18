@@ -131,6 +131,13 @@ def sync_videos():
     print(f"  • Tổng dung lượng đẩy  : {round(total_bytes / (1024*1024), 1)} MB (~{round(total_bytes / (1024*1024*1024), 2)} GB)")
     print("=" * 65)
     print("[V] Hoàn tất! OneDrive sẽ tự động kéo các video này về Laptop để đăng bài.")
+    return {
+        "success": True,
+        "copied_le": copied_le,
+        "copied_chan": copied_chan,
+        "skipped": skipped,
+        "total_mb": round(total_bytes / (1024*1024), 1)
+    }
 
 if __name__ == "__main__":
     sync_videos()

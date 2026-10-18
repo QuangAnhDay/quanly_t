@@ -91,16 +91,10 @@
           <i class="fa-solid fa-sliders text-violet-600"></i> Quản Lý Nền Tảng
         </span>
 
-        <!-- Quản lý TikTok 2 Kênh (Màu Đen Sleek) -->
-        <button onclick="openTikTokModal()" class="w-full text-left px-3 py-2 bg-black hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition">
-          <span class="flex items-center gap-2"><i class="fa-brands fa-tiktok text-white"></i> Quản Lý 2 TikTok</span>
-          <span class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">12h & 20h</span>
-        </button>
-
-        <!-- Lên Lịch TikTok Hàng Loạt 1-Click (Tắt máy vẫn đăng) -->
-        <button onclick="startBulkScheduleTikTok()" class="w-full text-left px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition hover:scale-[1.01]" title="Tải và lên lịch tự động toàn bộ video TikTok sẵn sàng lên TikTok Cloud (Tắt máy vẫn đăng)">
-          <span class="flex items-center gap-2"><i class="fa-solid fa-calendar-check text-amber-300"></i> Lên Lịch TikTok</span>
-          <span class="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-bold">Cloud</span>
+        <!-- Đồng Bộ TikTok Sang OneDrive (Đăng qua atp_tt) -->
+        <button onclick="syncToOneDrive()" class="w-full text-left px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition hover:scale-[1.01]" title="Tự động đồng bộ các video TikTok 9:16 sang thư mục OneDrive để atp_tt tự đăng">
+          <span class="flex items-center gap-2"><i class="fa-brands fa-microsoft text-white"></i> Đồng Bộ OneDrive</span>
+          <span class="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-bold">TikTok 9:16</span>
         </button>
 
         <!-- Profile Claude & Tampermonkey -->
@@ -223,19 +217,19 @@
           </div>
           <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><i class="fa-solid fa-microphone"></i></div>
         </div>
-        <div onclick="setFilter('waiting_tiktok')" class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between cursor-pointer hover:border-indigo-300 hover:shadow-xs transition" title="Bấm để lọc danh sách kịch bản ĐANG TRONG HÀNG ĐỢI CHỜ ĐĂNG TIKTOK">
+        <div onclick="setFilter('need_tiktok')" class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between cursor-pointer hover:border-indigo-300 hover:shadow-xs transition" title="Bấm để lọc danh sách kịch bản CHƯA CÓ VIDEO TIKTOK 9:16">
           <div>
-            <p class="text-[11px] font-medium text-slate-500">Chờ Up TikTok</p>
-            <p id="stat-waiting-tiktok" class="text-lg font-bold text-indigo-600 mt-0.5">0</p>
+            <p class="text-[11px] font-medium text-slate-500">Cần TikTok 9:16</p>
+            <p id="stat-need-tiktok" class="text-lg font-bold text-indigo-600 mt-0.5">0</p>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"><i class="fa-solid fa-clock"></i></div>
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"><i class="fa-solid fa-film"></i></div>
         </div>
-        <div onclick="setFilter('posted_tiktok')" class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between cursor-pointer hover:border-rose-300 hover:shadow-xs transition" title="Bấm để lọc danh sách kịch bản ĐÃ ĐĂNG TIKTOK">
+        <div onclick="setFilter('has_tiktok')" class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between cursor-pointer hover:border-rose-300 hover:shadow-xs transition" title="Bấm để lọc danh sách kịch bản ĐÃ CÓ VIDEO TIKTOK 9:16">
           <div>
-            <p class="text-[11px] font-medium text-slate-500">TikTok Đã Up</p>
-            <p id="stat-done-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
+            <p class="text-[11px] font-medium text-slate-500">Đã Có TikTok 9:16</p>
+            <p id="stat-has-tiktok" class="text-lg font-bold text-rose-600 mt-0.5">0</p>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600"><i class="fa-brands fa-tiktok"></i></div>
         </div>
       </div>
 
@@ -285,11 +279,8 @@
           <button onclick="setFilter('posted_yt')" id="tab-posted_yt" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition text-xs">
             🎬 Đã Up YT (<span id="cnt-posted_yt">0</span>)
           </button>
-          <button onclick="setFilter('waiting_tiktok')" id="tab-waiting_tiktok" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition text-xs font-semibold">
-            ⏳ Chờ Up TikTok (<span id="cnt-waiting_tiktok">0</span>)
-          </button>
-          <button onclick="setFilter('posted_tiktok')" id="tab-posted_tiktok" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition text-xs font-semibold">
-            🎵 Đã Up TikTok (<span id="cnt-posted_tiktok">0</span>)
+          <button onclick="setFilter('has_tiktok')" id="tab-has_tiktok" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition text-xs font-semibold">
+            📱 Có TikTok 9:16 (<span id="cnt-has_tiktok">0</span>)
           </button>
           <button onclick="setFilter('not_posted')" id="tab-not_posted" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition text-xs">
             ⏳ Chưa Đăng (<span id="cnt-not_posted">0</span>)
@@ -300,11 +291,9 @@
           <span id="cnt-need_thumb" class="hidden">0</span>
         </div>
 
-        <!-- Tìm kiếm kịch bản & Nút Lên Lịch TikTok Hàng Loạt -->
+        <!-- Tìm kiếm kịch bản -->
         <div class="flex items-center gap-2">
-          <button onclick="startBulkScheduleTikTok()" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white flex items-center gap-1.5 transition shadow-2xs hover:scale-[1.02]" title="Tải và lên lịch tự động toàn bộ video TikTok lên TikTok Cloud (Tắt máy vẫn đăng)">
-            <i class="fa-solid fa-calendar-check text-amber-300"></i> Lên Lịch TikTok
-          </button>
+
           <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
             <input type="text" id="search-input" oninput="renderTable()" placeholder="Tìm mã KB, tên kịch bản..." class="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white focus:border-violet-500 w-44 sm:w-56 transition">
@@ -405,10 +394,7 @@
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 health-dot-pulse"></span>
         <span>1-Click Pipeline: <strong class="text-emerald-700">ĐANG BẬT</strong></span>
       </div>
-      <div class="flex items-center gap-2 text-xs text-slate-700 font-bold bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
-        <i class="fa-solid fa-clock text-amber-600"></i>
-        <span>Lịch TikTok: <strong class="text-amber-900">12:00 & 20:00</strong></span>
-      </div>
+
       <div class="hidden md:flex items-center gap-1.5 text-xs text-slate-500 font-medium">
         <i class="fa-solid fa-microchip text-slate-400"></i>
         <span>NVIDIA NVENC (GPU)</span>
@@ -440,10 +426,7 @@
       <button onclick="batchConvertToTikTokQueue()" class="px-3.5 py-2 bg-black hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition hover:scale-[1.02]" title="Tự động trích xuất 15 phút đầu sang video dọc TikTok 9:16">
         <i class="fa-brands fa-tiktok text-white"></i> Tạo TikTok (15p)
       </button>
-      <!-- Lên Lịch TikTok Hàng Loạt cho các mục đã chọn -->
-      <button onclick="batchScheduleTikTokSelected()" class="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition hover:scale-[1.02]" title="Tải và lên lịch tự động các video TikTok đã chọn lên TikTok Cloud (Tắt máy vẫn đăng)">
-        <i class="fa-solid fa-calendar-check text-amber-300"></i> Lên Lịch TikTok
-      </button>
+
       <!-- Xóa -->
       <button onclick="batchDeleteSelected()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
         <i class="fa-solid fa-trash-can"></i> Xóa
@@ -1265,257 +1248,6 @@
 
   <!-- JAVASCRIPT LOGIC -->
 
-<!-- Modal TikTok Manager (2 Cột Chuyên Nghiệp: Quản Lý & Danh Sách Trạng Thái) -->
-  <div id="tiktok-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-5">
-    <div class="bg-white rounded-2xl w-full max-w-6xl shadow-2xl flex flex-col overflow-hidden h-[90vh] max-h-[94vh] border border-slate-200">
-      
-      <!-- Modal Header -->
-      <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-sm shadow-sm">
-            <i class="fa-brands fa-tiktok"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-800 tracking-tight flex items-center gap-2">
-              Trung Tâm Quản Lý & Lên Lịch TikTok
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700">Tự động Cloud</span>
-            </h2>
-            <p class="text-[11px] text-slate-500">Cột trái: Cài đặt kênh & lịch đăng • Cột phải: Giám sát hàng đợi & trạng thái phát hành</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <button onclick="loadTikTokAccounts(); loadTikTokConfig(); loadScheduledCandidates();" class="text-xs text-violet-600 hover:text-violet-800 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 rounded-lg transition" title="Làm mới trạng thái">
-            <i class="fa-solid fa-rotate-right"></i> Làm mới
-          </button>
-          <button onclick="closeModal('tiktok-modal')" class="text-slate-400 hover:text-slate-600 transition p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-      </div>
-
-      <!-- Modal Body (2 CỘT CHUYÊN BIỆT) -->
-      <div class="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-0 bg-slate-50/50">
-        
-        <!-- CỘT TRÁI: QUẢN LÝ & CẤU HÌNH KÊNH (lg:col-span-5) -->
-        <div class="lg:col-span-5 border-r border-slate-200 overflow-y-auto custom-scrollbar p-5 space-y-4 bg-white flex flex-col justify-between">
-          <div class="space-y-4">
-            
-            <!-- 1. Trạng Thái 2 Kênh -->
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <i class="fa-brands fa-tiktok text-black"></i> 1. Trạng Thái 2 Kênh TikTok
-                </label>
-                <span class="text-[10px] text-slate-400">Luân phiên Chẵn / Lẻ</span>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <!-- Kênh Lẻ -->
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between gap-2">
-                  <div>
-                    <div class="flex items-center justify-between">
-                      <span class="font-bold text-slate-800 text-xs">Kênh Số Lẻ</span>
-                      <span class="px-1.5 py-0.2 text-[10px] font-bold bg-violet-100 text-violet-700 rounded">Tập 1, 3, 5...</span>
-                    </div>
-                    <div class="text-[11px] text-slate-500 mt-1" id="status-kenh_le">
-                      <span class="w-2 h-2 rounded-full bg-slate-400"></span> Đang kiểm tra...
-                    </div>
-                  </div>
-                  <button onclick="startLoginAccount('kenh_le')" class="w-full py-1 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-lg transition shadow-2xs flex items-center justify-center gap-1.5">
-                    <i class="fa-brands fa-google text-red-400"></i> Đăng nhập lại
-                  </button>
-                </div>
-
-                <!-- Kênh Chẵn -->
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between gap-2">
-                  <div>
-                    <div class="flex items-center justify-between">
-                      <span class="font-bold text-slate-800 text-xs">Kênh Số Chẵn</span>
-                      <span class="px-1.5 py-0.2 text-[10px] font-bold bg-blue-100 text-blue-700 rounded">Tập 2, 4, 6...</span>
-                    </div>
-                    <div class="text-[11px] text-slate-500 mt-1" id="status-kenh_chan">
-                      <span class="w-2 h-2 rounded-full bg-slate-400"></span> Đang kiểm tra...
-                    </div>
-                  </div>
-                  <button onclick="startLoginAccount('kenh_chan')" class="w-full py-1 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-lg transition shadow-2xs flex items-center justify-center gap-1.5">
-                    <i class="fa-brands fa-google text-red-400"></i> Đăng nhập lại
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. Cài Đặt Tần Suất & Khung Giờ Đăng -->
-            <div class="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-clock text-amber-600 text-sm"></i>
-                  <div>
-                    <label class="text-xs font-bold text-amber-950 uppercase tracking-wider block">2. Tần Suất & Giờ Đăng</label>
-                    <span class="text-[10px] text-amber-800">Tự động điều phối theo lịch</span>
-                  </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer" title="Bật/Tắt bộ hẹn giờ tự động">
-                  <input type="checkbox" id="tt-cfg-auto-schedule" class="sr-only peer" checked onchange="saveTikTokSettings()">
-                  <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
-
-              <!-- Tùy chỉnh số lượng & quota -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div class="p-2.5 bg-white rounded-lg border border-amber-200">
-                  <label class="text-[11px] font-bold text-slate-700 block mb-1">Số video / ngày (mỗi kênh):</label>
-                  <select id="tt-cfg-videos-per-day" onchange="onVideosPerDayChange()" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-800 focus:outline-none focus:border-amber-500">
-                    <option value="1">1 video / ngày / kênh (Tổng 2)</option>
-                    <option value="2">2 video / ngày / kênh (Tổng 4)</option>
-                    <option value="3" selected>3 video / ngày / kênh (Tổng 6 - Khuyên dùng)</option>
-                    <option value="4">4 video / ngày / kênh (Tổng 8)</option>
-                    <option value="5">5 video / ngày / kênh (Tổng 10)</option>
-                  </select>
-                </div>
-
-                <div class="p-2.5 bg-white rounded-lg border border-amber-200 flex flex-col justify-between">
-                  <span class="text-[11px] font-bold text-slate-700">Hôm nay đã đăng (Độc lập 2 kênh):</span>
-                  <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span id="tt-posted-le-badge" class="px-2 py-0.5 rounded-full font-bold text-[11px] bg-blue-100 text-blue-800">
-                      Lẻ: 0/3
-                    </span>
-                    <span id="tt-posted-chan-badge" class="px-2 py-0.5 rounded-full font-bold text-[11px] bg-purple-100 text-purple-800">
-                      Chẵn: 0/3
-                    </span>
-                    <span id="tt-posted-today-status" class="text-[10px] text-slate-500 font-medium ml-auto">
-                      (Độc lập)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Chỉnh sửa giờ đăng -->
-              <div class="p-2.5 bg-white rounded-lg border border-amber-200">
-                <div class="flex items-center justify-between mb-1">
-                  <label class="text-[11px] font-bold text-slate-700">Chỉnh sửa giờ đăng (Giờ:Phút):</label>
-                  <span class="text-[10px] text-slate-400">Cách nhau bằng dấu phẩy</span>
-                </div>
-                <input type="text" id="tt-cfg-schedule-times" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-800 focus:outline-none focus:border-amber-500" placeholder="12:00, 20:00">
-                <div class="flex items-center gap-1.5 mt-1.5 text-[10px] text-slate-500 flex-wrap">
-                  <span>Gợi ý:</span>
-                  <button type="button" onclick="setQuickTimes(['12:00', '20:00'])" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-medium">12:00, 20:00</button>
-                  <button type="button" onclick="setQuickTimes(['11:30', '19:30'])" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-medium">11:30, 19:30</button>
-                  <button type="button" onclick="setQuickTimes(['08:00', '12:00', '20:00'])" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-medium">3 cữ: 8h, 12h, 20h</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. Cấu hình Caption & Hashtags -->
-            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">3. Cấu hình Caption & Hashtags</label>
-              
-              <div>
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-[11px] font-bold text-slate-700">Mẫu Caption Đăng Bài:</span>
-                  <span class="text-[10px] text-slate-400">Biến: <strong class="text-violet-600 font-mono">{episode}</strong>, <strong class="text-violet-600 font-mono">{title}</strong></span>
-                </div>
-                <input type="text" id="tt-cfg-caption-template" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-violet-500 focus:outline-none font-medium" placeholder="Rái Cá Audio số : {episode}">
-              </div>
-
-              <div>
-                <span class="text-[11px] font-bold text-slate-700 block mb-1">Bộ Hashtags (tự động gắn sau Caption):</span>
-                <input type="text" id="tt-cfg-hashtags" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-violet-500 focus:outline-none" placeholder="#truyenhay #audiobook #xuhuong">
-              </div>
-              
-              <div class="flex items-center justify-between pt-1">
-                <span class="text-[11px] font-medium text-slate-600">Chế độ hiển thị:</span>
-                <select id="tt-cfg-visibility" class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500">
-                  <option value="0">🌍 Công khai (Public)</option>
-                  <option value="1">🔒 Riêng tư (Private)</option>
-                </select>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Nút Lưu Cài Đặt -->
-          <div class="pt-3 border-t border-slate-100">
-            <button onclick="saveTikTokSettings()" class="w-full py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition shadow-2xs flex items-center justify-center gap-2">
-              <i class="fa-solid fa-floppy-disk"></i> Lưu Tất Cả Cài Đặt
-            </button>
-          </div>
-        </div>
-
-        <!-- CỘT PHẢI: DANH SÁCH & TRẠNG THÁI VIDEO (lg:col-span-7) -->
-        <div class="lg:col-span-7 flex flex-col overflow-hidden bg-slate-50/80 p-5 min-h-0">
-          
-          <!-- Header Cột Phải & Nút Lên Lịch Toàn Bộ -->
-          <div class="flex items-center justify-between mb-3 shrink-0">
-            <div>
-              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-list-check text-violet-600"></i> Danh Sách & Trạng Thái TikTok
-              </h3>
-              <p class="text-[11px] text-slate-500">Xem kịch bản chờ đăng, kịch bản đã phát hành và lịch hẹn giờ</p>
-            </div>
-            <button onclick="startBulkScheduleTikTok()" class="px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 rounded-xl shadow-sm flex items-center gap-1.5 transition hover:scale-[1.02]" title="Tải lên và hẹn giờ toàn bộ video TikTok thẳng lên TikTok Cloud (Tắt máy vẫn đăng)">
-              <i class="fa-solid fa-calendar-check text-amber-300"></i> Lên Lịch Toàn Bộ Cloud
-            </button>
-          </div>
-
-          <!-- Sub Tabs chuyển đổi danh sách -->
-          <div class="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl mb-3 shrink-0">
-            <button onclick="setTikTokModalTab('queue')" id="tt-mtab-queue" class="flex-1 py-1.5 rounded-lg bg-white text-violet-700 font-bold text-xs shadow-2xs transition flex items-center justify-center gap-1.5">
-              <i class="fa-solid fa-clock text-amber-500"></i> Chờ Đăng (<span id="tt-modal-queue-tab-count">0</span>)
-            </button>
-            <button onclick="setTikTokModalTab('posted')" id="tt-mtab-posted" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:bg-white/60 font-semibold text-xs transition flex items-center justify-center gap-1.5">
-              <i class="fa-solid fa-circle-check text-emerald-500"></i> Đã Up Xong (<span id="tt-modal-posted-tab-count">0</span>)
-            </button>
-            <button onclick="setTikTokModalTab('all')" id="tt-mtab-all" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:bg-white/60 font-semibold text-xs transition flex items-center justify-center gap-1.5">
-              <i class="fa-solid fa-layer-group text-slate-500"></i> Tất Cả Video (<span id="tt-modal-all-tab-count">0</span>)
-            </button>
-          </div>
-
-          <!-- Vùng Cuộn Danh Sách (Cuộn độc lập, thoáng đãng) -->
-          <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0 space-y-2">
-            
-            <!-- Tab Content 1: Chờ Đăng -->
-            <div id="tt-mcontent-queue" class="space-y-2">
-              <div id="tt-scheduled-candidates" class="space-y-2">
-                <div class="text-center py-6 text-slate-400 text-xs flex items-center justify-center gap-2">
-                  <i class="fa-solid fa-spinner fa-spin text-violet-600"></i> Đang tải danh sách chờ...
-                </div>
-              </div>
-            </div>
-
-            <!-- Tab Content 2: Đã Up Xong -->
-            <div id="tt-mcontent-posted" class="hidden space-y-2">
-              <div id="tt-posted-candidates" class="space-y-2">
-                <div class="text-center py-6 text-slate-400 text-xs">Đang tải danh sách đã đăng...</div>
-              </div>
-            </div>
-
-            <!-- Tab Content 3: Tất Cả Video -->
-            <div id="tt-mcontent-all" class="hidden space-y-2">
-              <div id="tt-all-candidates" class="space-y-2">
-                <div class="text-center py-6 text-slate-400 text-xs">Đang tải tất cả video TikTok...</div>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Sub Footer thống kê nhanh của cột phải -->
-          <div class="pt-2.5 mt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-            <span id="tt-queue-count" class="font-bold text-violet-700">0 video đang chờ</span>
-            <span class="text-slate-400">Bấm "Lên Lịch" để đẩy lên máy chủ TikTok và hẹn giờ</span>
-          </div>
-
-        </div>
-
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="px-6 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500 shrink-0">
-        <div class="flex items-center gap-3">
-          <span class="flex items-center gap-1 font-medium text-slate-600"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Luân phiên Chẵn/Lẻ</span>
-          <span class="text-slate-300">•</span>
-          <span class="flex items-center gap-1 font-medium text-slate-600"><i class="fa-solid fa-cloud-arrow-up text-violet-600 text-xs"></i> Lên Lịch Cloud: Tắt máy tính vẫn tự đăng</span>
-        </div>
-        <button onclick="closeModal('tiktok-modal')" class="px-4 py-1.5 text-xs font-semibold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg transition">Đóng</button>
-      </div>
-    </div>
-  </div>
 
 <script>
     let projectsData = [];
@@ -1544,12 +1276,11 @@
       const rawCount = projectsData.filter(p => p.status === '0_ban_tho').length;
       const needAudio = projectsData.filter(p => p.status !== '0_ban_tho' && !p.audio_path).length;
       const needTikTok = projectsData.filter(p => p.status !== '0_ban_tho' && !p.video_tiktok_path).length;
-      const waitingTikTok = projectsData.filter(p => !p.tiktok_posted && !!p.video_tiktok_path).length;
+      const hasTikTok = projectsData.filter(p => !!p.video_tiktok_path).length;
       const hasThumb = projectsData.filter(p => p.has_thumbnail === 1 || !!p.thumbnail_path).length;
       const noThumb = total - hasThumb;
       const postedYT = projectsData.filter(p => p.is_published === 1 || !!p.video_youtube_path).length;
-      const postedTikTok = projectsData.filter(p => p.tiktok_posted === 1).length;
-      const notPosted = projectsData.filter(p => p.is_published !== 1 && p.tiktok_posted !== 1).length;
+      const notPosted = projectsData.filter(p => p.is_published !== 1).length;
 
       const setEl = (id, val) => {
         const el = document.getElementById(id);
@@ -1558,19 +1289,17 @@
 
       setEl('stat-total', total);
       setEl('stat-need-audio', needAudio);
-      setEl('stat-waiting-tiktok', waitingTikTok);
-      setEl('stat-need-capcut', needTikTok);
-      setEl('stat-done-tiktok', postedTikTok);
+      setEl('stat-need-tiktok', needTikTok);
+      setEl('stat-has-tiktok', hasTikTok);
 
       setEl('cnt-all', total);
       setEl('cnt-raw', rawCount);
       setEl('cnt-need_audio', needAudio);
       setEl('cnt-need_tiktok', needTikTok);
-      setEl('cnt-waiting_tiktok', waitingTikTok);
+      setEl('cnt-has_tiktok', hasTikTok);
       setEl('cnt-has_thumb', hasThumb);
       setEl('cnt-no_thumb', noThumb);
       setEl('cnt-posted_yt', postedYT);
-      setEl('cnt-posted_tiktok', postedTikTok);
       setEl('cnt-not_posted', notPosted);
     }
 
@@ -1597,12 +1326,11 @@
         if (currentFilter === 'raw') return p.status === '0_ban_tho';
         if (currentFilter === 'need_audio') return p.status !== '0_ban_tho' && !p.audio_path;
         if (currentFilter === 'need_tiktok') return p.status !== '0_ban_tho' && !p.video_tiktok_path;
-        if (currentFilter === 'waiting_tiktok') return !p.tiktok_posted && !!p.video_tiktok_path;
+        if (currentFilter === 'has_tiktok') return !!p.video_tiktok_path;
         if (currentFilter === 'has_thumb') return p.has_thumbnail === 1 || !!p.thumbnail_path;
         if (currentFilter === 'no_thumb') return p.has_thumbnail !== 1 && !p.thumbnail_path;
         if (currentFilter === 'posted_yt') return p.is_published === 1 || !!p.video_youtube_path;
-        if (currentFilter === 'posted_tiktok') return p.tiktok_posted === 1;
-        if (currentFilter === 'not_posted') return p.is_published !== 1 && p.tiktok_posted !== 1;
+        if (currentFilter === 'not_posted') return p.is_published !== 1;
         return true;
       });
     }
@@ -1731,17 +1459,13 @@
 
           <!-- 6. Trạng Thái TikTok (9:16) -->
           <td class="p-3 align-middle text-center">
-            ${isPosted ? `
-              <button onclick="toggleTikTokPosted('${p.id}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition shadow-2xs cursor-pointer" title="Đã đăng TikTok lúc ${p.tiktok_posted_at || ''}. BẤM ĐỂ ĐỔI LẠI THÀNH ĐANG CHỜ UP!">
-                <i class="fa-brands fa-tiktok text-emerald-600"></i> Đã Up (${p.tiktok_account === 'kenh_chan' ? 'Chẵn' : 'Lẻ'}) ✓
-              </button>
-            ` : (hasTikTokVideo ? `
-              <button onclick="toggleTikTokPosted('${p.id}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition shadow-2xs cursor-pointer" title="Sẵn sàng chờ đến 12h hoặc 20h để đăng. Bấm để chuyển thành Đã Up">
-                <i class="fa-solid fa-clock text-amber-600"></i> Chờ Lịch
+            ${hasTikTokVideo ? `
+              <button onclick="openProjectFile('${p.id}', 'tiktok')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs cursor-pointer" title="Đã có video dọc 9:16. Bấm để mở trong Explorer">
+                <i class="fa-brands fa-tiktok text-rose-600"></i> Sẵn sàng 9:16
               </button>
             ` : `
-              <button onclick="toggleTikTokPosted('${p.id}')" class="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition" title="Bấm để đánh dấu Đã Up TikTok">—</button>
-            `)}
+              <span class="px-2 py-0.5 rounded text-[11px] text-slate-300">—</span>
+            `}
           </td>
 
           <!-- 6. Hành Động Thông Minh -->
@@ -1751,11 +1475,9 @@
                 <button onclick="dispatchSingleToClaude('${p.id}')" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-2xs transition">
                   Chạy Claude
                 </button>
-              ` : (isPosted ? `
-                <span class="px-2.5 py-1 text-xs font-semibold text-slate-400 bg-slate-100 rounded-lg">✓ Hoàn tất</span>
               ` : (hasTikTokVideo ? `
-                <button onclick="triggerUploadTikTok('${p.id}')" class="px-3 py-1.5 bg-black hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 transition">
-                  <i class="fa-brands fa-tiktok text-white"></i> Up Ngay
+                <button onclick="openProjectFile('${p.id}', 'tiktok')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 transition" title="Xem video dọc 9:16 trong Explorer">
+                  <i class="fa-brands fa-tiktok text-rose-600"></i> Xem 9:16
                 </button>
               ` : (hasYouTubeVideo ? `
                 <button onclick="convertToTikTokFast('${p.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 transition" title="Tự động trích xuất 15 phút đầu sang TikTok 9:16">
@@ -3131,7 +2853,7 @@ async function batchAutoRenderQueue() {
     }
 
     function openModal(id) {
-      ['new-script-modal', 'view-script-modal', 'tiktok-modal', 'chrome-modal', 'health-modal', 'logs-modal', 'affiliate-modal', 'skill-library-modal'].forEach(mId => {
+      ['new-script-modal', 'view-script-modal', 'chrome-modal', 'health-modal', 'logs-modal', 'affiliate-modal', 'skill-library-modal'].forEach(mId => {
         if (mId !== id && !(id === 'skill-library-modal' && mId === 'chrome-modal')) closeModal(mId);
       });
       const target = document.getElementById(id);
@@ -4204,522 +3926,23 @@ async function batchAutoRenderQueue() {
     setInterval(fetchActivityLogs, 3000);
     setInterval(fetchQueueStatus, 2500);
   
-    // --- TIKTOK MANAGER SERVICE & HELPERS ---
-    async function openTikTokModal() {
-      openModal('tiktok-modal');
-      loadTikTokAccounts();
-      loadTikTokConfig();
-      loadScheduledCandidates();
-    }
-
-    async function loadTikTokAccounts() {
-      const listEl = document.getElementById('tiktok-accounts-list');
-      const stLe = document.getElementById('status-kenh_le');
-      const stChan = document.getElementById('status-kenh_chan');
-      
-      if (listEl) listEl.innerHTML = '<div class="text-center py-2 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Đang kiểm tra...</div>';
-      
+    // --- ONEDRIVE SYNC HELPER ---
+    async function syncToOneDrive() {
+      showToast("⏳ Đang đồng bộ video TikTok 9:16 sang thư mục OneDrive...", "info");
       try {
-        const res = await fetch('/api/tiktok/accounts');
-        const data = await res.json();
-        const accounts = (data.success && data.accounts) ? data.accounts : [];
-        
-        const hasLe = accounts.includes('kenh_le');
-        const hasChan = accounts.includes('kenh_chan');
-        
-        if (stLe) {
-          stLe.innerHTML = hasLe 
-            ? '<span class="inline-flex items-center gap-1 text-emerald-600 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Đã kết nối sẵn sàng</span>'
-            : '<span class="inline-flex items-center gap-1 text-amber-600 font-medium"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Chưa kết nối (Bấm Đăng nhập)</span>';
-        }
-        
-        if (stChan) {
-          stChan.innerHTML = hasChan 
-            ? '<span class="inline-flex items-center gap-1 text-emerald-600 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Đã kết nối sẵn sàng</span>'
-            : '<span class="inline-flex items-center gap-1 text-amber-600 font-medium"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Chưa kết nối (Bấm Đăng nhập)</span>';
-        }
-
-        if (listEl) {
-          if (accounts.length > 0) {
-            listEl.innerHTML = '';
-            accounts.forEach(acc => {
-              const div = document.createElement('div');
-              div.className = 'flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs';
-              div.innerHTML = `
-                <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-circle-check text-emerald-500"></i>
-                  <span class="font-bold text-slate-700">${acc}</span>
-                </div>
-                <span class="text-[10px] font-bold text-slate-400">Cookies Saved</span>
-              `;
-              listEl.appendChild(div);
-            });
-          } else {
-            listEl.innerHTML = '<div class="text-center py-2 text-slate-400 text-xs">Chưa có tài khoản nào được lưu.</div>';
-          }
-        }
-      } catch (err) {
-        if (listEl) listEl.innerHTML = '<div class="text-center py-2 text-rose-500 text-xs">Lỗi kết nối Server!</div>';
-      }
-    }
-
-    async function startLoginAccount(name) {
-      try {
-        const res = await fetch('/api/tiktok/login', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({account_name: name})
-        });
+        const res = await fetch('/api/sync-onedrive', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          alert('Cửa sổ Google Chrome đang mở lên!\n\n1. Hãy chọn "Tiếp tục với Google" trên màn hình TikTok.\n2. Đăng nhập tài khoản Google của bạn.\n3. Sau khi vào TikTok thành công, hệ thống sẽ tự động lưu và đóng cửa sổ.');
-          setTimeout(loadTikTokAccounts, 10000);
+          showToast(`🎉 Đồng bộ hoàn tất! Lẻ: ${data.copied_le || 0}, Chẵn: ${data.copied_chan || 0}, Bỏ qua: ${data.skipped || 0} (${data.total_mb || 0} MB)`, "success");
         } else {
-          alert('Lỗi: ' + (data.detail || data.error));
-        }
-      } catch(err) {
-        alert('Lỗi kết nối Server!');
-      }
-    }
-
-    function onVideosPerDayChange() {
-      const vpd = parseInt(document.getElementById('tt-cfg-videos-per-day')?.value || '2');
-      const timeInput = document.getElementById('tt-cfg-schedule-times');
-      if (!timeInput) return;
-      if (vpd === 1) timeInput.value = '12:00';
-      else if (vpd === 2) timeInput.value = '12:00, 20:00';
-      else if (vpd === 3) timeInput.value = '08:00, 12:00, 20:00';
-      else if (vpd === 4) timeInput.value = '08:00, 12:00, 17:00, 20:00';
-      else if (vpd === 5) timeInput.value = '08:00, 11:30, 14:30, 17:30, 20:30';
-      saveTikTokSettings();
-    }
-
-    function setQuickTimes(arr) {
-      const timeInput = document.getElementById('tt-cfg-schedule-times');
-      const vpdSelect = document.getElementById('tt-cfg-videos-per-day');
-      if (timeInput) timeInput.value = arr.join(', ');
-      if (vpdSelect) vpdSelect.value = String(arr.length);
-      saveTikTokSettings();
-    }
-
-    async function loadTikTokConfig() {
-      try {
-        const res = await fetch('/api/tiktok/config');
-        const data = await res.json();
-        if (data.success && data.config) {
-          const cfg = data.config;
-          const tplInput = document.getElementById('tt-cfg-caption-template');
-          const hInput = document.getElementById('tt-cfg-hashtags');
-          const vSel = document.getElementById('tt-cfg-visibility');
-          const schedCb = document.getElementById('tt-cfg-auto-schedule');
-          const vpdSelect = document.getElementById('tt-cfg-videos-per-day');
-          const timesInput = document.getElementById('tt-cfg-schedule-times');
-
-          if (tplInput) tplInput.value = cfg.caption_template || 'Rái Cá Audio số : {episode}';
-          if (hInput) hInput.value = (cfg.hashtags !== undefined) ? cfg.hashtags : '#truyenhay #audiobook #xuhuong';
-          if (vSel) vSel.value = String(cfg.visibility !== undefined ? cfg.visibility : 0);
-          if (schedCb) schedCb.checked = Boolean(cfg.auto_schedule_enabled);
-          if (vpdSelect) vpdSelect.value = String(cfg.videos_per_day || 2);
-          if (timesInput) timesInput.value = (cfg.schedule_times || ['12:00', '20:00']).join(', ');
-
-          // Cập nhật bộ đếm đã đăng hôm nay (độc lập 2 kênh)
-          const postedTodayLe = cfg.posted_today_le !== undefined ? cfg.posted_today_le : (cfg.posted_today || 0);
-          const postedTodayChan = cfg.posted_today_chan !== undefined ? cfg.posted_today_chan : 0;
-          const vpd = cfg.videos_per_day || 3;
-          const badgeLeEl = document.getElementById('tt-posted-le-badge');
-          const badgeChanEl = document.getElementById('tt-posted-chan-badge');
-          const statusEl = document.getElementById('tt-posted-today-status');
-
-          if (badgeLeEl) {
-            badgeLeEl.innerText = `Lẻ: ${postedTodayLe}/${vpd}`;
-            badgeLeEl.className = postedTodayLe >= vpd 
-              ? 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-emerald-100 text-emerald-800' 
-              : 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-blue-100 text-blue-800';
-          }
-          if (badgeChanEl) {
-            badgeChanEl.innerText = `Chẵn: ${postedTodayChan}/${vpd}`;
-            badgeChanEl.className = postedTodayChan >= vpd 
-              ? 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-emerald-100 text-emerald-800' 
-              : 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-purple-100 text-purple-800';
-          }
-          if (statusEl) {
-            if (postedTodayLe >= vpd && postedTodayChan >= vpd) {
-              statusEl.innerText = `(✓ Cả 2 kênh đủ chỉ tiêu)`;
-            } else {
-              statusEl.innerText = `(Lẻ còn ${Math.max(0, vpd - postedTodayLe)}, Chẵn còn ${Math.max(0, vpd - postedTodayChan)})`;
-            }
-          }
+          showToast("❌ Lỗi đồng bộ: " + (data.detail || data.error), "error");
         }
       } catch (e) {
-        console.error("Lỗi tải config tiktok:", e);
-      }
-      loadScheduledCandidates();
-    }
-
-    async function saveTikTokSettings() {
-      const caption_template = document.getElementById('tt-cfg-caption-template')?.value.trim() || 'Rái Cá Audio số : {episode}';
-      const hashtags = document.getElementById('tt-cfg-hashtags')?.value.trim() || '';
-      const visibility = parseInt(document.getElementById('tt-cfg-visibility')?.value || '0');
-      const auto_schedule_enabled = document.getElementById('tt-cfg-auto-schedule')?.checked;
-      const videos_per_day = parseInt(document.getElementById('tt-cfg-videos-per-day')?.value || '2');
-      const timesStr = document.getElementById('tt-cfg-schedule-times')?.value.trim() || '12:00, 20:00';
-      const schedule_times = timesStr.split(',').map(s => s.trim()).filter(Boolean);
-
-      try {
-        const res = await fetch('/api/tiktok/config', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            caption_template: caption_template,
-            hashtags: hashtags,
-            visibility: visibility,
-            auto_schedule_enabled: auto_schedule_enabled,
-            videos_per_day: videos_per_day,
-            schedule_times: schedule_times
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast("Đã lưu tần suất & lịch TikTok!", "success");
-          loadScheduledCandidates();
-        } else {
-          showToast("Lỗi lưu cấu hình", "error");
-        }
-      } catch (e) {
-        showToast("Lỗi kết nối máy chủ", "error");
+        showToast("❌ Lỗi kết nối khi đồng bộ OneDrive", "error");
       }
     }
 
-    let currentTikTokModalTab = 'queue';
-    function setTikTokModalTab(tab) {
-      currentTikTokModalTab = tab;
-      ['queue', 'posted', 'all'].forEach(t => {
-        const btn = document.getElementById(`tt-mtab-${t}`);
-        const content = document.getElementById(`tt-mcontent-${t}`);
-        if (btn) {
-          if (t === tab) {
-            btn.className = "flex-1 py-1.5 rounded-lg bg-white text-violet-700 font-bold text-xs shadow-2xs transition flex items-center justify-center gap-1.5";
-          } else {
-            btn.className = "flex-1 py-1.5 rounded-lg text-slate-600 hover:bg-white/60 font-semibold text-xs transition flex items-center justify-center gap-1.5";
-          }
-        }
-        if (content) {
-          if (t === tab) content.classList.remove('hidden');
-          else content.classList.add('hidden');
-        }
-      });
-    }
 
-    async function loadScheduledCandidates() {
-      const box = document.getElementById('tt-scheduled-candidates');
-      const postedBox = document.getElementById('tt-posted-candidates');
-      const allBox = document.getElementById('tt-all-candidates');
-      const countEl = document.getElementById('tt-queue-count');
-      const tabQueueCountEl = document.getElementById('tt-modal-queue-tab-count');
-      const tabPostedCountEl = document.getElementById('tt-modal-posted-tab-count');
-      const tabAllCountEl = document.getElementById('tt-modal-all-tab-count');
-      if (!box) return;
-
-      try {
-        const res = await fetch('/api/tiktok/scheduled-queue');
-        const data = await res.json();
-        const list = (data.success && data.candidates) ? data.candidates : [];
-        if (countEl) countEl.innerText = `${list.length} video đang chờ`;
-        if (tabQueueCountEl) tabQueueCountEl.innerText = list.length;
-
-        // 1. RENDER HÀNG ĐỢI CHỜ ĐĂNG
-        if (list.length > 0) {
-          box.innerHTML = '';
-          list.forEach(c => {
-            const div = document.createElement('div');
-            div.id = `cand-${c.id}`;
-            div.className = 'p-3 bg-white border border-slate-200 rounded-xl text-xs hover:border-violet-300 hover:shadow-xs transition flex items-center justify-between gap-3';
-            const slotDisplay = c.scheduled_slot ? c.scheduled_slot.display : '';
-            const delaySec = c.scheduled_slot ? c.scheduled_slot.delay_seconds : 0;
-
-            div.innerHTML = `
-              <div class="flex flex-col gap-1 min-w-0 flex-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-bold text-violet-700 font-mono text-sm">${c.id}</span>
-                  <span class="font-bold text-slate-900">${c.episode !== null && c.episode !== undefined ? 'TẬP ' + c.episode : 'Chưa cấp tập'}</span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${c.account === 'kenh_chan' ? 'bg-blue-100 text-blue-800' : 'bg-violet-100 text-violet-800'}">
-                    ${c.account_label}
-                  </span>
-                  ${slotDisplay ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300/60 flex items-center gap-1 shadow-2xs"><i class="fa-regular fa-clock text-[9px]"></i> ${slotDisplay}</span>` : ''}
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">⏳ Chờ Lịch</span>
-                </div>
-                <div class="text-[11px] text-slate-600 truncate" title="${c.caption || c.title}">
-                  💬 <strong>${c.caption || c.title}</strong>
-                </div>
-              </div>
-              <div class="shrink-0 flex items-center gap-1.5">
-                ${slotDisplay ? `
-                  <button onclick="triggerScheduleSingle('${c.id}', ${delaySec}, '${slotDisplay}')" class="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-2xs flex items-center gap-1.5 transition hover:scale-[1.02]" title="Lên lịch đăng tự động vào ${slotDisplay}">
-                    <i class="fa-solid fa-calendar-check text-[11px]"></i> Lên Lịch
-                  </button>
-                ` : ''}
-                <button onclick="triggerUploadTikTok('${c.id}')" class="px-3 py-1.5 rounded-lg bg-black hover:bg-slate-800 text-white text-xs font-bold shadow-2xs flex items-center gap-1.5 transition hover:scale-[1.02]" title="Đăng ngay bây giờ">
-                  <i class="fa-brands fa-tiktok text-white text-[11px]"></i> Up Ngay
-                </button>
-              </div>
-            `;
-            box.appendChild(div);
-          });
-        } else {
-          box.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">🎉 Không có video nào đang chờ trong hàng đợi. Tất cả đã được đăng hoặc chưa tạo video TikTok!</div>';
-        }
-
-        // 2. RENDER DANH SÁCH ĐÃ ĐĂNG THÀNH CÔNG
-        const postedList = projectsData.filter(p => p.tiktok_posted === 1);
-        if (tabPostedCountEl) tabPostedCountEl.innerText = postedList.length;
-        if (tabAllCountEl) tabAllCountEl.innerText = list.length + postedList.length;
-
-        if (postedBox) {
-          if (postedList.length > 0) {
-            postedBox.innerHTML = '';
-            postedList.forEach(p => {
-              const div = document.createElement('div');
-              div.className = 'p-3 bg-emerald-50/40 border border-emerald-200 rounded-xl text-xs flex items-center justify-between gap-3 hover:bg-emerald-50/80 transition';
-              div.innerHTML = `
-                <div class="flex flex-col gap-1 min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-bold text-emerald-800 font-mono text-sm">${p.id}</span>
-                    <span class="font-bold text-slate-900">${p.ytb_episode !== null && p.ytb_episode !== undefined ? 'TẬP ' + p.ytb_episode : 'Tập -'}</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.tiktok_account === 'kenh_chan' ? 'bg-blue-100 text-blue-800' : 'bg-violet-100 text-violet-800'}">
-                      ${p.tiktok_account === 'kenh_chan' ? 'Kênh Số Chẵn' : 'Kênh Số Lẻ'}
-                    </span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                      <i class="fa-solid fa-check text-[9px]"></i> Đã Đăng Thành Công
-                    </span>
-                  </div>
-                  <div class="text-[11px] text-slate-600 truncate">
-                    💬 <strong>${p.title}</strong>
-                  </div>
-                  <div class="text-[10px] text-slate-400">
-                    🕒 Đã đăng lúc: <strong>${p.tiktok_posted_at || 'Vừa xong'}</strong>
-                  </div>
-                </div>
-                <div class="shrink-0">
-                  <button onclick="toggleTikTokPosted('${p.id}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-500 bg-white border border-slate-200 hover:bg-slate-100 transition" title="Bấm để chuyển trạng thái về Chờ Up nếu cần đăng lại">
-                    Hoàn tác
-                  </button>
-                </div>
-              `;
-              postedBox.appendChild(div);
-            });
-          } else {
-            postedBox.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">Chưa có video nào đăng thành công. Hãy bấm "Up Ngay" hoặc "Lên Lịch" để bắt đầu!</div>';
-          }
-        }
-
-        // 3. RENDER TẤT CẢ VIDEO TIKTOK (chờ + đã đăng)
-        if (allBox) {
-          const allTikTok = projectsData.filter(p => !!p.video_tiktok_path || p.tiktok_posted === 1);
-          if (allTikTok.length > 0) {
-            allBox.innerHTML = '';
-            allTikTok.forEach(p => {
-              const isDone = p.tiktok_posted === 1;
-              const div = document.createElement('div');
-              div.className = `p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${isDone ? 'bg-emerald-50/30 border-emerald-200' : 'bg-white border-slate-200'}`;
-              div.innerHTML = `
-                <div class="flex flex-col gap-1 min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-bold font-mono text-sm ${isDone ? 'text-emerald-700' : 'text-violet-700'}">${p.id}</span>
-                    <span class="font-bold text-slate-900">${p.ytb_episode !== null && p.ytb_episode !== undefined ? 'TẬP ' + p.ytb_episode : 'Tập -'}</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                      ${isDone ? '✓ Đã Đăng' : '⏳ Chờ Lịch'}
-                    </span>
-                  </div>
-                  <div class="text-[11px] text-slate-600 truncate">
-                    💬 <strong>${p.title}</strong>
-                  </div>
-                </div>
-                <div class="shrink-0">
-                  ${isDone ? `
-                    <span class="text-xs font-bold text-emerald-600 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Hoàn tất</span>
-                  ` : `
-                    <button onclick="triggerUploadTikTok('${p.id}')" class="px-2.5 py-1 rounded bg-black hover:bg-slate-800 text-white text-[11px] font-bold transition">Up Ngay</button>
-                  `}
-                </div>
-              `;
-              allBox.appendChild(div);
-            });
-          } else {
-            allBox.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">Chưa có video TikTok nào.</div>';
-          }
-        }
-
-      } catch (e) {
-        box.innerHTML = '<div class="text-center py-4 text-rose-500 text-xs">Lỗi tải danh sách chờ!</div>';
-      }
-    }
-
-    // Helper: Xóa lập tức phần tử kịch bản khỏi giao diện hàng đợi & cập nhật bảng
-    function optimisticallyRemoveCandidate(id) {
-      const candEl = document.getElementById(`cand-${id}`);
-      if (candEl) {
-        candEl.style.transition = 'all 0.3s ease';
-        candEl.style.opacity = '0';
-        candEl.style.transform = 'translateX(20px)';
-        setTimeout(() => {
-          candEl.remove();
-          const remaining = document.querySelectorAll('#tt-scheduled-candidates > div[id^="cand-"]').length;
-          const countEl = document.getElementById('tt-queue-count');
-          const tabQueueCountEl = document.getElementById('tt-modal-queue-tab-count');
-          if (countEl) countEl.innerText = `${remaining} video đang chờ`;
-          if (tabQueueCountEl) tabQueueCountEl.innerText = remaining;
-          if (remaining === 0) {
-            const box = document.getElementById('tt-scheduled-candidates');
-            if (box) box.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">🎉 Không có video nào đang chờ trong hàng đợi.</div>';
-          }
-        }, 300);
-      }
-      // Cập nhật trạng thái tức thì trong dữ liệu bảng chính
-      const proj = projectsData.find(p => p.id === id);
-      if (proj) {
-        proj.tiktok_posted = 1;
-        proj.tiktok_posted_at = new Date().toISOString();
-        updateKPICounters();
-        renderTable();
-      }
-    }
-
-    async function triggerUploadTikTok(id) {
-      if (!confirm(`Bạn có chắc muốn đăng video TikTok cho [${id}] ngay bây giờ?`)) return;
-      showToast(`🚀 Đang tải [${id}] lên TikTok... Đã đưa ra khỏi hàng đợi!`, "info");
-      
-      // Biến mất khỏi hàng đợi ngay lập tức trên UI
-      optimisticallyRemoveCandidate(id);
-
-      try {
-        const res = await fetch(`/api/projects/${id}/upload-tiktok`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({})
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`✅ Đã đăng thành công [${id}] lên ${data.result.account === 'kenh_chan' ? 'Kênh Chẵn' : 'Kênh Lẻ'}!`, "success");
-          fetchProjects();
-          loadScheduledCandidates();
-        } else {
-          showToast(`❌ Lỗi đăng bài [${id}]: ${data.detail || data.error}`, "error");
-          // Hoàn tác đồng bộ lại nếu lỗi
-          fetchProjects();
-          loadScheduledCandidates();
-        }
-      } catch (e) {
-        showToast(`❌ Lỗi kết nối khi upload [${id}]!`, "error");
-        fetchProjects();
-        loadScheduledCandidates();
-      }
-    }
-
-    async function triggerScheduleSingle(id, delaySec, displayTime) {
-      if (!delaySec) return triggerUploadTikTok(id);
-      if (!confirm(`Bạn muốn LÊN LỊCH ĐĂNG cho [${id}] vào lúc:\n👉 ${displayTime}?\n\nVideo sẽ được tải lên máy chủ TikTok và tự động phát hành đúng giờ. Bạn có thể tắt máy tính hoàn toàn!`)) return;
-      showToast(`⏳ Đang đẩy và lên lịch cho [${id}] (${displayTime})... Đã đưa ra khỏi hàng đợi!`, "info");
-      
-      // Biến mất khỏi hàng đợi ngay lập tức trên UI
-      optimisticallyRemoveCandidate(id);
-
-      try {
-        const res = await fetch(`/api/projects/${id}/upload-tiktok`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ schedule_seconds: delaySec })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`🎉 Đã lên lịch thành công [${id}] vào ${displayTime}!`, "success");
-          fetchProjects();
-          loadScheduledCandidates();
-        } else {
-          showToast(`❌ Lỗi lên lịch [${id}]: ${data.detail || data.error}`, "error");
-          fetchProjects();
-          loadScheduledCandidates();
-        }
-      } catch (e) {
-        showToast(`❌ Lỗi kết nối khi lên lịch [${id}]!`, "error");
-        fetchProjects();
-        loadScheduledCandidates();
-      }
-    }
-
-    async function startBulkScheduleTikTok() {
-      if (!confirm("⚡ BẠN MUỐN LÊN LỊCH HÀNG LOẠT LÊN TIKTOK CLOUD?\n\n1. Hệ thống sẽ tải các video trong hàng đợi lên máy chủ TikTok.\n2. Tự động hẹn giờ phát hành theo đúng tần suất và các khung giờ bạn đã cài đặt.\n3. Sau khi lên lịch xong, bạn có thể TẮT MÁY TÍNH HOÀN TOÀN, TikTok sẽ tự phát hành đúng giờ!\n\nBấm OK để bắt đầu.")) return;
-
-      showToast("Đang tải và lên lịch các video lên TikTok Cloud... Vui lòng đợi trong giây lát!", "info");
-      const box = document.getElementById('tt-scheduled-candidates');
-      if (box) {
-        box.innerHTML = '<div class="text-center py-4 text-violet-600 text-xs font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải và lên lịch các video lên TikTok Cloud...</div>';
-      }
-      try {
-        const res = await fetch('/api/tiktok/bulk-schedule', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({})
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`🎉 Đã lên lịch thành công ${data.total} video lên TikTok Cloud! Bạn có thể tắt máy tính.`, "success");
-          fetchProjects();
-          loadScheduledCandidates();
-        } else {
-          showToast(`Lỗi lên lịch: ${data.detail || data.message || data.error}`, "error");
-          loadScheduledCandidates();
-        }
-      } catch (e) {
-        showToast("Lỗi kết nối máy chủ!", "error");
-        loadScheduledCandidates();
-      }
-    }
-
-    async function batchScheduleTikTokSelected() {
-      if (selectedIds.size === 0) return showToast("Vui lòng tích chọn ít nhất 1 kịch bản", "warning");
-
-      // Lọc các kịch bản đã chọn có video TikTok và chưa đăng
-      const validIds = [];
-      projectsData.forEach(p => {
-        if (selectedIds.has(p.id) && !p.tiktok_posted && p.video_tiktok_path) {
-          validIds.push(p.id);
-        }
-      });
-
-      if (validIds.length === 0) {
-        return alert("Trong các kịch bản bạn đã chọn, chưa có kịch bản nào có video TikTok dọc (9:16) hoặc tất cả đã được đăng rồi!\n\nVui lòng bấm 'Tạo TikTok (15p)' trước hoặc chọn kịch bản khác.");
-      }
-
-      if (!confirm(`⚡ LÊN LỊCH TIKTOK CLOUD CHO ${validIds.length} VIDEO ĐÃ CHỌN?\n\n- Danh sách: [${validIds.join(', ')}]\n- Hệ thống sẽ tải lên máy chủ TikTok và tự động hẹn giờ theo khung giờ cài đặt.\n- Sau khi hoàn tất, bạn có thể TẮT MÁY TÍNH HOÀN TOÀN, TikTok sẽ tự phát hành đúng giờ!\n\nBấm OK để bắt đầu.`)) return;
-
-      showToast(`Đang đẩy và lên lịch cho ${validIds.length} video lên TikTok Cloud... Vui lòng đợi!`, "info");
-      
-      // Xóa ngay khỏi hàng đợi và bàn giao trạng thái tức thì
-      validIds.forEach(id => optimisticallyRemoveCandidate(id));
-      deselectAll();
-
-      try {
-        const res = await fetch('/api/tiktok/bulk-schedule', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ project_ids: validIds })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`🎉 Đã lên lịch thành công ${data.total} video lên TikTok Cloud! Bạn có thể tắt máy tính.`, "success");
-          fetchProjects();
-          loadScheduledCandidates();
-        } else {
-          showToast(`Lỗi lên lịch: ${data.detail || data.message || data.error}`, "error");
-          fetchProjects();
-          loadScheduledCandidates();
-        }
-      } catch (e) {
-        showToast("Lỗi kết nối máy chủ!", "error");
-        fetchProjects();
-        loadScheduledCandidates();
-      }
-    }
 
     async function autoAssignEpisode(id) {
       try {

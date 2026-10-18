@@ -38,11 +38,6 @@ async def startup_event():
         import task_logger
         task_logger.add_log("system", "Hệ thống Web Dashboard đã khởi động thành công", "info")
         vs_ready = voicestudio_service.ensure_voicestudio_running()
-        try:
-            import tiktok_service
-            tiktok_service.start_scheduler()
-        except Exception as e:
-            print(f"[TikTok] Không thể khởi động bộ hẹn giờ: {e}")
         if vs_ready:
             task_logger.add_log("system", "VoiceStudio API Server (Port 3900) đã sẵn sàng", "success")
         else:
@@ -1312,141 +1307,37 @@ async def auto_assign_project_episode(project_id: str):
     database.update_project(project_id, ytb_episode=next_ep)
     return {"success": True, "episode": next_ep}
 
-# --- TIKTOK MANAGER API ---
-TIKTOK_DIR = r"E:\myProject\atp_tt" if os.path.exists(r"E:\myProject\atp_tt") else r"D:\myProject\atp_tt"
-TIKTOK_CLI_PATH = os.path.join(TIKTOK_DIR, ".venv", "Scripts", "python.exe")
-TIKTOK_SCRIPT_PATH = os.path.join(TIKTOK_DIR, "cli.py")
-
-@app.post("/api/tiktok/login")
-def tiktok_login(payload: dict = Body(...)):
-    account_name = payload.get("account_name", "kenh_le")
-    if not account_name or not account_name.strip():
-        account_name = "kenh_le"
-    account_name = account_name.strip()
-    bat_path = os.path.join(BASE_DIR, "tools", "launch_tiktok_login.bat")
+# --- ONEDRIVE SYNC & WORKER APIS ---
+@app.post("/api/sync-onedrive")
+def sync_onedrive_api():
+    """Đồng bộ các video TikTok 9:16 sang thư mục OneDrive để atp_tt tự đăng"""
     try:
-        subprocess.Popen(
-            f'start "DANG NHAP TIKTOK" cmd.exe /c "{bat_path}" {account_name}',
-            shell=True,
-            cwd=BASE_DIR
-        )
-        return {"success": True, "message": f"Đang mở Google Chrome để đăng nhập kênh: {account_name}"}
+        import sync_tiktok_to_onedrive
+        res = sync_tiktok_to_onedrive.sync_videos()
+        return res or {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/tiktok/accounts")
-def tiktok_accounts():
-    accounts = []
-    # 1. Quét trực tiếp từ thư mục chuẩn của autotok (~/.autotok/accounts/*.json)
-    acc_dir = os.path.join(os.path.expanduser("~"), ".autotok", "accounts")
-    if os.path.exists(acc_dir):
-        for f in os.listdir(acc_dir):
-            if f.endswith(".json"):
-                accounts.append(f[:-5])
-    if accounts:
-        return {"success": True, "accounts": sorted(accounts)}
-
-    # 2. Fallback sang CLI nếu có
-    if os.path.exists(TIKTOK_CLI_PATH) and os.path.exists(TIKTOK_SCRIPT_PATH):
-        try:
-            res = subprocess.run([
-                TIKTOK_CLI_PATH,
-                TIKTOK_SCRIPT_PATH,
-                "show",
-                "-u"
-            ], cwd=TIKTOK_DIR, capture_output=True, text=True, encoding="utf-8")
-            lines = res.stdout.strip().split('\n')
-            for line in lines:
-                line = line.strip()
-                if line and not line.startswith("No saved accounts") and not line.startswith("usage:"):
-                    acc = line.split()[0]
-                    if acc and acc not in accounts:
-                        accounts.append(acc)
-            return {"success": True, "accounts": sorted(accounts)}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-    return {"success": True, "accounts": accounts}
-
-@app.get("/api/tiktok/config")
-def get_tiktok_config_api():
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    cfg = tiktok_service.get_tiktok_config()
-    cfg["posted_today"] = tiktok_service.count_posted_today()
-    return {"success": True, "config": cfg}
-
-@app.post("/api/tiktok/config")
-def save_tiktok_config_api(payload: dict = Body(...)):
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    new_cfg = tiktok_service.save_tiktok_config(payload)
-    return {"success": True, "config": new_cfg}
-
-@app.get("/api/tiktok/scheduled-queue")
-def get_tiktok_scheduled_queue_api():
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    candidates = tiktok_service.get_next_scheduled_candidates()
-    return {"success": True, "candidates": candidates}
-
-@app.post("/api/projects/{project_id}/upload-tiktok")
-def upload_project_tiktok_api(project_id: str, payload: Optional[dict] = Body(None)):
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    account = payload.get("account") if payload else None
-    caption = payload.get("caption") if payload else None
-    visibility = payload.get("visibility") if payload else None
-    schedule_seconds = payload.get("schedule_seconds") if payload else None
-    try:
-        res = tiktok_service.upload_project_tiktok(
-            project_id=project_id,
-            account=account,
-            caption=caption,
-            visibility=visibility,
-            schedule_seconds=schedule_seconds
-        )
-        return {"success": True, "result": res}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/tiktok/bulk-schedule")
-def bulk_schedule_tiktok_api(payload: Optional[dict] = Body(None)):
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    limit = payload.get("limit") if payload else None
-    project_ids = payload.get("project_ids") if payload else None
-    try:
-        res = tiktok_service.bulk_schedule_tiktok(limit=limit, project_ids=project_ids)
-        return res
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ==================== ATP_TT WORKER ENDPOINTS ====================
 @app.get("/api/worker/health")
 def worker_health():
     return {"status": "ok", "app": "quanly_tt", "version": "1.0.0"}
 
 @app.get("/api/worker/queue")
 def worker_queue():
-    """Trả về danh sách video sẵn sàng đăng cho worker atp_tt tải về"""
-    import tiktok_service, importlib
-    importlib.reload(tiktok_service)
-    candidates = tiktok_service.get_next_scheduled_candidates()
-    
+    """Trả về danh sách video 9:16 sẵn sàng cho worker tải về nếu kết nối qua LAN"""
+    projs = database.get_all_projects()
     queue_data = []
-    for c in candidates:
-        slot = c.get("scheduled_slot")
-        sched_time_str = ""
-        if slot and "date_str" in slot and "time_str" in slot:
-            sched_time_str = f"{slot['date_str']} {slot['time_str']}"
-        
-        queue_data.append({
-            "project_id": c["id"],
-            "title": c.get("title", ""),
-            "channel": c.get("account", "kenh_le"),
-            "caption": c.get("caption", ""),
-            "scheduled_time": sched_time_str
-        })
+    for p in projs:
+        if p.get("video_tiktok_path") and not p.get("tiktok_posted"):
+            ep = p.get("ytb_episode") or 1
+            ch = "kenh_chan" if ep % 2 == 0 else "kenh_le"
+            queue_data.append({
+                "project_id": p["id"],
+                "title": p.get("title", ""),
+                "channel": ch,
+                "caption": p.get("title", ""),
+                "scheduled_time": ""
+            })
     return {"success": True, "queue": queue_data}
 
 @app.get("/api/worker/video/{project_id}")

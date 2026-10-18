@@ -79,12 +79,12 @@
   "profile_skills": {
     "Default": {
       "name": "Chrome của bạn",
-      "prompt1": "/kichban-audio-bancungphong",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 1": {
       "name": "Công việc",
-      "prompt1": "/kichban-audio-hoakhoi",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 10": {
@@ -109,29 +109,13 @@
     },
     "Profile 7": {
       "name": "hoa khôi",
-      "prompt1": "/kichban-audio-bancungphong",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 9": {
       "name": "hoa khôi",
-      "prompt1": "/kichban-audio-bancungphong",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     }
-  },
-  "tiktok_config": {
-    "hashtags": "#truyenhay #audiobook #xuhuong",
-    "auto_schedule_enabled": true,
-    "schedule_hours": [
-      12,
-      20
-    ],
-    "visibility": 0,
-    "caption_template": "Rái Cá Audio số : {episode}",
-    "videos_per_day": 3,
-    "schedule_times": [
-      "08:00",
-      "12:00",
-      "20:00"
-    ]
   }
 }
