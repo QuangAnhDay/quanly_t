@@ -91,11 +91,7 @@
           <i class="fa-solid fa-sliders text-violet-600"></i> Quản Lý Nền Tảng
         </span>
 
-        <!-- Đồng Bộ TikTok Sang OneDrive (Đăng qua atp_tt) -->
-        <button onclick="syncToOneDrive()" class="w-full text-left px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition hover:scale-[1.01]" title="Tự động đồng bộ các video TikTok 9:16 sang thư mục OneDrive để atp_tt tự đăng">
-          <span class="flex items-center gap-2"><i class="fa-brands fa-microsoft text-white"></i> Đồng Bộ OneDrive</span>
-          <span class="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-bold">TikTok 9:16</span>
-        </button>
+
 
         <!-- Profile Claude & Tampermonkey -->
         <button onclick="openChromeModal()" class="w-full text-left px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-between transition">
@@ -3926,21 +3922,7 @@ async function batchAutoRenderQueue() {
     setInterval(fetchActivityLogs, 3000);
     setInterval(fetchQueueStatus, 2500);
   
-    // --- ONEDRIVE SYNC HELPER ---
-    async function syncToOneDrive() {
-      showToast("⏳ Đang đồng bộ video TikTok 9:16 sang thư mục OneDrive...", "info");
-      try {
-        const res = await fetch('/api/sync-onedrive', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`🎉 Đồng bộ hoàn tất! Lẻ: ${data.copied_le || 0}, Chẵn: ${data.copied_chan || 0}, Bỏ qua: ${data.skipped || 0} (${data.total_mb || 0} MB)`, "success");
-        } else {
-          showToast("❌ Lỗi đồng bộ: " + (data.detail || data.error), "error");
-        }
-      } catch (e) {
-        showToast("❌ Lỗi kết nối khi đồng bộ OneDrive", "error");
-      }
-    }
+
 
 
 

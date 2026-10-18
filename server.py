@@ -1307,16 +1307,7 @@ async def auto_assign_project_episode(project_id: str):
     database.update_project(project_id, ytb_episode=next_ep)
     return {"success": True, "episode": next_ep}
 
-# --- ONEDRIVE SYNC & WORKER APIS ---
-@app.post("/api/sync-onedrive")
-def sync_onedrive_api():
-    """Đồng bộ các video TikTok 9:16 sang thư mục OneDrive để atp_tt tự đăng"""
-    try:
-        import sync_tiktok_to_onedrive
-        res = sync_tiktok_to_onedrive.sync_videos()
-        return res or {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# --- WORKER APIS ---
 
 @app.get("/api/worker/health")
 def worker_health():
