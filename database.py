@@ -1,6 +1,8 @@
 import sqlite3
 import os
 import re
+import shutil
+import glob
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 
@@ -8,10 +10,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DB_DIR, "truyen.db")
 OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
+TIKTOK_READY_DIR = os.path.join(OUTPUTS_DIR, "tiktok_ready")
+YOUTUBE_DIR = os.path.join(OUTPUTS_DIR, "youtube")
+ARCHIVES_DIR = os.path.join(OUTPUTS_DIR, "archives")
 
 def init_db():
     os.makedirs(DB_DIR, exist_ok=True)
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
+    os.makedirs(TIKTOK_READY_DIR, exist_ok=True)
+    os.makedirs(YOUTUBE_DIR, exist_ok=True)
+    os.makedirs(ARCHIVES_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -95,10 +103,47 @@ def get_next_kb_id() -> str:
     return f"KB{max_num + 1:03d}"
 
 def get_package_dir(kb_id: str) -> str:
-    """Tạo và trả về đường dẫn thư mục trọn gói cho kịch bản outputs/KBxxx/"""
-    pkg_dir = os.path.join(OUTPUTS_DIR, kb_id)
+    """Tạo và trả về đường dẫn thư mục gói cho YouTube outputs/youtube/KBxxx/"""
+    pkg_dir = os.path.join(YOUTUBE_DIR, kb_id)
     os.makedirs(pkg_dir, exist_ok=True)
     return pkg_dir
+
+def get_archive_dir(kb_id: str) -> str:
+    """Tạo và trả về đường dẫn thư mục lưu trữ tài nguyên thô outputs/archives/KBxxx/"""
+    arch_dir = os.path.join(ARCHIVES_DIR, kb_id)
+    os.makedirs(arch_dir, exist_ok=True)
+    return arch_dir
+
+def sync_tiktok_episode_file(project_id: str, episode: Optional[int] = None) -> Optional[str]:
+    """
+    Đồng bộ file text chứa số tập cho video TikTok trong outputs/tiktok_ready/
+    - Nếu có video TikTok và có số tập hợp lệ: Ghi/ghi đè file [tên_video].txt với nội dung là số tập.
+    - Nếu số tập là None hoặc rỗng: Xóa file .txt tương ứng nếu có để bot TikTok không quét nhầm.
+    """
+    os.makedirs(TIKTOK_READY_DIR, exist_ok=True)
+    tt_base = None
+    for f in os.listdir(TIKTOK_READY_DIR):
+        fl = f.lower()
+        if fl.startswith(project_id.lower()) and fl.endswith(('.mp4', '.mov', '.mkv')):
+            tt_base = os.path.splitext(f)[0]
+            break
+            
+    if not tt_base:
+        tt_base = f"{project_id}_tiktok"
+        
+    txt_path = os.path.join(TIKTOK_READY_DIR, f"{tt_base}.txt")
+    
+    if episode is not None and str(episode).strip():
+        with open(txt_path, "w", encoding="utf-8") as tf:
+            tf.write(str(episode).strip())
+        return txt_path
+    else:
+        if os.path.exists(txt_path):
+            try:
+                os.remove(txt_path)
+            except Exception:
+                pass
+        return None
 
 def create_project(
     title: str,
@@ -115,8 +160,9 @@ def create_project(
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     pkg_dir = get_package_dir(kb_id)
 
-    # Lưu file text kịch bản trực tiếp vào gói outputs/KBxxx/KBxxx_script.txt
-    pkg_script_file = os.path.join(pkg_dir, f"{kb_id}_script.txt")
+    # Lưu file text kịch bản vào thư mục lưu trữ outputs/archives/KBxxx/
+    arch_dir = get_archive_dir(kb_id)
+    pkg_script_file = os.path.join(arch_dir, f"{kb_id}_script.txt")
     with open(pkg_script_file, "w", encoding="utf-8") as f:
         f.write(f"Tiêu đề: {title}\n")
         f.write(f"Mã kịch bản: {kb_id}\n")
@@ -289,19 +335,36 @@ CAPCUT_DRAFT_ROOT = os.path.expandvars(r"%LOCALAPPDATA%\CapCut\User Data\Project
 def clean_project_files(project_id: str):
     """
     Xóa sạch toàn bộ dữ liệu của kịch bản:
-    - Gói thư mục duy nhất outputs/KBxxx/
+    - Thư mục YouTube outputs/youtube/KBxxx/
+    - Video & file text TikTok trong outputs/tiktok_ready/
+    - Thư mục lưu trữ outputs/archives/KBxxx/
+    - Thư mục legacy outputs/KBxxx/ nếu còn
     - Draft dự án trong CapCut PC
     """
     if not project_id:
         return
     
-    # 1. Xóa gói outputs/KBxxx/
-    pkg_dir = os.path.join(OUTPUTS_DIR, project_id)
-    if os.path.exists(pkg_dir):
-        try:
-            shutil.rmtree(pkg_dir, ignore_errors=True)
-        except Exception as e:
-            print(f"[Delete] Lỗi xóa thư mục {pkg_dir}: {e}")
+    for folder in [
+        os.path.join(YOUTUBE_DIR, project_id),
+        os.path.join(ARCHIVES_DIR, project_id),
+        os.path.join(OUTPUTS_DIR, project_id)
+    ]:
+        if os.path.exists(folder):
+            try:
+                shutil.rmtree(folder, ignore_errors=True)
+            except Exception as e:
+                print(f"[Delete] Lỗi xóa thư mục {folder}: {e}")
+
+    # Xóa file video & txt trong tiktok_ready
+    if os.path.exists(TIKTOK_READY_DIR):
+        for f in os.listdir(TIKTOK_READY_DIR):
+            if f.startswith(project_id):
+                fp = os.path.join(TIKTOK_READY_DIR, f)
+                try:
+                    if os.path.isfile(fp):
+                        os.remove(fp)
+                except Exception:
+                    pass
 
     # 2. Xóa Dự án Draft trong CapCut PC nếu có
     if os.path.exists(CAPCUT_DRAFT_ROOT):
@@ -342,46 +405,68 @@ def batch_delete(project_ids: List[str]) -> int:
 
 def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
     """
-    Quét thực tế duy nhất gói outputs/KBxxx và đồng bộ chuẩn xác trạng thái trong DB
+    Đồng bộ chính xác trạng thái file thực tế trong:
+    - outputs/youtube/KBxxx (Video YouTube & Thumbnail)
+    - outputs/tiktok_ready (Video TikTok & Text file số tập)
+    - outputs/archives/KBxxx (Voice Audio & Script)
     """
     p = get_project(pid)
     if not p:
         return None
     
-    pkg_dir = os.path.join(OUTPUTS_DIR, pid)
+    yt_dir = os.path.join(YOUTUBE_DIR, pid)
+    arch_dir = os.path.join(ARCHIVES_DIR, pid)
+    legacy_dir = os.path.join(OUTPUTS_DIR, pid)
     
     found_audio = None
     found_tt = None
     found_yt = None
     found_th = None
     
-    if os.path.exists(pkg_dir):
-        for f in os.listdir(pkg_dir):
-            fn_lower = f.lower()
-            full_p = os.path.join(pkg_dir, f)
-            if os.path.isdir(full_p):
+    # 1. Quét YouTube folder
+    if os.path.exists(yt_dir):
+        for f in os.listdir(yt_dir):
+            fl = f.lower()
+            fp = os.path.join(yt_dir, f)
+            if os.path.isdir(fp):
                 continue
+            if fl.endswith((".png", ".jpg", ".jpeg", ".webp")) and not found_th:
+                found_th = fp
+            elif fl.endswith((".mp4", ".mov", ".mkv")) and not found_yt:
+                found_yt = fp
                 
-            # 1. Voice Audio
-            if fn_lower.endswith((".wav", ".mp3", ".m4a")):
-                if not found_audio:
-                    found_audio = full_p
-                    
-            # 2. Video
-            elif fn_lower.endswith((".mp4", ".mov", ".mkv")):
-                if "tiktok" in fn_lower or "doc" in fn_lower:
-                    found_tt = full_p
-                elif "youtube" in fn_lower or "ngang" in fn_lower or "yt" in fn_lower:
-                    found_yt = full_p
-                else:
-                    # Nếu file mp4 chung chưa phân loại, mặc định coi là video YouTube (16:9)
-                    if not found_yt:
-                        found_yt = full_p
-                        
-            # 3. Thumbnail
-            elif fn_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
-                if not found_th:
-                    found_th = full_p
+    # 2. Quét TikTok video trong tiktok_ready
+    if os.path.exists(TIKTOK_READY_DIR):
+        for f in os.listdir(TIKTOK_READY_DIR):
+            fl = f.lower()
+            if fl.startswith(pid.lower()) and fl.endswith((".mp4", ".mov", ".mkv")):
+                found_tt = os.path.join(TIKTOK_READY_DIR, f)
+                break
+                
+    # 3. Quét Audio trong archives
+    if os.path.exists(arch_dir):
+        for f in os.listdir(arch_dir):
+            fl = f.lower()
+            fp = os.path.join(arch_dir, f)
+            if fl.endswith((".wav", ".mp3", ".m4a")) and not found_audio:
+                found_audio = fp
+                
+    # Fallback legacy folder nếu chưa migrate
+    if os.path.exists(legacy_dir) and os.path.isdir(legacy_dir):
+        for f in os.listdir(legacy_dir):
+            fl = f.lower()
+            fp = os.path.join(legacy_dir, f)
+            if os.path.isdir(fp):
+                continue
+            if fl.endswith((".wav", ".mp3", ".m4a")) and not found_audio:
+                found_audio = fp
+            elif fl.endswith((".mp4", ".mov", ".mkv")):
+                if ("tiktok" in fl or "doc" in fl) and not found_tt:
+                    found_tt = fp
+                elif not found_yt:
+                    found_yt = fp
+            elif fl.endswith((".png", ".jpg", ".jpeg", ".webp")) and not found_th:
+                found_th = fp
 
     updates = {}
     if p.get("audio_path") != found_audio:
@@ -402,6 +487,8 @@ def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
         updates["has_thumbnail"] = has_thumb_val
         updates["thumbnail_path"] = found_th
 
+    updates["package_dir"] = yt_dir
+
     # Cập nhật status logic
     current_status = p.get("status", "1_cho_duyet")
     new_status = current_status
@@ -417,6 +504,11 @@ def sync_project_files(pid: str) -> Optional[Dict[str, Any]]:
             
     if new_status != current_status:
         updates["status"] = new_status
+
+    # Tự động đồng bộ số tập vào file text TikTok nếu có video TikTok và có số tập
+    ep = p.get("ytb_episode")
+    if found_tt and ep is not None:
+        sync_tiktok_episode_file(pid, ep)
 
     if updates:
         return update_project(pid, **updates)

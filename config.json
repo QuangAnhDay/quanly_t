@@ -99,22 +99,22 @@
     },
     "Profile 4": {
       "name": "ban cung phong",
-      "prompt1": "/kichban-audio-bancungphong",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 5": {
       "name": "hoa khôi",
-      "prompt1": "/kichban-audio-bancungphong",
+      "prompt1": "/kichban-audio-chiem",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 7": {
       "name": "hoa khôi",
-      "prompt1": "/kichban-audio-chiem",
+      "prompt1": "/kichban-audio-hoakhoi",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     },
     "Profile 9": {
       "name": "hoa khôi",
-      "prompt1": "/kichban-audio-chiem",
+      "prompt1": "/kichban-audio-hoakhoi",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     }
   }

@@ -178,8 +178,17 @@
         <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
           <i class="fa-regular fa-folder-open text-amber-500"></i> Thư Mục Nhanh
         </span>
+        <button onclick="openFolder('tiktok_ready')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 flex items-center gap-2 transition font-semibold border border-emerald-200" title="Kho video & file text số tập sẵn sàng copy sang máy B">
+          <i class="fa-brands fa-tiktok text-slate-800 text-xs"></i> Kho TikTok Ready (Máy B)
+        </button>
+        <button onclick="openFolder('youtube')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-red-700 bg-red-50 hover:bg-red-100 flex items-center gap-2 transition font-medium border border-red-200" title="Kho kịch bản YouTube (Chỉ có Thumb & Video 16:9)">
+          <i class="fa-brands fa-youtube text-red-600 text-xs"></i> Kho YouTube (Thumb & Video)
+        </button>
         <button onclick="openFolder('outputs')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
-          <i class="fa-solid fa-box-archive text-amber-500 text-xs"></i> Gói outputs/ (Kịch bản)
+          <i class="fa-solid fa-box-archive text-amber-500 text-xs"></i> Gói outputs/ (Thư mục gốc)
+        </button>
+        <button onclick="syncAllTikTokEpisodes()" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium" title="Rà soát & đồng bộ toàn bộ file text số tập cho các video trong tiktok_ready">
+          <i class="fa-solid fa-arrows-rotate text-blue-500 text-xs"></i> Đồng bộ Text Tập TikTok
         </button>
         <button onclick="openFolder('thumb_assets')" class="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition font-medium">
           <i class="fa-solid fa-images text-amber-500 text-xs"></i> Kho Ảnh Thumb (thumb_assets/)
@@ -1956,6 +1965,16 @@ async function batchAutoRenderQueue() {
         });
       } catch (e) {
         console.error(e);
+      }
+    }
+
+        async function syncAllTikTokEpisodes() {
+      try {
+        const res = await fetch('/api/tiktok/sync-all', { method: 'POST' });
+        const data = await res.json();
+        showToast(`Đã đồng bộ ${data.synced_count} file text số tập vào kho tiktok_ready!`, "success");
+      } catch (e) {
+        showToast("Lỗi đồng bộ file text TikTok", "error");
       }
     }
 

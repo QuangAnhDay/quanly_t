@@ -1127,7 +1127,7 @@ async def generate_thumb_api(project_id: str, payload: ThumbGenPayload):
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
-    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    pkg_dir = database.get_package_dir(project_id)
     os.makedirs(pkg_dir, exist_ok=True)
     pkg_thumb_path = os.path.join(pkg_dir, f"{project_id}_thumb.jpg")
 
@@ -1170,8 +1170,8 @@ async def stream_thumb(project_id: str):
 
 @app.post("/api/projects/{project_id}/open-package")
 async def open_package_folder(project_id: str):
-    """Mở đúng thư mục gói outputs/KBxxx của kịch bản trong Windows Explorer"""
-    pkg_dir = os.path.join(BASE_DIR, "outputs", project_id)
+    """Mở đúng thư mục gói outputs/youtube/KBxxx của kịch bản trong Windows Explorer"""
+    pkg_dir = database.get_package_dir(project_id)
     os.makedirs(pkg_dir, exist_ok=True)
     subprocess.Popen(f'explorer "{pkg_dir}"')
     return {"success": True, "opened": pkg_dir}
@@ -1196,6 +1196,9 @@ async def open_folder(folder_name: str = Body(..., embed=True)):
     valid_folders = {
         "root": BASE_DIR,
         "outputs": os.path.join(BASE_DIR, "outputs"),
+        "tiktok_ready": database.TIKTOK_READY_DIR,
+        "youtube": database.YOUTUBE_DIR,
+        "archives": database.ARCHIVES_DIR,
         "thumb_assets": os.path.join(BASE_DIR, "thumb_assets"),
         "backgrounds": os.path.join(BASE_DIR, "backgrounds"),
         "bg_nau_an_doc": os.path.join(BASE_DIR, "backgrounds", "nau_an", "doc"),
@@ -1232,7 +1235,7 @@ async def launch_chrome_profiles():
 async def open_project_file(payload: OpenProjectFilePayload):
     """Mở trực tiếp thư mục hoặc file mp4 của Project trong Explorer mà không bị lỗi slash"""
     p = database.get_project(payload.project_id)
-    proj_dir = os.path.normpath(os.path.join(BASE_DIR, "outputs", payload.project_id))
+    proj_dir = database.get_package_dir(payload.project_id)
     os.makedirs(proj_dir, exist_ok=True)
     
     file_to_select = None
@@ -1240,6 +1243,7 @@ async def open_project_file(payload: OpenProjectFilePayload):
         candidates = [
             p.get("video_youtube_path") if p else None,
             p.get("video_path") if p else None,
+            os.path.join(proj_dir, f"{payload.project_id}_youtube.mp4"),
             os.path.join(proj_dir, "video_youtube.mp4"),
             os.path.join(proj_dir, f"{payload.project_id}.mp4")
         ]
@@ -1250,6 +1254,7 @@ async def open_project_file(payload: OpenProjectFilePayload):
     elif payload.file_type == "tiktok":
         candidates = [
             p.get("video_tiktok_path") if p else None,
+            os.path.join(database.TIKTOK_READY_DIR, f"{payload.project_id}_tiktok.mp4"),
             os.path.join(proj_dir, "video_tiktok.mp4"),
             os.path.join(proj_dir, f"{payload.project_id}_tiktok.mp4")
         ]
@@ -1258,8 +1263,10 @@ async def open_project_file(payload: OpenProjectFilePayload):
                 file_to_select = os.path.normpath(c)
                 break
     elif payload.file_type == "audio":
+        arch_dir = database.get_archive_dir(payload.project_id)
         candidates = [
             p.get("audio_path") if p else None,
+            os.path.join(arch_dir, f"{payload.project_id}_voice.mp3"),
             os.path.join(proj_dir, "audio.mp3"),
             os.path.join(proj_dir, f"{payload.project_id}.mp3")
         ]
@@ -1275,11 +1282,12 @@ async def open_project_file(payload: OpenProjectFilePayload):
         except Exception:
             pass
     
+    target_dir = database.TIKTOK_READY_DIR if payload.file_type == "tiktok" else proj_dir
     try:
-        os.startfile(proj_dir)
+        os.startfile(target_dir)
     except Exception:
-        subprocess.Popen(f'explorer "{proj_dir}"', shell=True)
-    return {"success": True, "opened": proj_dir}
+        subprocess.Popen(f'explorer "{target_dir}"', shell=True)
+    return {"success": True, "opened": target_dir}
 
 @app.post("/api/projects/{project_id}/episode")
 async def set_project_episode(project_id: str, payload: EpisodePayload):
@@ -1287,6 +1295,7 @@ async def set_project_episode(project_id: str, payload: EpisodePayload):
     if not proj:
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     database.update_project(project_id, ytb_episode=payload.episode)
+    database.sync_tiktok_episode_file(project_id, payload.episode)
     return {"success": True, "episode": payload.episode}
 
 @app.post("/api/projects/{project_id}/auto-episode")
@@ -1305,6 +1314,7 @@ async def auto_assign_project_episode(project_id: str):
                 pass
     next_ep = max_ep + 1
     database.update_project(project_id, ytb_episode=next_ep)
+    database.sync_tiktok_episode_file(project_id, next_ep)
     return {"success": True, "episode": next_ep}
 
 # --- WORKER APIS ---
@@ -1373,6 +1383,19 @@ def worker_confirm_posted(project_id: str, payload: dict = Body(...)):
     )
     return {"success": True, "project_id": project_id, "status": "confirmed"}
 
+
+@app.post("/api/tiktok/sync-all")
+async def sync_all_tiktok_episodes():
+    """Quét và đồng bộ toàn bộ file text số tập cho các video trong kho tiktok_ready"""
+    all_projects = database.get_all_projects()
+    count = 0
+    for p in all_projects:
+        ep = p.get("ytb_episode")
+        if ep is not None:
+            res = database.sync_tiktok_episode_file(p["id"], ep)
+            if res:
+                count += 1
+    return {"success": True, "synced_count": count}
 
 if __name__ == "__main__":
     import uvicorn

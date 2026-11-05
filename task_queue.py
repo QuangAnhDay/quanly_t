@@ -125,8 +125,8 @@ def _process_audio_task(task: Dict[str, Any]):
     if not proj.get("content"):
         raise ValueError(f"Kịch bản {project_id} chưa có nội dung văn bản")
         
-    pkg_dir = database.get_package_dir(project_id)
-    pkg_audio_path = os.path.join(pkg_dir, f"{project_id}_voice.mp3")
+    arch_dir = database.get_archive_dir(project_id)
+    pkg_audio_path = os.path.join(arch_dir, f"{project_id}_voice.mp3")
     
     voice_used = payload.get("voice") or proj.get("voice") or "vi-VN-HoaiMyNeural"
     rate = payload.get("rate") or proj.get("rate") or "+0%"
@@ -249,8 +249,7 @@ def _process_tiktok_task(task: Dict[str, Any]):
     if not src_video or not os.path.exists(src_video):
         raise ValueError(f"Chưa có video ngang (YouTube) để chuyển đổi cho [{project_id}]")
         
-    pkg_dir = database.get_package_dir(project_id)
-    out_tiktok_path = os.path.join(pkg_dir, f"{project_id}_tiktok.mp4")
+    out_tiktok_path = os.path.join(database.TIKTOK_READY_DIR, f"{project_id}_tiktok.mp4")
     
     task["message"] = "Đang chuyển đổi video 16:9 sang 9:16 TikTok (Cinematic Blur)..."
     task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Đang chuyển đổi TikTok 9:16 cho [{project_id}]...", "info", project_id)
@@ -263,7 +262,12 @@ def _process_tiktok_task(task: Dict[str, Any]):
         status="5_hoan_thanh"
     )
     
-    task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Đã tạo xong video TikTok 9:16 cho [{project_id}]!", "success", project_id)
+    # Đồng bộ số tập sang file .txt ngay sau khi render xong TikTok
+    ep = proj.get("ytb_episode")
+    if ep is not None:
+        database.sync_tiktok_episode_file(project_id, ep)
+        
+    task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Đã tạo xong video TikTok 9:16 vào kho tiktok_ready cho [{project_id}]!", "success", project_id)
     return {"video_tiktok_path": out_tiktok_path}
 
 def _process_split_parts_task(task: Dict[str, Any]):
@@ -310,9 +314,11 @@ def _process_auto_render_task(task: Dict[str, Any]):
     theme = payload.get("theme", "nau_an")
     aspect_ratio = payload.get("aspect_ratio", "16:9")
     
-    pkg_dir = database.get_package_dir(project_id)
-    filename = f"{project_id}_youtube.mp4" if aspect_ratio == "16:9" else f"{project_id}_tiktok.mp4"
-    out_path = os.path.join(pkg_dir, filename)
+    if aspect_ratio == "16:9":
+        pkg_dir = database.get_package_dir(project_id)
+        out_path = os.path.join(pkg_dir, f"{project_id}_youtube.mp4")
+    else:
+        out_path = os.path.join(database.TIKTOK_READY_DIR, f"{project_id}_tiktok.mp4")
     
     task["message"] = f"Đang tự động render video MP4 ({aspect_ratio})..."
     task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đang tự động render video MP4 cho [{project_id}] ({aspect_ratio})...", "info", project_id)
@@ -329,6 +335,9 @@ def _process_auto_render_task(task: Dict[str, Any]):
         database.update_project(project_id, video_youtube_path=rendered_path, video_path=rendered_path, status="5_hoan_thanh")
     else:
         database.update_project(project_id, video_tiktok_path=rendered_path, status="5_hoan_thanh")
+        ep = proj.get("ytb_episode")
+        if ep is not None:
+            database.sync_tiktok_episode_file(project_id, ep)
         
     task_logger.add_log("capcut", f"🎬 [Hàng Đợi] Đã tự động xuất xong Video MP4 cho [{project_id}]!", "success", project_id)
 
