@@ -73,6 +73,9 @@ def init_db():
         ("tiktok_posted_at", "TEXT"),
         ("tiktok_account", "TEXT"),
         ("tiktok_video_id", "TEXT"),
+        ("genre", "TEXT"),
+        ("target_skill", "TEXT"),
+        ("tiktok_full_duration", "INTEGER DEFAULT 0"),
     ]
     
     for col_name, col_type in migrations:
@@ -145,6 +148,51 @@ def sync_tiktok_episode_file(project_id: str, episode: Optional[int] = None) -> 
                 pass
         return None
 
+
+def detect_story_genre_and_skill(text: str) -> tuple:
+    """Tự động nhận diện thể loại và Skill tương ứng từ nội dung kịch bản"""
+    if not text:
+        return "chung", "/kichban-audio-bancungphong"
+        
+    # 1. Quét thẻ metadata nếu có: [THE_LOAI: xxx | SKILL: yyy]
+    m_tag = re.search(r'\[(?:THE_LOAI|GENRE):?\s*([^|\]]+)(?:\|\s*SKILL:?\s*([^\]]+))?\]', text, re.IGNORECASE)
+    if m_tag:
+        g = m_tag.group(1).strip()
+        s = m_tag.group(2).strip() if m_tag.group(2) else ""
+        if s:
+            return g, s
+        skill_map = {
+            "bancungphong": "/kichban-audio-bancungphong",
+            "chi_em": "/kichban-audio-chiem",
+            "hoakhoi": "/kichban-audio-hoakhoi",
+            "hoc_duong": "/kichban-audio-hoakhoi",
+            "giadinh_vochong": "/kichban-audio-giadinh-vochong",
+            "hohang": "/kichban-audio-hohang",
+            "congso": "/kichban-audio-congso",
+            "nu_chinh": "/kichban-nu-chinh",
+            "drama": "/drama"
+        }
+        return g, skill_map.get(g, "/kichban-audio-bancungphong")
+
+    # 2. Quét từ khóa tự động
+    t_low = text.lower()
+    if any(k in t_low for k in ["bạn cùng phòng", "ký túc xá", "ktx", "giường tầng", "bạn chung phòng"]):
+        return "bancungphong", "/kichban-audio-bancungphong"
+    if any(k in t_low for k in ["chị họ", "chị em", "em gái", "chị gái", "mẹ thiên vị", "bà ngoại", "hồi môn", "nhường em"]):
+        return "chi_em", "/kichban-audio-chiem"
+    if any(k in t_low for k in ["họ hàng", "dì hai", "bác cả", "chú thím", "tiệc cưới", "bánh hỷ"]):
+        return "hohang", "/kichban-audio-hohang"
+    if any(k in t_low for k in ["hoa khôi", "lớp trưởng", "học bổng", "đề thi", "bảo tống", "học sinh giỏi", "cao khảo"]):
+        return "hoakhoi", "/kichban-audio-hoakhoi"
+    if any(k in t_low for k in ["chồng", "mẹ chồng", "ly hôn", "ngoại tình", "tiểu tam", "sếp lớn", "kết hôn chớp nhoáng"]):
+        return "giadinh_vochong", "/kichban-audio-giadinh-vochong"
+    if any(k in t_low for k in ["công sở", "đồng nghiệp", "thực tập sinh", "sếp", "bản vẽ", "sa thải", "dự án"]):
+        return "congso", "/kichban-audio-congso"
+    if any(k in t_low for k in ["đòi quà", "chia tay", "đào mỏ", "sao kê", "văn phòng", "tàn dư"]):
+        return "nu_chinh", "/kichban-nu-chinh"
+        
+    return "chung", "/kichban-audio-bancungphong"
+
 def create_project(
     title: str,
     content: str,
@@ -153,7 +201,10 @@ def create_project(
     notes: str = "",
     raw_content: str = "",
     thumb_prompt: str = "",
-    theme: str = "nau_an"
+    theme: str = "nau_an",
+    genre: str = "",
+    target_skill: str = "",
+    tiktok_full_duration: int = 0
 ) -> Dict[str, Any]:
     init_db()
     kb_id = get_next_kb_id()
@@ -180,26 +231,42 @@ def create_project(
         id, title, content, raw_content, thumb_prompt, status, voice, rate, pitch, 
         audio_path, video_path, video_tiktok_path, video_youtube_path,
         capcut_draft_tiktok, capcut_draft_youtube, has_thumbnail, thumbnail_path,
-        package_dir, created_at, updated_at, notes, is_published, theme, bg_theme
+        package_dir, created_at, updated_at, notes, is_published, theme, bg_theme,
+        genre, target_skill, tiktok_full_duration
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0, ?, ?)
-    """, (kb_id, title, content, raw_content, thumb_prompt, status, voice, pkg_dir, now, now, notes, theme, theme))
+    VALUES (?, ?, ?, ?, ?, ?, ?, '+0%', '+0Hz', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+    """, (kb_id, title, content, raw_content, thumb_prompt, status, voice, pkg_dir, now, now, notes, theme, theme, genre, target_skill, tiktok_full_duration))
     conn.commit()
     conn.close()
 
     return get_project(kb_id)
 
-def create_raw_project(raw_content: str, title: Optional[str] = None, notes: str = "", theme: str = "nau_an") -> Dict[str, Any]:
-    """Tạo một kịch bản thô (chờ AI hoàn thiện)"""
+def create_raw_project(
+    raw_content: str,
+    title: Optional[str] = None,
+    notes: str = "",
+    theme: str = "nau_an",
+    genre: Optional[str] = None,
+    target_skill: Optional[str] = None,
+    tiktok_full_duration: int = 0
+) -> Dict[str, Any]:
+    """Tạo một kịch bản thô (chờ AI hoàn thiện, tự động gán thể loại & Skill)"""
+    detected_genre, detected_skill = detect_story_genre_and_skill(raw_content)
+    final_genre = genre or detected_genre
+    final_skill = target_skill or detected_skill
+
     first_line = raw_content.strip().split("\n")[0][:40] if raw_content.strip() else "Kịch bản thô"
-    auto_title = title or f"Bản thô: {first_line}..."
+    auto_title = title or f"[{final_genre.upper()}] {first_line}..."
     return create_project(
         title=auto_title,
         content="",
         raw_content=raw_content,
         status="0_ban_tho",
-        notes=notes or "Kịch bản thô (Chờ Claude xử lý 2 Skill)",
-        theme=theme
+        notes=notes or f"Kịch bản thô ({final_genre} | {final_skill})",
+        theme=theme,
+        genre=final_genre,
+        target_skill=final_skill,
+        tiktok_full_duration=tiktok_full_duration
     )
 
 def batch_create_raw_projects(raw_list: List[str], theme: str = "nau_an") -> List[Dict[str, Any]]:
@@ -521,3 +588,12 @@ def sync_all_projects() -> List[Dict[str, Any]]:
         sync_project_files(p["id"])
     return get_all_projects()
 
+
+def toggle_tiktok_full_duration(project_id: str) -> Optional[Dict[str, Any]]:
+    """Bật / tắt chế độ lấy Full độ dài video cho TikTok (15p vs Full)"""
+    p = get_project(project_id)
+    if not p:
+        return None
+    curr = p.get("tiktok_full_duration", 0)
+    new_val = 0 if curr else 1
+    return update_project(project_id, tiktok_full_duration=new_val)

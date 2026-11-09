@@ -254,7 +254,18 @@ def _process_tiktok_task(task: Dict[str, Any]):
     task["message"] = "Đang chuyển đổi video 16:9 sang 9:16 TikTok (Cinematic Blur)..."
     task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Đang chuyển đổi TikTok 9:16 cho [{project_id}]...", "info", project_id)
     
-    video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style, max_duration_sec=payload.get("max_duration_sec", 900))
+    # Kiểm tra chế độ lấy Full độ dài hay cắt 15 phút
+    if "max_duration_sec" in payload:
+        max_dur = payload["max_duration_sec"]
+        if max_dur is not None and int(max_dur) <= 0:
+            max_dur = None
+    else:
+        is_full = bool(proj.get("tiktok_full_duration", 0))
+        max_dur = None if is_full else 900
+
+    dur_msg = "Full độ dài video" if max_dur is None else f"{max_dur//60} phút đầu"
+    task_logger.add_log("tiktok", f"📱 [Hàng Đợi] Chuyển đổi TikTok 9:16 [{project_id}] theo chế độ: {dur_msg}...", "info", project_id)
+    video_engine.convert_16x9_to_9x16(src_video, out_tiktok_path, style=style, max_duration_sec=max_dur)
     
     database.update_project(
         project_id,
@@ -360,7 +371,11 @@ def _process_auto_render_task(task: Dict[str, Any]):
     # 🚀 AUTO-PIPELINE (DÂY CHUYỀN 1-CLICK): Nối tiếp sang tạo bản TikTok dọc 9:16
     if payload.get("auto_chain") and aspect_ratio == "16:9":
         task_logger.add_log("pipeline", f"📱 [Dây Chuyền 1-Click] Video YouTube 16:9 đã xong! Tự động chuyển đổi TikTok 9:16 cho [{project_id}]...", "info", project_id)
-        add_task("tiktok", project_id, {"style": "blur"})
+        proj_curr = database.get_project(project_id)
+        is_full = bool(proj_curr.get("tiktok_full_duration", 0)) if proj_curr else False
+        max_dur_chain = None if is_full else 900
+        dur_label = "Full Độ Dài" if is_full else "15 Phút Đầu"
+        add_task("tiktok", project_id, {"style": "blur", "max_duration_sec": max_dur_chain})
 
     return {"rendered_path": rendered_path}
 

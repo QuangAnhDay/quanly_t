@@ -298,7 +298,7 @@
 
         try {
             const myProfileId = localStorage.getItem('claude_profile_id') || "";
-            const skillConfig = await apiFetch(`/api/claude-skill-config?profile_id=${encodeURIComponent(myProfileId)}`).catch(() => ({
+            const skillConfig = await apiFetch(`/api/claude-skill-config?project_id=${encodeURIComponent(project.id)}&profile_id=${encodeURIComponent(myProfileId)}`).catch(() => ({
                 prompt1: '/tao-kich-ban',
                 prompt2: '/tieu-de-thumb'
             }));

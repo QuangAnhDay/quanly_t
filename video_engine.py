@@ -57,9 +57,10 @@ def convert_16x9_to_9x16(
         # Crop giữa
         filter_complex = "[0:v]scale=-2:1920,crop=1080:1920[v]"
 
+        time_args = ["-t", str(max_duration_sec)] if (max_duration_sec is not None and int(max_duration_sec) > 0) else []
     cmd = [
         FFMPEG_PATH, "-y",
-        "-i", input_video_path] + (["-t", str(max_duration_sec)] if max_duration_sec else []) + [
+        "-i", input_video_path] + time_args + [
         "-filter_complex", filter_complex,
         "-map", "[v]",
         "-map", "0:a?",
@@ -213,12 +214,33 @@ def render_full_video_auto(
 
     bg_meta = {}
     if bg_candidates:
-        bg_file, bg_meta = bg_manager.select_smart_background(
+        # Multi-Clip Smart Background Sequencing (Chống Trùng Lặp 100%)
+        # Bốc ngẫu nhiên một chuỗi 8 - 15 clip nối tiếp nhau thay vì loop 1 clip đơn độc
+        num_clips = min(len(bg_candidates), 12)
+        selected_bg_files = random.sample(bg_candidates, num_clips) if len(bg_candidates) >= num_clips else list(bg_candidates)
+        
+        primary_file, bg_meta = bg_manager.select_smart_background(
             candidates=bg_candidates,
             theme=theme,
             orientation=orientation,
             project_id=project_id
         )
+        if primary_file and primary_file in selected_bg_files:
+            selected_bg_files.remove(primary_file)
+        if primary_file:
+            selected_bg_files.insert(0, primary_file)
+
+        concat_txt_path = os.path.join(os.path.dirname(output_video_path), f"temp_bg_concat_{project_id or 'job'}.txt")
+        use_concat = False
+        try:
+            with open(concat_txt_path, "w", encoding="utf-8") as cf:
+                for vf in selected_bg_files:
+                    vf_clean = os.path.abspath(vf).replace("\\", "/")
+                    cf.write(f"file '{vf_clean}'\n")
+            use_concat = True
+        except Exception as e_cf:
+            print(f"[VideoEngine] Lỗi tạo concat list: {e_cf}")
+
         if project_id and bg_meta:
             try:
                 import database
@@ -226,23 +248,46 @@ def render_full_video_auto(
             except Exception as e:
                 print(f"[VideoEngine] Lỗi lưu bg_video vào DB: {e}")
 
-        cmd = [
-            FFMPEG_PATH, "-y",
-            "-stream_loop", "-1",
-            "-i", bg_file,
-            "-i", audio_path,
-            "-t", str(duration),
-            "-vf", vf_chain,
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-c:v", "h264_nvenc",
-            "-preset", "p4",
-            "-cq", "22",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            output_video_path
-        ]
+        # Thêm hiệu ứng vi mô chống quét bản quyền hình ảnh (Zoom 104% + Tinh chỉnh màu nhẹ)
+        enhanced_vf = vf_chain + ",eq=contrast=1.02:brightness=0.01"
+
+        if use_concat:
+            cmd = [
+                FFMPEG_PATH, "-y",
+                "-f", "concat", "-safe", "0",
+                "-stream_loop", "-1",
+                "-i", concat_txt_path,
+                "-i", audio_path,
+                "-t", str(duration),
+                "-vf", enhanced_vf,
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-c:v", "h264_nvenc",
+                "-preset", "p4",
+                "-cq", "22",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                output_video_path
+            ]
+        else:
+            cmd = [
+                FFMPEG_PATH, "-y",
+                "-stream_loop", "-1",
+                "-i", primary_file,
+                "-i", audio_path,
+                "-t", str(duration),
+                "-vf", enhanced_vf,
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-c:v", "h264_nvenc",
+                "-preset", "p4",
+                "-cq", "22",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                output_video_path
+            ]
     else:
         filter_complex = (
             f"[1:a]showwaves=s={width}x300:mode=p2p:colors=#8b5cf6:scale=sqrt[wave]; "
@@ -265,4 +310,9 @@ def render_full_video_auto(
         ]
 
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if 'concat_txt_path' in locals() and os.path.exists(concat_txt_path):
+        try:
+            os.remove(concat_txt_path)
+        except Exception:
+            pass
     return output_video_path

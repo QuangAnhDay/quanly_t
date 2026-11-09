@@ -1485,9 +1485,14 @@
                   <i class="fa-brands fa-tiktok text-rose-600"></i> Xem 9:16
                 </button>
               ` : (hasYouTubeVideo ? `
-                <button onclick="convertToTikTokFast('${p.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 transition" title="Tự động trích xuất 15 phút đầu sang TikTok 9:16">
-                  <i class="fa-solid fa-bolt"></i> Tạo TikTok (15p)
-                </button>
+                <div class="inline-flex items-center rounded-lg shadow-2xs overflow-hidden">
+                  <button onclick="convertToTikTokFast('${p.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 transition" title="Tạo video dọc TikTok 9:16">
+                    <i class="fa-brands fa-tiktok"></i> TikTok
+                  </button>
+                  <button onclick="toggleTikTokFull('${p.id}')" class="px-2 py-1 text-[11px] font-extrabold border-l border-rose-500 transition ${p.tiktok_full_duration ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-rose-700 text-rose-100 hover:bg-rose-800'}" title="Bấm để đổi giữa 15 Phút và Full Độ Dài">
+                    ${p.tiktok_full_duration ? 'Full' : '15p'}
+                  </button>
+                </div>
               ` : (hasAudio ? `
                 <button onclick="autoRenderSingle('${p.id}')" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-2xs transition">
                   <i class="fa-solid fa-video"></i> Xuất MP4
@@ -1682,6 +1687,19 @@
         }
       } catch (err) {
         showToast("Lỗi mở Claude", "error");
+      }
+    }
+
+    async function toggleTikTokFull(id) {
+      try {
+        const res = await fetch(`/api/projects/${id}/toggle-tiktok-full`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`⚙️ ${data.message}`, "success");
+          fetchProjects();
+        }
+      } catch (err) {
+        showToast("Lỗi đổi chế độ TikTok", "error");
       }
     }
 

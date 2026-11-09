@@ -408,13 +408,30 @@ async def create_project_api(payload: ScriptPayload):
     return proj
 
 @app.get("/api/claude-skill-config")
-async def api_get_claude_skill_config(profile_id: Optional[str] = None):
+async def api_get_claude_skill_config(profile_id: Optional[str] = None, project_id: Optional[str] = None):
     cfg = get_config()
     default_skills = cfg.get("claude_skills", {
         "script_skill_command": "/kichban-audio-bancungphong",
         "title_thumb_skill_command": "/tieu-de-thumb-audio-hoc-duong"
     })
     profile_skills = cfg.get("profile_skills", {})
+
+    # Ưu tiên số 1: Kịch bản cụ thể có target_skill -> dùng đúng Skill của kịch bản đó
+    if project_id:
+        proj = database.get_project(project_id)
+        if proj and proj.get("target_skill"):
+            prompt1 = proj["target_skill"].strip()
+            prompt2 = default_skills.get("title_thumb_skill_command", "/tieu-de-thumb-audio-hoc-duong").strip()
+            genre = proj.get("genre", "tự động")
+            return {
+                "project_id": project_id,
+                "profile_id": profile_id,
+                "label": f"Kịch bản [{project_id}] ({genre})",
+                "prompt1": prompt1,
+                "prompt2": prompt2,
+                "script_skill_command": prompt1,
+                "title_thumb_skill_command": prompt2
+            }
     
     if profile_id:
         p_cfg = profile_skills.get(profile_id, {})
@@ -1071,7 +1088,11 @@ async def convert_to_tiktok_api(project_id: str, payload: Optional[ConvertTikTok
         raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
     
     style = payload.style if payload else "blur"
-    max_dur = payload.max_duration_sec if payload and payload.max_duration_sec else 900
+    if payload and payload.max_duration_sec is not None:
+        max_dur = payload.max_duration_sec if payload.max_duration_sec > 0 else None
+    else:
+        is_full = bool(proj.get("tiktok_full_duration", 0))
+        max_dur = None if is_full else 900
     t = task_queue.add_task("tiktok", project_id, {"style": style, "max_duration_sec": max_dur})
     return {
         "success": True,
@@ -1079,6 +1100,16 @@ async def convert_to_tiktok_api(project_id: str, payload: Optional[ConvertTikTok
         "message": f"Đã thêm [{project_id}] vào Hàng Đợi Chuyển Đổi TikTok 9:16 ngầm!",
         "task": t
     }
+
+
+@app.post("/api/projects/{project_id}/toggle-tiktok-full")
+async def toggle_tiktok_full_api(project_id: str):
+    p = database.toggle_tiktok_full_duration(project_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kịch bản")
+    is_full = bool(p.get("tiktok_full_duration", 0))
+    mode_text = "Full Độ Dài" if is_full else "15 Phút Đầu"
+    return {"success": True, "project": p, "is_full": is_full, "message": f"Đã chuyển sang chế độ {mode_text} cho TikTok!"}
 
 @app.post("/api/projects/{project_id}/split-parts")
 async def split_parts_api(project_id: str, payload: Optional[SplitPartsPayload] = None):
