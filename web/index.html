@@ -750,12 +750,30 @@
                 <th class="py-2.5 px-3 w-44">Tên Thể Loại / Ghi Chú</th>
                 <th class="py-2.5 px-3">Lệnh Prompt 1 (Kịch bản riêng)</th>
                 <th class="py-2.5 px-3">Lệnh Prompt 2 (Thumb / Tiêu đề)</th>
+                <th class="py-2.5 px-3 w-14 text-center">Xóa</th>
               </tr>
             </thead>
             <tbody id="chrome-profiles-tbody" class="divide-y divide-slate-100 bg-white">
-              <tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Đang quét danh sách hồ sơ...</td></tr>
+              <tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">Đang quét danh sách hồ sơ...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Danh sách Hồ Sơ Đã Loại Trừ / Ẩn -->
+        <div class="mt-3 pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-between text-xs">
+            <button type="button" onclick="toggleExcludedProfilesView()" class="font-bold text-slate-600 hover:text-violet-600 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-eye-slash text-slate-400"></i>
+              <span>Hồ sơ đã Xóa / Loại trừ: <span id="excluded-count-badge" class="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 font-mono text-[10px]">0</span></span>
+            </button>
+            <span class="text-[11px] text-slate-400">Bấm nút thùng rác [🗑️] trên dòng để xóa hồ sơ không muốn dùng</span>
+          </div>
+          <div id="excluded-profiles-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <p class="text-[11px] text-slate-500 mb-2 font-medium">Bấm vào bất kỳ thẻ hồ sơ nào bên dưới để khôi phục lại:</p>
+            <div id="excluded-chips-list" class="flex flex-wrap gap-2 text-xs">
+              <!-- Render excluded profile chips here -->
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2525,7 +2543,34 @@ async function batchAutoRenderQueue() {
           return;
         }
 
-        availableProfiles.forEach(p => {
+        const activeProfiles = availableProfiles.filter(p => !p.is_excluded);
+        const excludedProfiles = availableProfiles.filter(p => p.is_excluded);
+
+        // Render excluded chips
+        const excBadge = document.getElementById("excluded-count-badge");
+        if (excBadge) excBadge.innerText = excludedProfiles.length;
+        const chipsList = document.getElementById("excluded-chips-list");
+        if (chipsList) {
+          if (excludedProfiles.length === 0) {
+            chipsList.innerHTML = '<span class="text-slate-400 italic text-[11px]">Chưa có hồ sơ nào bị loại trừ.</span>';
+          } else {
+            chipsList.innerHTML = excludedProfiles.map(p => `
+              <button type="button" onclick="restoreChromeProfile('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-300 hover:border-emerald-400 rounded-lg shadow-2xs transition group" title="Bấm để khôi phục lại hồ sơ này">
+                <i class="fa-brands fa-chrome text-slate-400 group-hover:text-emerald-500"></i>
+                <span class="font-bold">${escapeHtml(p.name || p.id)}</span>
+                <span class="text-[10px] font-mono text-slate-400 font-normal">(${escapeHtml(p.id)})</span>
+                <i class="fa-solid fa-arrow-rotate-left text-[10px] text-emerald-600 ml-1"></i>
+              </button>
+            `).join('');
+          }
+        }
+
+        if (activeProfiles.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">Tất cả hồ sơ đã bị loại trừ hoặc không tìm thấy hồ sơ khả dụng!</td></tr>';
+          return;
+        }
+
+        activeProfiles.forEach(p => {
           const isChecked = savedSelected.includes(p.id);
           const pSkill = profSkills[p.id] || {};
           const pLabel = pSkill.name || pSkill.label || p.name || p.gaia_name || p.id;
@@ -2548,7 +2593,7 @@ async function batchAutoRenderQueue() {
             <td class="py-2.5 px-3 align-middle">
               <input type="text" id="prof-name-${escapeHtml(p.id)}" value="${escapeHtml(pLabel)}" placeholder="VD: Truyện ma, Review..." class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white shadow-2xs font-medium text-slate-700">
             </td>
-            <!-- Skill Kịch Bản: Ô nhập hiển thị tên file/lệnh + Dropdown chọn nhanh từ skills/ -->
+            <!-- Skill Kịch Bản -->
             <td class="py-2.5 px-3 align-middle">
               <div class="flex items-center gap-1.5">
                 <input type="text" id="prof-p1-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt1)}" placeholder="/ten-skill hoặc tên file" class="w-full px-2 py-1 text-xs font-mono text-violet-900 font-bold border border-violet-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 bg-violet-50/50 shadow-2xs">
@@ -2558,7 +2603,7 @@ async function batchAutoRenderQueue() {
                 </select>
               </div>
             </td>
-            <!-- Skill Tiêu Đề & Thumb: Ô nhập hiển thị tên file/lệnh + Dropdown chọn nhanh từ skills/ -->
+            <!-- Skill Tiêu Đề & Thumb -->
             <td class="py-2.5 px-3 align-middle">
               <div class="flex items-center gap-1.5">
                 <input type="text" id="prof-p2-${escapeHtml(p.id)}" value="${escapeHtml(pPrompt2)}" placeholder="/tieu-de-thumb" class="w-full px-2 py-1 text-xs font-mono text-blue-900 font-bold border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50/50 shadow-2xs">
@@ -2567,6 +2612,12 @@ async function batchAutoRenderQueue() {
                   ${renderSkillSelectOptions("prompt2", pPrompt2)}
                 </select>
               </div>
+            </td>
+            <!-- Nút Xóa / Loại trừ hồ sơ -->
+            <td class="py-2.5 px-3 text-center align-middle">
+              <button type="button" onclick="excludeChromeProfile('${escapeHtml(p.id)}')" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition" title="Xóa bỏ hồ sơ này khỏi danh sách sử dụng (Không tự động chọn)">
+                <i class="fa-solid fa-trash-can text-sm"></i>
+              </button>
             </td>
           `;
           tbody.appendChild(tr);
@@ -2828,6 +2879,58 @@ async function batchAutoRenderQueue() {
         }
       } catch (e) {
         showToast("Lỗi khi lưu cấu hình skill: " + e.message, "error");
+      }
+    }
+
+    
+    function toggleExcludedProfilesView() {
+      const box = document.getElementById("excluded-profiles-box");
+      if (box) box.classList.toggle("hidden");
+    }
+
+    async function excludeChromeProfile(profileId) {
+      if (!confirm(`Bạn có chắc muốn XÓA / LOẠI BỎ hồ sơ [${profileId}] khỏi danh sách chọn tự động không?`)) return;
+      try {
+        const res = await fetch('/api/chrome-profiles/exclude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile_id: profileId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🗑️ ${data.message}`, "success");
+          // Xóa khỏi localStorage selectedChromeProfiles
+          let saved = JSON.parse(localStorage.getItem("selectedChromeProfiles") || "[]");
+          saved = saved.filter(id => id !== profileId);
+          localStorage.setItem("selectedChromeProfiles", JSON.stringify(saved));
+          // Tải lại bảng
+          openChromeModal();
+        }
+      } catch (err) {
+        showToast("Lỗi khi loại bỏ hồ sơ", "error");
+      }
+    }
+
+    async function restoreChromeProfile(profileId) {
+      try {
+        const res = await fetch('/api/chrome-profiles/include', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile_id: profileId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`♻️ ${data.message}`, "success");
+          // Tự động thêm lại vào danh sách chọn
+          let saved = JSON.parse(localStorage.getItem("selectedChromeProfiles") || "[]");
+          if (!saved.includes(profileId)) {
+            saved.push(profileId);
+            localStorage.setItem("selectedChromeProfiles", JSON.stringify(saved));
+          }
+          openChromeModal();
+        }
+      } catch (err) {
+        showToast("Lỗi khi khôi phục hồ sơ", "error");
       }
     }
 

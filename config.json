@@ -6,8 +6,7 @@
     "Profile 7",
     "Profile 2",
     "Profile 4",
-    "Profile 5",
-    "Profile 1"
+    "Profile 5"
   ],
   "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "default_voice": "voicestudio:dda59bfa",
@@ -117,5 +116,9 @@
       "prompt1": "/kichban-audio-bancungphong",
       "prompt2": "/tieu-de-thumb-audio-hoc-duong"
     }
-  }
+  },
+  "excluded_chrome_profiles": [
+    "Default",
+    "Profile 1"
+  ]
 }

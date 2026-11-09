@@ -72,20 +72,25 @@ def get_config():
     return {}
 
 def get_detected_chrome_profiles():
-    """Đọc file Local State của Chrome để lấy danh sách hồ sơ chuẩn xác với Email và Tên hiển thị"""
+    """Đọc file Local State của Chrome để lấy danh sách hồ sơ chuẩn xác với Email, Tên và trạng thái loại trừ"""
     local_state_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Local State")
     profiles = []
+    cfg = get_config()
+    excluded = set(cfg.get("excluded_chrome_profiles", []))
+
     if os.path.exists(local_state_path):
         try:
             with open(local_state_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             info_cache = data.get("profile", {}).get("info_cache", {})
             for folder, info in info_cache.items():
+                is_ex = folder in excluded
                 profiles.append({
                     "id": folder,
                     "name": info.get("name", folder),
                     "email": info.get("user_name", ""),
                     "gaia_name": info.get("gaia_name", ""),
+                    "is_excluded": is_ex
                 })
         except Exception as e:
             print(f"Lỗi đọc Chrome Local State: {e}")
@@ -267,6 +272,39 @@ async def api_get_themes():
 @app.get("/api/chrome-profiles")
 async def api_get_chrome_profiles():
     return get_detected_chrome_profiles()
+
+
+class ChromeProfileManagePayload(BaseModel):
+    profile_id: str
+
+@app.post("/api/chrome-profiles/exclude")
+async def api_exclude_chrome_profile(payload: ChromeProfileManagePayload):
+    cfg = get_config()
+    excluded = cfg.setdefault("excluded_chrome_profiles", [])
+    if payload.profile_id not in excluded:
+        excluded.append(payload.profile_id)
+    # Xóa khỏi danh sách active chrome_profiles nếu có
+    active_profs = cfg.get("chrome_profiles", [])
+    if payload.profile_id in active_profs:
+        active_profs.remove(payload.profile_id)
+        cfg["chrome_profiles"] = active_profs
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return {"success": True, "message": f"Đã xóa hồ sơ [{payload.profile_id}] khỏi danh sách chọn!", "excluded": excluded}
+
+@app.post("/api/chrome-profiles/include")
+async def api_include_chrome_profile(payload: ChromeProfileManagePayload):
+    cfg = get_config()
+    excluded = cfg.get("excluded_chrome_profiles", [])
+    if payload.profile_id in excluded:
+        excluded.remove(payload.profile_id)
+        cfg["excluded_chrome_profiles"] = excluded
+    active_profs = cfg.setdefault("chrome_profiles", [])
+    if payload.profile_id not in active_profs:
+        active_profs.append(payload.profile_id)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return {"success": True, "message": f"Đã khôi phục hồ sơ [{payload.profile_id}]!", "excluded": excluded}
 
 @app.post("/api/launch-chrome-selected")
 async def api_launch_chrome_selected(payload: LaunchSelectedProfilesPayload):
@@ -801,13 +839,15 @@ async def dispatch_claude_batch_api(payload: DispatchClaudePayload):
     """Mở chính xác các profile Chrome đã chọn và tự động gán kịch bản thô tương ứng"""
     cfg = get_config()
     
-    # Ưu tiên danh sách profile gửi từ giao diện web
+    excluded = set(cfg.get("excluded_chrome_profiles", []))
+    # Ưu tiên danh sách profile gửi từ giao diện web và loại trừ các profile bị cấm
     if payload.profiles and len(payload.profiles) > 0:
-        selected_profiles = payload.profiles
+        selected_profiles = [p for p in payload.profiles if p not in excluded]
     else:
         profiles = cfg.get("chrome_profiles", ["Profile 7", "Profile 2", "Profile 4", "Profile 5", "Profile 1"])
-        count = min(payload.profile_count or 5, len(profiles))
-        selected_profiles = profiles[:count]
+        filtered_profiles = [p for p in profiles if p not in excluded]
+        count = min(payload.profile_count or 5, len(filtered_profiles))
+        selected_profiles = filtered_profiles[:count]
 
     # Lấy danh sách kịch bản thô cần xử lý
     if payload.project_ids and len(payload.project_ids) > 0:
