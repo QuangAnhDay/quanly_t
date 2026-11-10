@@ -57,7 +57,7 @@ def convert_16x9_to_9x16(
         # Crop giữa
         filter_complex = "[0:v]scale=-2:1920,crop=1080:1920[v]"
 
-        time_args = ["-t", str(max_duration_sec)] if (max_duration_sec is not None and int(max_duration_sec) > 0) else []
+    time_args = ["-t", str(max_duration_sec)] if (max_duration_sec is not None and int(max_duration_sec) > 0) else []
     cmd = [
         FFMPEG_PATH, "-y",
         "-i", input_video_path] + time_args + [
